@@ -19,6 +19,27 @@ A experiência contempla dois perfis: desenvolvedor e administrador.
 
 Memory as a Service fica para uma fase posterior.
 
+## Estrutura
+
+| Pasta | Conteúdo |
+| --- | --- |
+| `control-plane/` | API em Node/TypeScript |
+| `agent-gateway/` | Gateway para MCPs e modelos, em Node/TypeScript |
+| `cli/` | CLI `harness` em Go (único `go.mod`) |
+| `catalog/` | Conteúdo do catálogo |
+| `examples/` | Exemplos de pacotes e de uso |
+| `docs/` | ADRs, contratos e diagramas (o SVG é exportado pela interface do Excalidraw a partir de `docs/arch/propose.excalidraw`) |
+
+## Comandos
+
+Requer Node 24, Go 1.27, Docker e make.
+
+```bash
+make check                       # checagens de todos os componentes
+cp .env.example .env && make up  # sobe api (8080) e gateway (8081) em 127.0.0.1
+make down                        # para os serviços e preserva o volume sqlite-data
+```
+
 ## Planejamento e entrega
 
 Usamos [GitHub Issues](https://github.com/nelsonfrugeri-tech/smart-harness/issues) como fonte de definição das features e de acompanhamento das entregas.
