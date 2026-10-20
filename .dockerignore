@@ -1,0 +1,6 @@
+**/node_modules
+**/*.test.ts
+**/*_test.go
+cli/bin
+.git
+.env
