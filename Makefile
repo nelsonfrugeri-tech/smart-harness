@@ -1,4 +1,4 @@
-.PHONY: check check-go check-node up down seed diagram
+.PHONY: check check-go check-node up down seed
 
 NODE_COMPONENTS := control-plane agent-gateway
 
@@ -33,6 +33,3 @@ down:
 
 seed:
 	@echo "seed: definido em #6"
-
-diagram:
-	./scripts/export-diagram.sh

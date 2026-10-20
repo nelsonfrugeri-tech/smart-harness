@@ -28,7 +28,7 @@ Memory as a Service fica para uma fase posterior.
 | `cli/` | CLI `harness` em Go (único `go.mod`) |
 | `catalog/` | Conteúdo do catálogo |
 | `examples/` | Exemplos de pacotes e de uso |
-| `docs/` | ADRs, contratos e diagramas |
+| `docs/` | ADRs, contratos e diagramas (o SVG é exportado pela interface do Excalidraw a partir de `docs/arch/propose.excalidraw`) |
 
 ## Comandos
 
@@ -38,7 +38,6 @@ Requer Node 24, Go 1.27, Docker e make.
 make check                       # checagens de todos os componentes
 cp .env.example .env && make up  # sobe api (8080) e gateway (8081) em 127.0.0.1
 make down                        # para os serviços e preserva o volume sqlite-data
-make diagram                     # exporta docs/arch/propose.excalidraw para SVG
 ```
 
 ## Planejamento e entrega
