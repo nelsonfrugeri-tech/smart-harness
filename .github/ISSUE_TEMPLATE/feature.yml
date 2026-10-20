@@ -1,0 +1,45 @@
+name: Feature
+description: Definir uma feature e seus critérios de aceite.
+title: "[Feature] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema e público
+      description: Quem precisa desta feature e qual problema ela resolve?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Resultado esperado
+      description: Descreva a experiência e o resultado que a pessoa deve alcançar.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Escopo
+      description: O que será entregue nesta feature? Explicite exclusões relevantes.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios de aceite
+      description: Liste condições observáveis para considerar a feature entregue.
+      placeholder: "- [ ] ..."
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Como validar
+      description: Descreva cenários e evidências esperadas.
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Dependências e decisões pendentes
+      description: Registre dúvidas, dependências, alternativas e decisões com sua justificativa.
