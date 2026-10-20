@@ -35,7 +35,7 @@ O formato do pacote é o padrão aberto **Agent Plugins**. O cliente suportado n
 
 ## Decisão
 
-1. **Três componentes.** **sm-control-plane** (Node/TypeScript): API, banco SQLite, tenants, catálogo, contribuições, aprovações, versões e distribuição dos pacotes. **sm-agent-gateway** (Node/TypeScript): porta única do agente para MCPs e modelos. **sm-cli** (Go): engine de pacotes e CLI `harness`, um binário estático que valida o pacote, gera a camada do Claude Code e instala na máquina do dev. O validador existe uma vez: a API chama `harness validate --json`. O front (sm-saas) consome a API.
+1. **Três componentes.** **sh-control-plane** (Node/TypeScript): API, banco SQLite, tenants, catálogo, contribuições, aprovações, versões e distribuição dos pacotes. **sh-agent-gateway** (Node/TypeScript): porta única do agente para MCPs e modelos. **sh-cli** (Go): engine de pacotes e CLI `harness`, um binário estático que valida o pacote, gera a camada do Claude Code e instala na máquina do dev. O validador existe uma vez: a API chama `harness validate --json`. O front (sh-saas) consome a API.
 
 2. **Pacote no formato Agent Plugins.** O núcleo tem `plugin.json`, `mcp.json` e `skills/`. Os agents ficam numa extensão com namespace próprio, porque a spec v1 define só skills e MCPs. A camada do Claude Code (`.claude-plugin/`, `.mcp.json`, `agents/`) é gerada a partir do núcleo, de forma determinística, e só ela referencia o token do gateway; o núcleo nunca contém credencial nem referência a ela. O validador aplica três famílias de regras: spec Agent Plugins, spec Agent Skills e políticas da plataforma (sem segredos, só MCPs do catálogo, sem hooks nem executáveis).
 

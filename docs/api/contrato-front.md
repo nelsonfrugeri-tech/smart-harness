@@ -1,6 +1,6 @@
-# Contrato da API para o front (sm-saas)
+# Contrato da API para o front (sh-saas)
 
-Lista do que o front consome do sm-control-plane na Fase 1. A fonte da verdade é `control-plane/openapi.json`; os tipos TypeScript saem de `npm --prefix control-plane run contract:types` para `front/src/api/schema.d.ts` (#7). Esta página é o índice; se divergir do OpenAPI, vale o OpenAPI.
+Lista do que o front consome do sh-control-plane na Fase 1. A fonte da verdade é `control-plane/openapi.json`; os tipos TypeScript saem de `npm --prefix control-plane run contract:types` para `front/src/api/schema.d.ts` (#7). Esta página é o índice; se divergir do OpenAPI, vale o OpenAPI.
 
 ## Convenções
 - Base: `VITE_API_BASE_URL` (local: `http://127.0.0.1:8080`). CORS liberado só para a origem do front.
