@@ -53,7 +53,7 @@ O formato do pacote é o padrão aberto **Agent Plugins**. O cliente suportado n
 
 7. **Autenticação e segredos.** Na Fase 1, o login é um stub que emite JWT local, habilitado só em ambiente local; a autorização é real, por membership, a cada requisição. A evolução é OIDC, sem mudar o modelo de autorização. O dev configura um único segredo: o token do Agent Gateway, que o CLI grava nas variáveis que o Claude Code lê para MCPs e para o modelo. Nenhuma credencial de serviço nem chave de modelo fica no pacote ou na máquina do dev.
 
-8. **Observabilidade:** logs JSON com `correlation_id`, `/metrics`, `/healthz` e `/readyz`. Uso de modelos por dev, harness e modelo sai do gateway. Implantação da Fase 1 local, com dois processos Node e um binário Go; evolução para Kubernetes.
+8. **Observabilidade:** logs JSON com `correlation_id`, `/metrics`, `/healthz` e `/readyz`. Uso de modelos por dev, harness e modelo sai do gateway. Implantação da Fase 1 em docker compose (api, gateway, front), com o SQLite em volume; evolução para Kubernetes.
 
 ## Consequências
 
@@ -84,7 +84,7 @@ O formato do pacote é o padrão aberto **Agent Plugins**. O cliente suportado n
 | Instalação | Download pela API, plugin local, `harness sync` | Distribuição pelas configurações da organização do coding agent, auto-update |
 | Clientes | Claude Code | Codex, Cursor e outros, pelo mesmo núcleo Agent Plugins e pelo mesmo gateway |
 | Banco | SQLite, isolamento na aplicação | Postgres com Row Level Security por tenant |
-| Implantação | Processos locais | Kubernetes |
+| Implantação | docker compose | Kubernetes |
 | Memória | Fora do escopo; porta reservada no gateway | Memory as a Service |
 
 ## Confirmação
