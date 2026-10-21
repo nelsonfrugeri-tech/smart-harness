@@ -1,8 +1,8 @@
 # agent-gateway
 
 Porta única do coding agent para MCPs e modelos, em Node/TypeScript. Hoje atende MCP em
-`POST /mcp/projects/{project}/{server}`. O proxy de modelos fica na #15 e os backends reais (github, trello,
-notion, project) na #14.
+`POST /mcp/projects/{project}/{server}` com os backends reais `github`, `trello`, `notion` e `project`. O proxy de
+modelos fica na #15.
 
 ```bash
 npm ci
@@ -41,7 +41,8 @@ Um backend implementa `McpBackend { server; listTools(ctx); callTool(ctx, name, 
 | Tipo | Como o gateway decide |
 | --- | --- |
 | `resource` | `extract(args)` devolve o id do repositório, board ou página. `null`, ou id fora da lista do projeto: negado. |
-| `search` | O backend recebe a lista permitida em `ctx.allowedResources` e busca só nela. Lista vazia: resultado vazio, sem chamar o backend. |
+| `search` | O backend recebe a lista permitida em `ctx.allowedResources` e busca só nela. Lista vazia: **negado** (`no_allowed_resources`), sem chamar o backend. |
+| `project` | A tool lê o contexto do próprio projeto do chamador (`ctx.project`) e não nomeia recurso externo. Auditada com `resource_type=project`. |
 | sem `access` | Não aparece em `tools/list` e é negada em `tools/call`. |
 
 Chamada negada vira resultado `isError: true`, é auditada como `denied` e **não chega ao backend**. Falha do backend vira
@@ -72,9 +73,70 @@ confere 1.000 linhas e `PRAGMA integrity_check` = `ok`. O arquivo é criado e mi
 | `DATABASE_PATH` | `data/control-plane.sqlite` | Arquivo SQLite da API (`/data/control-plane.sqlite` no compose). |
 | `ALLOWED_ORIGINS` | vazio | Origens permitidas, separadas por vírgula. Vazio: toda requisição com `Origin` leva 403. Agentes de linha de comando não enviam `Origin`. |
 | `LOG_LEVEL` | `info` | Nível do log JSON (pino), com `correlation_id`. |
+| `GITHUB_TOKEN` | vazio | Token fine-grained somente leitura. Vazio: o servidor `github` não é registrado (404). |
+| `TRELLO_API_KEY`, `TRELLO_TOKEN` | vazio | Devem vir juntos. Vazios: o servidor `trello` não é registrado. |
+| `NOTION_TOKEN` | vazio | Token da integração interna. Vazio: o servidor `notion` não é registrado. |
+| `PROJECT_CONTEXT_ROOT` | vazio | Pasta com uma subpasta por slug de projeto (`<root>/investimentos-api/`). No compose: `./examples` montado em `/project-context`. Vazio: sem servidor `project`. |
+| `GITHUB_MCP_URL`, `TRELLO_API_URL`, `NOTION_API_URL`, `NOTION_VERSION` | endpoints oficiais, `2026-03-11` | Só mudam em teste ou ao atualizar a versão da API do Notion. |
 
 `GET /healthz` (processo), `GET /readyz` (as duas conexões com o banco) e `GET /metrics` (Prometheus, incluindo
 `gateway_tool_calls_total{server,outcome}`).
+
+## Backends
+
+As credenciais ficam só no processo do gateway. O dev recebe apenas o token `shg_`. Nenhuma credencial entra em log, auditoria
+ou mensagem de erro: erro do backend vira texto fixo (`GitHub MCP is unreachable...`, `Trello answered HTTP 401.`).
+Todos são **somente leitura**.
+
+| Servidor | Como integra | Tools |
+| --- | --- | --- |
+| `github` | Proxy para o MCP remoto oficial `https://api.githubcopilot.com/mcp/` com `Authorization: Bearer GITHUB_TOKEN` e `X-MCP-Readonly: true`. | `get_file_contents`, `list_commits`, `get_commit`, `list_branches`, `list_issues`, `issue_read`, `list_pull_requests`, `pull_request_read`, `search_code`, `search_commits`, `search_issues`, `search_pull_requests` |
+| `trello` | API REST `api.trello.com/1`, chave e token no header `Authorization: OAuth ...` (nunca na URL). | `trello_list_cards`, `trello_get_card` |
+| `notion` | API REST `api.notion.com/v1` com `Notion-Version` configurável. | `notion_get_page`, `notion_search_pages` |
+| `project` | Arquivos de `<PROJECT_CONTEXT_ROOT>/<slug do projeto>/`. | `project_overview`, `decisions_search`, `backlog_list`, `backlog_get`, `delivered_list` |
+
+**GitHub.** O gateway publica um conjunto fixo de tools e repassa só os argumentos declarados. Tools com `owner` e `repo`
+passam pelo recurso `repo` (`owner/repo` em minúsculas). Tools de busca só recebem `query`, então a própria query tem de
+fixar o repositório: exatamente um `repo:<owner>/<repo>` permitido e nada que amplie o escopo (`org:`, `user:`, `OR`, `NOT`,
+`-repo:`, parênteses, aspas sem par). Texto entre aspas não conta como qualificador. `search_repositories` e as tools de usuário,
+time e organização não são expostas. Sem `repo:`, ou com repositório não permitido, a chamada é negada e não chega ao GitHub.
+
+**Trello e Notion: REST, não MCP oficial.** O MCP oficial do Trello (Atlassian, `mcp.trello.com`) usa OAuth interativo, e o
+MCP hospedado do Notion (`mcp.notion.com`) exige OAuth de usuário e não aceita bearer token (FAQ do Notion). Nenhum aceita
+credencial injetada pelo gateway; por isso o gateway expõe poucas tools próprias sobre a API REST.
+- Trello: `trello_get_card` recebe `board_id` e `card_id`. O gateway autoriza o board e confere que o card pertence a ele
+  (por `idBoard` ou `shortLink`); card de outro board volta erro sem dados.
+- Notion: ids de página ficam como 32 hex minúsculos, sem hífens, na tabela e na checagem. A busca da API do Notion não aceita
+  restringir a um conjunto de páginas e só casa títulos. Por isso `notion_search_pages` lê cada página permitida e filtra pelo título:
+  nunca devolve página fora do conjunto, e sem página permitida a chamada é negada. `notion_get_page` lê o título e o texto dos blocos de
+  primeiro nível (até 300 blocos; `content_complete=false` quando houver mais).
+
+**Projeto.** O mapeamento é pelo **slug do projeto**: `investimentos-api` lê `<root>/investimentos-api/`. Por isso
+`PROJECT_CONTEXT_ROOT=$PWD/examples` funciona fora do compose e o compose monta `./examples` em `/project-context`, sem tabela de
+mapeamento. Layout: `project.yaml`, `README.md`, `docs/adr`, `docs/backlog`, `docs/delivered`, com front matter YAML (`id`) em cada
+markdown. Cada resposta traz `source` (caminho relativo à raiz).
+
+## Respostas grandes
+
+Limite de 8.000 caracteres por resposta (`src/mcp/limits.ts`).
+- **Objeto singular** (`backlog_get`, `trello_get_card`, `notion_get_page`, `project_overview`): os campos são encurtados por etapas
+  (2000, 1000, ... 20 caracteres; arrays perdem itens) até caber. Mantém JSON válido, `id` e `source`, e marca `truncated: true`.
+- **Lista**: devolve os itens que cabem e `next_cursor`, calculado **depois** de ajustar a página, com o id do último item devolvido.
+  A próxima chamada recomeça logo depois dele, então nada é pulado nem repetido. Cursor desconhecido é erro, não reinício.
+- **GitHub**: a paginação é a do próprio servidor (`page`, `perPage`). Texto acima do limite vira
+  `{id, source: "github", truncated: true, total_chars, content}`, JSON válido com o início do conteúdo.
+
+## Semeadura dos recursos permitidos
+
+`make seed` (APP_ENV=local) grava em `gateway_permissions` os recursos de `investimentos-api` vindos de `GITHUB_REPOS`
+(`owner/repo`, vírgula), `TRELLO_BOARD_ID` e `NOTION_PAGE_IDS` (vírgula). Variável vazia mantém o exemplo fictício do servidor;
+variável preenchida **substitui** as linhas desse servidor. Entrada inválida para a semeadura com erro.
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+make seed
+```
 
 ## Chamada manual
 
@@ -87,6 +149,7 @@ curl -sS -X POST 127.0.0.1:8081/mcp/projects/investimentos-api/echo \
 
 ## Dependências
 
+- `yaml`: lê o front matter e o `project.yaml` do contexto do projeto.
 - `fastify`: servidor HTTP consolidado, com logs JSON (pino) e `inject()` para testar rotas sem abrir porta.
 - `@modelcontextprotocol/sdk`: SDK oficial do MCP. Implementa o transporte Streamable HTTP e o protocolo; o cliente do SDK também é usado nos testes.
 - `better-sqlite3`: acesso síncrono ao SQLite, o mesmo driver da API (binário pré-compilado, sem compilador na imagem).
@@ -97,4 +160,4 @@ curl -sS -X POST 127.0.0.1:8081/mcp/projects/investimentos-api/echo \
 
 ## Fora do escopo desta etapa
 
-Backends reais (#14), proxy de modelos (#15), sessões e SSE, rate limit, retry.
+Proxy de modelos (#15), sessões e SSE, rate limit, retry, escrita nas ferramentas.

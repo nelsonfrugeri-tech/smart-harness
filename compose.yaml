@@ -24,6 +24,10 @@ services:
       S3_BUCKET: packages
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env (see .env.example)}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env (see .env.example)}
+      # Resources of investimentos-api that the gateway may reach; make seed (APP_ENV=local) writes them to gateway_permissions.
+      GITHUB_REPOS: ${GITHUB_REPOS:-}
+      TRELLO_BOARD_ID: ${TRELLO_BOARD_ID:-}
+      NOTION_PAGE_IDS: ${NOTION_PAGE_IDS:-}
     volumes:
       - sqlite-data:/data
     depends_on:
@@ -48,9 +52,17 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Browser origins allowed to call /mcp, comma separated. Empty: any request with an Origin header is refused.
       ALLOWED_ORIGINS: ${GATEWAY_ALLOWED_ORIGINS:-}
+      # Service credentials of the upstream systems. They stay in the gateway; a server whose credentials are empty is not served.
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      TRELLO_API_KEY: ${TRELLO_API_KEY:-}
+      TRELLO_TOKEN: ${TRELLO_TOKEN:-}
+      NOTION_TOKEN: ${NOTION_TOKEN:-}
+      # The project server reads <root>/<project slug>/ (examples/investimentos-api).
+      PROJECT_CONTEXT_ROOT: /project-context
     volumes:
       # Same file as the API: the gateway reads tokens and permissions and appends audit events.
       - sqlite-data:/data
+      - ./examples:/project-context:ro
     depends_on:
       api:
         condition: service_healthy
