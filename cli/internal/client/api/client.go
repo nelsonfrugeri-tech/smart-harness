@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -52,7 +53,7 @@ type Client struct {
 	http  *http.Client
 }
 
-// New checks the API URL: absolute http or https, no user info, query or fragment.
+// New checks the API URL with ParseBaseURL.
 func New(apiURL, token string) (*Client, error) {
 	base, err := ParseBaseURL(apiURL)
 	if err != nil {
@@ -64,14 +65,26 @@ func New(apiURL, token string) (*Client, error) {
 }
 
 // ParseBaseURL accepts an absolute http or https URL without user info, query or fragment, and
-// returns it without a trailing slash.
+// returns it without a trailing slash. Plain http is accepted only on loopback (localhost,
+// 127.0.0.0/8, ::1): elsewhere the token and the prompts would travel in clear text.
 func ParseBaseURL(raw string) (*url.URL, error) {
 	u, err := url.Parse(raw)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 		return nil, fmt.Errorf("URL %q must be absolute http or https, without user info, query or fragment", raw)
 	}
+	if u.Scheme == "http" && !loopback(u.Hostname()) {
+		return nil, fmt.Errorf("URL %q must use https; plain http is accepted only on localhost, 127.0.0.1 or ::1", raw)
+	}
 	u.Path = strings.TrimRight(u.Path, "/")
 	return u, nil
+}
+
+func loopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // HTTPError is a non-2xx answer. Code is the problem+json code when the body has one.

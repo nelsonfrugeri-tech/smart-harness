@@ -6,7 +6,50 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/engine/digest"
 )
+
+// A body whose header matches it is still refused when it is not the archive the plan names.
+func TestPluginArchiveRejectsDigestOtherThanThePlan(t *testing.T) {
+	body := []byte("another archive")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(DigestHeader, digest.Of(body))
+		w.Write(body)
+	}))
+	defer srv.Close()
+	c, _ := New(srv.URL, "shg_x")
+	it := PluginItem{}
+	it.Version.ArchiveURL = "/v1/plugins/p/versions/1.0.0/archive"
+	it.Version.Digest = digest.Of([]byte("the planned archive"))
+
+	if _, err := c.PluginArchive(it); err == nil || !strings.Contains(err.Error(), "does not match the plan digest") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestParseBaseURLRequiresHTTPSOutsideLoopback(t *testing.T) {
+	for raw, ok := range map[string]bool{
+		"https://api.example.test":      true,
+		"http://127.0.0.1:8080":         true,
+		"http://127.0.0.1":              true,
+		"http://[::1]:8080":             true,
+		"http://localhost:8080":         true,
+		"http://api.example.test":       false,
+		"http://10.0.0.5:8080":          false,
+		"http://localhost.example.test": false,
+		"ftp://127.0.0.1":               false,
+		"https://user@api.example.test": false,
+	} {
+		_, err := ParseBaseURL(raw)
+		if (err == nil) != ok {
+			t.Errorf("ParseBaseURL(%q) err = %v, want ok=%v", raw, err, ok)
+		}
+	}
+	if _, err := ParseBaseURL("http://api.example.test"); err == nil || !strings.Contains(err.Error(), "must use https") {
+		t.Fatalf("err = %v", err)
+	}
+}
 
 func TestCheckItemRejectsUnsafeValues(t *testing.T) {
 	good := PluginItem{}

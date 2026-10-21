@@ -51,6 +51,13 @@ func readEnv(path string, top map[string]json.RawMessage) (map[string]json.RawMe
 	return env, nil
 }
 
+// CheckSettings reports an error when settings.json exists but is not a JSON object with an object
+// env block, so a command can refuse before it changes anything else.
+func CheckSettings(path string) error {
+	_, err := SettingsEnv(path)
+	return err
+}
+
 // TokenFromSettings returns env.SMART_HARNESS_TOKEN of settings.json, or "" when it is absent.
 func TokenFromSettings(path string) (string, error) {
 	top, _, err := readSettings(path)
@@ -105,7 +112,15 @@ func GatewayEnv(token, gatewayURL string) map[string]string {
 // When the content changes, the previous file is first copied to settings.json.harness-backup-<UTC
 // time> (mode 0600); the new file is written atomically with mode 0600. It returns the backup
 // path, "" when there was no previous file, and changed=false when nothing had to change.
+//
+// The file is rewritten with its keys in alphabetical order and two-space indentation; values,
+// numbers and strings (including &, < and >) stay as written. A symlink (for example to a dotfiles
+// repository) stays a symlink: the write goes to its target.
 func WriteSettingsEnv(path string, values map[string]string, now time.Time) (changed bool, backup string, err error) {
+	target, err := resolveSymlink(path)
+	if err != nil {
+		return false, "", err
+	}
 	top, old, err := readSettings(path)
 	if err != nil {
 		return false, "", err
@@ -115,22 +130,21 @@ func WriteSettingsEnv(path string, values map[string]string, now time.Time) (cha
 		return false, "", err
 	}
 	for k, v := range values {
-		encoded, err := json.Marshal(v)
+		encoded, err := marshal(v, false)
 		if err != nil {
 			return false, "", err
 		}
 		env[k] = encoded
 	}
-	encodedEnv, err := json.Marshal(env)
+	encodedEnv, err := marshal(env, false)
 	if err != nil {
 		return false, "", err
 	}
 	top["env"] = encodedEnv
-	data, err := json.MarshalIndent(top, "", "  ")
+	data, err := marshal(top, true)
 	if err != nil {
 		return false, "", err
 	}
-	data = append(data, '\n')
 	if old != nil && bytes.Equal(old, data) {
 		return false, "", nil
 	}
@@ -143,8 +157,43 @@ func WriteSettingsEnv(path string, values map[string]string, now time.Time) (cha
 			return false, "", fmt.Errorf("backup of %s: %w", path, err)
 		}
 	}
-	if err := writeFileAtomic(path, data); err != nil {
+	if err := writeFileAtomic(target, data); err != nil {
 		return false, backup, err
 	}
 	return true, backup, nil
+}
+
+// resolveSymlink returns the file a symlink points to, or path itself when it is not a symlink or
+// does not exist. A symlink to a missing file is an error rather than being replaced by a file.
+func resolveSymlink(path string) (string, error) {
+	info, err := os.Lstat(path)
+	if errors.Is(err, fs.ErrNotExist) || (err == nil && info.Mode()&fs.ModeSymlink == 0) {
+		return path, nil
+	}
+	if err != nil {
+		return "", err
+	}
+	target, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", fmt.Errorf("%s is a symlink that cannot be followed (%v); fix or remove it and run again", path, err)
+	}
+	return target, nil
+}
+
+// marshal encodes v without escaping &, < and >, which are common in shell commands of the
+// settings. The result has no trailing newline unless indent is set.
+func marshal(v any, indent bool) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if indent {
+		enc.SetIndent("", "  ")
+	}
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	if indent {
+		return buf.Bytes(), nil
+	}
+	return bytes.TrimRight(buf.Bytes(), "\n"), nil
 }

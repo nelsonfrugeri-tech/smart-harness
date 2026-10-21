@@ -55,5 +55,12 @@ func (p Paths) SettingsFile() string { return filepath.Join(p.ClaudeDir, "settin
 // ConfigFile is the harness config.
 func (p Paths) ConfigFile() string { return filepath.Join(p.ConfigDir, "config.json") }
 
+// LockFile exists while setup, sync or draft pull runs.
+func (p Paths) LockFile() string { return filepath.Join(p.ConfigDir, "harness.lock") }
+
 // DraftsDir is the default parent of pulled drafts.
 func (p Paths) DraftsDir() string { return filepath.Join(p.ConfigDir, "drafts") }
+
+// DraftStagingDir holds the new and previous copies of drafts during a swap. Its name starts with
+// a dot, which a draft id cannot, so it never collides with a draft.
+func (p Paths) DraftStagingDir() string { return filepath.Join(p.DraftsDir(), ".staging") }

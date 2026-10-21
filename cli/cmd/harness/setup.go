@@ -29,13 +29,17 @@ func runSetup(args []string, stdout, stderr io.Writer) int {
 			return usageError(stderr, fmt.Sprintf("invalid plugin name %q in --include-optional", n))
 		}
 	}
-	s, err := openSession()
+	s, release, err := openLockedSession()
 	if err != nil {
-		return failure(stderr, exitUsage, err)
+		return failure(stderr, exitFailure, err)
 	}
+	defer release()
 	apiURL, err := setupAPIURL(s.cfg, slug, a.values["--api-url"])
 	if err != nil {
 		return failure(stderr, exitUsage, err)
+	}
+	if err := local.CheckSettings(s.paths.SettingsFile()); err != nil {
+		return failure(stderr, exitFailure, err)
 	}
 	token, err := setupToken(s, stderr)
 	if err != nil {
@@ -72,6 +76,7 @@ func runSetup(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return failure(stderr, exitFailure, err)
 	}
+	reportGateway(stdout, s.cfg.GatewayURL, desired.GatewayURL)
 	s.cfg.APIURL, s.cfg.GatewayURL, s.cfg.Projects = apiURL, desired.GatewayURL, projects
 	if err := reconcile.Apply(actions, &s.cfg, s.store, client, s.save, stdout); err != nil {
 		return failure(stderr, exitFailure, err)
@@ -143,6 +148,17 @@ func writeSettings(s *session, stdout io.Writer, values map[string]string) error
 	return nil
 }
 
+// reportGateway shows the gateway Claude Code will use when it is new or moves, since every
+// prompt and the token go there.
+func reportGateway(stdout io.Writer, old, desired string) {
+	switch {
+	case old == "":
+		fmt.Fprintf(stdout, "gateway %s\n", desired)
+	case old != desired:
+		fmt.Fprintf(stdout, "gateway %s -> %s\n", old, desired)
+	}
+}
+
 func warnMissing(stderr io.Writer, d reconcile.Desired, except string) {
 	slugs := make([]string, 0, len(d.Missing))
 	for slug := range d.Missing {
@@ -170,10 +186,11 @@ func runSync(args []string, stdout, stderr io.Writer) int {
 	if err != nil || len(a.positional) != 0 {
 		return usageError(stderr, errText(err))
 	}
-	s, err := openSession()
+	s, release, err := openLockedSession()
 	if err != nil {
-		return failure(stderr, exitUsage, err)
+		return failure(stderr, exitFailure, err)
 	}
+	defer release()
 	token, _, err := s.token()
 	if err != nil {
 		return failure(stderr, exitFailure, err)
@@ -181,6 +198,9 @@ func runSync(args []string, stdout, stderr io.Writer) int {
 	stdout, stderr = redact(stdout, token), redact(stderr, token)
 	client, err := s.client(token)
 	if err != nil {
+		return failure(stderr, exitFailure, err)
+	}
+	if err := local.CheckSettings(s.paths.SettingsFile()); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
 	if err := s.store.Recover(); err != nil {
@@ -195,15 +215,13 @@ func runSync(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return failure(stderr, exitFailure, err)
 	}
+	reportGateway(stdout, s.cfg.GatewayURL, desired.GatewayURL)
 	s.cfg.GatewayURL = desired.GatewayURL
 	if err := reconcile.Apply(actions, &s.cfg, s.store, client, s.save, stdout); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
-	// The token keys stay as setup wrote them; only the gateway can move.
-	values := local.GatewayEnv("", desired.GatewayURL)
-	delete(values, local.EnvToken)
-	delete(values, local.EnvAnthropicAuth)
-	if err := writeSettings(s, stdout, values); err != nil {
+	// The token sync just used against the API, so a deleted settings.json comes back complete.
+	if err := writeSettings(s, stdout, local.GatewayEnv(token, desired.GatewayURL)); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
 	return exitOK

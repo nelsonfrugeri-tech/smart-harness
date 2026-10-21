@@ -32,11 +32,36 @@ type session struct {
 	store install.Store
 }
 
+// openSession reads the config without the lock, for doctor, which changes nothing.
 func openSession() (*session, error) {
 	paths, err := local.ResolvePaths()
 	if err != nil {
 		return nil, err
 	}
+	return loadSession(paths)
+}
+
+// openLockedSession takes the lock before reading the config, for the commands that change
+// plugins or the config. release removes the lock; Ctrl-C removes it too.
+func openLockedSession() (s *session, release func(), err error) {
+	paths, err := local.ResolvePaths()
+	if err != nil {
+		return nil, nil, err
+	}
+	unlock, err := local.Lock(paths.LockFile())
+	if err != nil {
+		return nil, nil, err
+	}
+	forget := atInterrupt(unlock)
+	release = func() { forget(); unlock() }
+	if s, err = loadSession(paths); err != nil {
+		release()
+		return nil, nil, err
+	}
+	return s, release, nil
+}
+
+func loadSession(paths local.Paths) (*session, error) {
 	cfg, err := local.LoadConfig(paths.ConfigFile())
 	if err != nil {
 		return nil, err
@@ -87,7 +112,8 @@ func explain(err error) error {
 	return err
 }
 
-// promptToken reads the token from stdin. On a terminal, echo is turned off while it is typed.
+// promptToken reads the token from stdin. On a terminal, echo is turned off while it is typed and
+// turned back on when the prompt ends, also on Ctrl-C.
 func promptToken(stderr io.Writer) (string, error) {
 	fmt.Fprint(stderr, "Gateway token (shg_..., input hidden): ")
 	f, isFile := stdin.(*os.File)
@@ -101,7 +127,9 @@ func promptToken(stderr io.Writer) (string, error) {
 		if err := stty(f, "-echo"); err != nil {
 			return "", fmt.Errorf("cannot hide the input (%v); set %s instead", err, local.EnvToken)
 		}
-		defer func() { _ = stty(f, "echo") }()
+		restore := func() { _ = stty(f, "echo") }
+		forget := atInterrupt(func() { restore(); fmt.Fprintln(stderr) })
+		defer func() { forget(); restore() }()
 	}
 	defer fmt.Fprintln(stderr)
 	line, err := bufio.NewReader(stdin).ReadString('\n')

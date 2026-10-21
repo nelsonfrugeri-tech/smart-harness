@@ -89,10 +89,12 @@ type fakeAPI struct {
 	drafts   map[string][]byte
 	gets     map[string]int // archive path -> downloads
 	badAuth  int
+	gateways map[string]string // project -> gateway URL served instead of the fake gateway
+	bodies   map[string][]byte // archive path -> body served instead of the published archive
 }
 
 func newFakeAPI(t *testing.T) *fakeAPI {
-	f := &fakeAPI{t: t, plans: map[string][]published{}, optional: map[string][]published{}, drafts: map[string][]byte{}, gets: map[string]int{}}
+	f := &fakeAPI{t: t, plans: map[string][]published{}, optional: map[string][]published{}, drafts: map[string][]byte{}, gets: map[string]int{}, gateways: map[string]string{}, bodies: map[string][]byte{}}
 	f.gateway = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/healthz" {
 			fmt.Fprint(w, `{"status":"ok"}`)
@@ -166,9 +168,13 @@ func (f *fakeAPI) serve(w http.ResponseWriter, r *http.Request) {
 		for _, v := range vs {
 			baseline = append(baseline, item(v))
 		}
+		gateway := f.gateway.URL
+		if g, ok := f.gateways[parts[2]]; ok {
+			gateway = g
+		}
 		json.NewEncoder(w).Encode(map[string]any{
 			"project":  map[string]any{"slug": parts[2], "name": parts[2], "description": "", "tenant": map[string]any{"slug": "t", "name": "T"}},
-			"gateway":  map[string]any{"url": f.gateway.URL},
+			"gateway":  map[string]any{"url": gateway},
 			"baseline": baseline,
 			"optional": f.optionalPage(parts[2], 0),
 		})
@@ -181,9 +187,13 @@ func (f *fakeAPI) serve(w http.ResponseWriter, r *http.Request) {
 			for _, v := range vs {
 				if archivePath(v) == r.URL.Path {
 					f.gets[r.URL.Path]++
-					w.Header().Set("x-package-digest", v.digest())
+					body := v.archive
+					if b, ok := f.bodies[r.URL.Path]; ok {
+						body = b
+					}
+					w.Header().Set("x-package-digest", digest.Of(body))
 					w.Header().Set("content-type", "application/gzip")
-					w.Write(v.archive)
+					w.Write(body)
 					return
 				}
 			}
@@ -430,6 +440,38 @@ func TestSetupRefusesInvalidSettingsWithoutTouchingIt(t *testing.T) {
 	}
 	if got, _ := os.ReadFile(filepath.Join(e.claudeDir, "settings.json")); !bytes.Equal(got, broken) {
 		t.Fatalf("settings.json changed: %s", got)
+	}
+	if _, err := os.Stat(filepath.Join(e.claudeDir, "skills")); err == nil {
+		t.Fatal("skills/ was written although settings.json is invalid")
+	}
+	if _, err := os.Stat(filepath.Join(e.configDir, "config.json")); err == nil {
+		t.Fatal("config.json was written although settings.json is invalid")
+	}
+}
+
+// An invalid settings.json found on a later run stops sync and setup before any plugin changes.
+func TestInvalidSettingsStopsBeforeChangingPlugins(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	f.setPlan("inv", newVersion(t, "inv-base", "1.0.0"))
+	e.mustRun(testToken+"\n", "setup", "inv", "--api-url", f.api.URL)
+	configBefore, _ := os.ReadFile(filepath.Join(e.configDir, "config.json"))
+	broken := []byte(`{"env": []}`)
+	os.WriteFile(filepath.Join(e.claudeDir, "settings.json"), broken, 0o600)
+	t.Setenv("SMART_HARNESS_TOKEN", testToken)
+	f.setPlan("inv", newVersion(t, "inv-base", "1.1.0"))
+
+	for _, args := range [][]string{{"sync"}, {"setup", "inv"}} {
+		code, _, errOut := e.run("", args...)
+		if code != 1 || !strings.Contains(errOut, "env is not a JSON object") {
+			t.Fatalf("%v: exit %d, stderr %s", args, code, errOut)
+		}
+	}
+	if !strings.Contains(e.skill("inv-base"), "inv-base 1.0.0") {
+		t.Fatalf("plugin changed: %q", e.skill("inv-base"))
+	}
+	if got, _ := os.ReadFile(filepath.Join(e.configDir, "config.json")); !bytes.Equal(got, configBefore) {
+		t.Fatalf("config changed:\n%s", got)
 	}
 }
 
@@ -700,5 +742,227 @@ func TestVersionAtLeast(t *testing.T) {
 		if versionAtLeast(got, minClaudeVersion) != want {
 			t.Errorf("versionAtLeast(%q) = %v, want %v", got, !want, want)
 		}
+	}
+}
+
+// The archive must be the one the plan names: another archive, even with a header that matches
+// its own body, is refused before anything is installed.
+func TestArchiveOtherThanThePlanIsRefused(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	v1, v2 := newVersion(t, "inv-base", "1.0.0"), newVersion(t, "inv-base", "1.1.0")
+	f.setPlan("inv", v1)
+	e.mustRun(testToken+"\n", "setup", "inv", "--api-url", f.api.URL)
+	configBefore, _ := os.ReadFile(filepath.Join(e.configDir, "config.json"))
+
+	f.setPlan("inv", v2)
+	f.bodies[archivePath(v2)] = newVersion(t, "inv-base", "6.6.6").archive
+	code, _, errOut := e.run("", "sync")
+
+	if code != 1 || !strings.Contains(errOut, "does not match the plan digest") {
+		t.Fatalf("exit %d, stderr %s", code, errOut)
+	}
+	if got := e.skill("inv-base"); !strings.Contains(got, "inv-base 1.0.0") {
+		t.Fatalf("installed skill = %q, want 1.0.0 kept", got)
+	}
+	if got, _ := os.ReadFile(filepath.Join(e.configDir, "config.json")); !bytes.Equal(got, configBefore) {
+		t.Fatalf("config changed:\n%s", got)
+	}
+
+	// On a first setup nothing is installed and no config is written.
+	e2 := newEnv(t)
+	f.setPlan("other", v2)
+	code, _, errOut = e2.run(testToken+"\n", "setup", "other", "--api-url", f.api.URL)
+	if code != 1 || !strings.Contains(errOut, "does not match the plan digest") {
+		t.Fatalf("first setup: exit %d, stderr %s", code, errOut)
+	}
+	if entries, _ := os.ReadDir(filepath.Join(e2.claudeDir, "skills")); len(entries) != 0 {
+		t.Fatalf("skills/ = %v, want empty", entries)
+	}
+	if _, err := os.Stat(filepath.Join(e2.configDir, "config.json")); err == nil {
+		t.Fatal("config.json written although the archive was refused")
+	}
+}
+
+func TestDraftPullKeepsSiblingDirectories(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	f.setPlan("inv", newVersion(t, "inv-base", "1.0.0"))
+	e.mustRun(testToken+"\n", "setup", "inv", "--api-url", f.api.URL)
+	work := t.TempDir()
+	dest := filepath.Join(work, "mydraft")
+	precious := filepath.Join(work, "mydraft.previous", "precious.txt")
+	os.MkdirAll(filepath.Dir(precious), 0o755)
+	os.WriteFile(precious, []byte("mine"), 0o644)
+
+	f.drafts["d1"] = newVersion(t, "draft", "0.1.0").archive
+	e.mustRun("", "draft", "pull", "d1", "--dir", dest)
+	f.drafts["d1"] = newVersion(t, "draft", "0.2.0").archive
+	e.mustRun("", "draft", "pull", "d1", "--dir", dest)
+
+	if got, err := os.ReadFile(precious); err != nil || string(got) != "mine" {
+		t.Fatalf("sibling file = %q, %v; want it untouched", got, err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(dest, "plugin.json")); !strings.Contains(string(got), "0.2.0") {
+		t.Fatalf("draft not replaced: %s", got)
+	}
+	entries, _ := os.ReadDir(work)
+	var names []string
+	for _, en := range entries {
+		names = append(names, en.Name())
+	}
+	if strings.Join(names, ",") != "mydraft,mydraft.previous" {
+		t.Fatalf("entries next to the draft = %v, want only mydraft and mydraft.previous", names)
+	}
+}
+
+func TestSyncReinstallsPluginChangedByHand(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	f.setPlan("inv", newVersion(t, "inv-base", "1.0.0"))
+	e.mustRun(testToken+"\n", "setup", "inv", "--api-url", f.api.URL)
+	skill := filepath.Join(e.claudeDir, "skills", "inv-base", "skills", "s", "SKILL.md")
+	os.WriteFile(skill, []byte("edited"), 0o644)
+
+	out := e.mustRun("", "sync")
+
+	if !strings.Contains(out, "updated inv-base 1.0.0 -> 1.0.0") || !strings.Contains(e.skill("inv-base"), "inv-base 1.0.0") {
+		t.Fatalf("hand-edited plugin not reinstalled (skill %q):\n%s", e.skill("inv-base"), out)
+	}
+}
+
+func TestProjectsWithDifferentGatewaysAreRefused(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	f.setPlan("a", newVersion(t, "only-a", "1.0.0"))
+	f.setPlan("b", newVersion(t, "only-b", "1.0.0"))
+	f.gateways["b"] = "http://127.0.0.1:1"
+	e.mustRun(testToken+"\n", "setup", "a", "--api-url", f.api.URL)
+	configBefore, _ := os.ReadFile(filepath.Join(e.configDir, "config.json"))
+
+	code, _, errOut := e.run("", "setup", "b")
+
+	if code != 1 || !strings.Contains(errOut, "uses gateway http://127.0.0.1:1, but another configured project uses") {
+		t.Fatalf("exit %d, stderr %s", code, errOut)
+	}
+	if e.skill("only-b") != "" {
+		t.Fatal("only-b installed although the gateways differ")
+	}
+	if got, _ := os.ReadFile(filepath.Join(e.configDir, "config.json")); !bytes.Equal(got, configBefore) {
+		t.Fatalf("config changed:\n%s", got)
+	}
+}
+
+func TestSyncMovesTheGatewayAndSaysSo(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	f.setPlan("inv", newVersion(t, "inv-base", "1.0.0"))
+	out := e.mustRun(testToken+"\n", "setup", "inv", "--api-url", f.api.URL)
+	if !strings.Contains(out, "gateway "+f.gateway.URL+"\n") {
+		t.Fatalf("first setup does not show the gateway:\n%s", out)
+	}
+
+	moved := "https://gateway.example.test"
+	f.gateways["inv"] = moved
+	out = e.mustRun("", "sync")
+
+	if !strings.Contains(out, "gateway "+f.gateway.URL+" -> "+moved) {
+		t.Fatalf("sync does not show the gateway change:\n%s", out)
+	}
+	envBlock := e.settings()["env"].(map[string]any)
+	if envBlock["ANTHROPIC_BASE_URL"] != moved || envBlock["SMART_HARNESS_GATEWAY_URL"] != moved {
+		t.Fatalf("settings env = %v, want the new gateway", envBlock)
+	}
+	if out := e.mustRun("", "sync"); strings.Contains(out, "gateway ") {
+		t.Fatalf("sync without a change mentions the gateway:\n%s", out)
+	}
+}
+
+func TestPlainHTTPOutsideLoopbackIsRefused(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	f.setPlan("inv", newVersion(t, "inv-base", "1.0.0"))
+
+	code, _, errOut := e.run(testToken+"\n", "setup", "inv", "--api-url", "http://api.example.test")
+	if code != 2 || !strings.Contains(errOut, "must use https") {
+		t.Fatalf("http API: exit %d, stderr %s", code, errOut)
+	}
+
+	f.gateways["inv"] = "http://gateway.example.test"
+	code, _, errOut = e.run(testToken+"\n", "setup", "inv", "--api-url", f.api.URL)
+	if code != 1 || !strings.Contains(errOut, "must use https") {
+		t.Fatalf("http gateway: exit %d, stderr %s", code, errOut)
+	}
+	if _, err := os.Stat(filepath.Join(e.claudeDir, "settings.json")); err == nil {
+		t.Fatal("settings.json written with an http gateway")
+	}
+}
+
+func TestSyncRecreatesSettingsWithTheToken(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	f.setPlan("inv", newVersion(t, "inv-base", "1.0.0"))
+	e.mustRun(testToken+"\n", "setup", "inv", "--api-url", f.api.URL)
+	os.Remove(filepath.Join(e.claudeDir, "settings.json"))
+	t.Setenv("SMART_HARNESS_TOKEN", testToken)
+
+	e.mustRun("", "sync")
+
+	envBlock := e.settings()["env"].(map[string]any)
+	for k, v := range map[string]any{
+		"SMART_HARNESS_TOKEN":       testToken,
+		"ANTHROPIC_AUTH_TOKEN":      testToken,
+		"ANTHROPIC_BASE_URL":        f.gateway.URL,
+		"SMART_HARNESS_GATEWAY_URL": f.gateway.URL,
+		"ANTHROPIC_API_KEY":         "",
+	} {
+		if envBlock[k] != v {
+			t.Errorf("env.%s = %v, want %v", k, envBlock[k], v)
+		}
+	}
+}
+
+func TestDoctorFailsWhenAnAPIKeyBypassesTheGateway(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	f.setPlan("inv", newVersion(t, "inv-base", "1.0.0"))
+	e.mustRun(testToken+"\n", "setup", "inv", "--api-url", f.api.URL)
+	t.Setenv("HARNESS_CLAUDE_BIN", fakeClaude(t, "2.1.305 (Claude Code)"))
+	s := e.settings()
+	s["env"].(map[string]any)["ANTHROPIC_API_KEY"] = "sk-direct"
+	data, _ := json.Marshal(s)
+	os.WriteFile(filepath.Join(e.claudeDir, "settings.json"), data, 0o600)
+
+	code, out, _ := e.run("", "doctor")
+
+	if code != 1 || !strings.Contains(out, "FAIL  settings: ANTHROPIC_API_KEY is not empty") {
+		t.Fatalf("exit %d:\n%s", code, out)
+	}
+}
+
+func TestConcurrentCommandIsRefusedWhileTheLockIsHeld(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	f.setPlan("inv", newVersion(t, "inv-base", "1.0.0"))
+	e.mustRun(testToken+"\n", "setup", "inv", "--api-url", f.api.URL)
+	lock := filepath.Join(e.configDir, "harness.lock")
+	if _, err := os.Stat(lock); err == nil {
+		t.Fatal("lock left behind after a successful setup")
+	}
+	os.WriteFile(lock, []byte("12345\n"), 0o600)
+
+	for _, args := range [][]string{{"sync"}, {"setup", "inv"}, {"draft", "pull", "d1"}} {
+		code, _, errOut := e.run("", args...)
+		if code != 1 || !strings.Contains(errOut, "another harness command is running") || !strings.Contains(errOut, lock) {
+			t.Fatalf("%v: exit %d, stderr %s", args, code, errOut)
+		}
+	}
+	if got, _ := os.ReadFile(lock); string(got) != "12345\n" {
+		t.Fatalf("lock of the other command was changed: %q", got)
+	}
+	os.Remove(lock)
+	e.mustRun("", "sync")
+	if _, err := os.Stat(lock); err == nil {
+		t.Fatal("lock left behind after a successful sync")
 	}
 }

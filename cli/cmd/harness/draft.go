@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -36,10 +38,11 @@ func runDraftPull(args []string, stdout, stderr io.Writer) int {
 	if !api.ValidDraftID(id) {
 		return usageError(stderr, fmt.Sprintf("invalid draft id %q", id))
 	}
-	s, err := openSession()
+	s, release, err := openLockedSession()
 	if err != nil {
-		return failure(stderr, exitUsage, err)
+		return failure(stderr, exitFailure, err)
 	}
+	defer release()
 	dest := a.values["--dir"]
 	if dest == "" {
 		dest = filepath.Join(s.paths.DraftsDir(), id)
@@ -56,6 +59,10 @@ func runDraftPull(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return failure(stderr, exitFailure, err)
 	}
+	store := draftStore(s.paths, dest)
+	if err := store.Recover(); err != nil {
+		return failure(stderr, exitFailure, err)
+	}
 	prev, pulledHere := s.cfg.Drafts[id]
 	pulledHere = pulledHere && prev.Dir == dest
 	if err := checkDraftDest(dest, pulledHere); err != nil {
@@ -65,11 +72,14 @@ func runDraftPull(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return failure(stderr, exitFailure, explain(err))
 	}
-	exists, _ := install.Store{SkillsDir: filepath.Dir(dest)}.Exists(filepath.Base(dest))
+	exists, err := store.Exists(filepath.Base(dest))
+	if err != nil {
+		return failure(stderr, exitFailure, err)
+	}
 	if pulledHere && prev.Digest == got && exists {
 		fmt.Fprintf(stdout, "unchanged %s (%s)\n", dest, got)
 	} else {
-		if err := replaceDraft(dest, archive, got); err != nil {
+		if err := replaceDraft(store, filepath.Base(dest), archive, got); err != nil {
 			return failure(stderr, exitFailure, err)
 		}
 		s.cfg.Drafts[id] = local.Draft{Dir: dest, Digest: got}
@@ -94,13 +104,20 @@ func checkDraftDest(dest string, pulledHere bool) error {
 	return fmt.Errorf("%s is not empty and was not pulled by harness draft pull; choose another --dir", dest)
 }
 
-// replaceDraft stages the archive next to dest and swaps it in, keeping the old copy on failure.
-func replaceDraft(dest string, archive []byte, want string) error {
-	parent, name := filepath.Dir(dest), filepath.Base(dest)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
-		return err
+// draftStore swaps dest through a staging directory owned by the harness, one per destination
+// path, so nothing next to dest is ever touched and a crash is recovered on the next pull to the
+// same place. The rename needs dest and the config directory on the same file system.
+func draftStore(paths local.Paths, dest string) install.Store {
+	sum := sha256.Sum256([]byte(dest))
+	return install.Store{
+		SkillsDir:  filepath.Dir(dest),
+		StagingDir: filepath.Join(paths.DraftStagingDir(), hex.EncodeToString(sum[:8])),
 	}
-	store := install.Store{SkillsDir: parent, StagingDir: parent}
+}
+
+// replaceDraft stages the archive and swaps it in as store.Dir(name), keeping the old copy on
+// failure.
+func replaceDraft(store install.Store, name string, archive []byte, want string) error {
 	staged, _, err := store.Stage(name, archive, want)
 	if err != nil {
 		return err
