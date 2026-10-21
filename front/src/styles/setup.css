@@ -9,12 +9,14 @@
   justify-items: start;
 }
 .token-form label,
+.setup-url,
 .copy-value label {
   display: grid;
   gap: 8px;
   width: 100%;
 }
 .token-form input,
+.setup-url input,
 .copy-value textarea {
   width: 100%;
   border: 1px solid var(--line);

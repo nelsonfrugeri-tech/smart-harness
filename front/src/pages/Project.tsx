@@ -4,6 +4,8 @@ import { api, type SetupPlan, type WorkspaceData } from "../api/client";
 import { useResource } from "../app/useResource";
 import { marketplacePath } from "../app/marketplaceQuery";
 import { baselinePackagePath, navigate, projectPath } from "../app/navigation";
+import { SetupInstructions } from "../components/SetupInstructions";
+import { SetupOptionals } from "../components/SetupOptionals";
 import { PackageContents } from "../components/PackageContents";
 import { followLink } from "../components/Shell";
 import {
@@ -57,12 +59,25 @@ export function Project({ slug, token, expire, projects }: Props) {
       ) : state.status === "error" ? (
         <RequestError error={state.error} retry={retry} />
       ) : (
-        <ProjectContent plan={state.data} />
+        <ProjectContent
+          key={slug}
+          plan={state.data}
+          token={token}
+          expire={expire}
+        />
       )}
     </div>
   );
 }
-function ProjectContent({ plan }: { plan: SetupPlan }) {
+function ProjectContent({
+  plan,
+  token,
+  expire,
+}: {
+  plan: SetupPlan;
+  token: string;
+  expire: () => void;
+}) {
   return (
     <>
       <PageHeading
@@ -108,6 +123,8 @@ function ProjectContent({ plan }: { plan: SetupPlan }) {
           ))}
         </div>
       )}
+      <SetupInstructions plan={plan} />
+      <SetupOptionals plan={plan} token={token} expire={expire} />
     </>
   );
 }
