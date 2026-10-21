@@ -1,6 +1,0 @@
-{
-  "mcpServers": {
-    "docs": { "type": "streamable-http", "url": "http://localhost:8080/docs/mcp" },
-    "tracker": { "type": "streamable-http", "url": "http://localhost:8080/tracker/mcp" }
-  }
-}
