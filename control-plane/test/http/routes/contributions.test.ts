@@ -116,6 +116,26 @@ describe("contributions", () => {
     expect(search.json().items.map((item: { plugin: { name: string } }) => item.plugin.name)).toContain("tagged-contrib");
   });
 
+  it("publishes the description and keywords of the validation report, not only plugin.json", async () => {
+    const validate = harness.validate.bind(harness);
+    harness.validate = async (dir) => ({
+      ...(await validate(dir)),
+      description: "Validated contribution metadata",
+      keywords: ["metadata-tag"],
+    });
+    const { contributionId, digest } = await submittedContribution(app, dev);
+    expect((await approve(admin, contributionId, digest)).statusCode).toBe(200);
+
+    const plugin = await app.inject({ method: "GET", url: "/v1/plugins/demo-contrib", headers: bearer(dev) });
+    expect(plugin.json()).toMatchObject({
+      type: "skill",
+      keywords: ["metadata-tag"],
+      plugin: { description: "Validated contribution metadata" },
+    });
+    const search = await app.inject({ method: "GET", url: "/v1/marketplace?type=skill&q=metadata-tag", headers: bearer(dev) });
+    expect(search.json().items.map((item: { plugin: { name: string } }) => item.plugin.name)).toEqual(["demo-contrib"]);
+  });
+
   it("the author cannot approve their own contribution, even as ADMIN (403 self_approval)", async () => {
     const { contributionId, digest } = await submittedContribution(app, admin);
     const versionsBefore = versionCount();

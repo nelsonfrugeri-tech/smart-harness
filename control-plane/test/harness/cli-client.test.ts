@@ -105,10 +105,12 @@ describe("createCliHarnessClient", () => {
 });
 
 describe("parseReport", () => {
-  it("keeps hint, line, plugin, version and components, and drops the raw-tree digest", () => {
+  it("keeps findings, components and report v2 metadata, and drops the raw-tree digest", () => {
     const report = parseReport(
       JSON.stringify({
-        report_version: "1",
+        report_version: "2",
+        description: "Package description",
+        keywords: ["review"],
         valid: false,
         plugin: "demo",
         version: "1.0.0",
@@ -119,6 +121,8 @@ describe("parseReport", () => {
     );
 
     expect(report).toEqual({
+      description: "Package description",
+      keywords: ["review"],
       valid: false,
       plugin: "demo",
       version: "1.0.0",
