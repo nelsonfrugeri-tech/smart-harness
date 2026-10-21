@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { api, type SetupPlan, type WorkspaceData } from "../api/client";
 import { useResource } from "../app/useResource";
 import { marketplacePath } from "../app/marketplaceQuery";
-import { navigate, projectPath } from "../app/navigation";
+import { baselinePackagePath, navigate, projectPath } from "../app/navigation";
 import { PackageContents } from "../components/PackageContents";
 import { followLink } from "../components/Shell";
 import {
@@ -103,6 +103,7 @@ function ProjectContent({ plan }: { plan: SetupPlan }) {
             <Package
               key={`${item.plugin.name}@${item.version.version}`}
               item={item}
+              project={plan.project.slug}
             />
           ))}
         </div>
@@ -110,12 +111,29 @@ function ProjectContent({ plan }: { plan: SetupPlan }) {
     </>
   );
 }
-function Package({ item }: { item: SetupPlan["baseline"][number] }) {
+function Package({
+  item,
+  project,
+}: {
+  item: SetupPlan["baseline"][number];
+  project: string;
+}) {
   return (
     <section className="panel package-panel">
       <div className="section-heading">
         <div>
-          <h3>{item.plugin.name}</h3>
+          <h3>
+            <a
+              href={baselinePackagePath(
+                project,
+                item.plugin.name,
+                item.version.version,
+              )}
+              onClick={followLink}
+            >
+              {item.plugin.name}
+            </a>
+          </h3>
           <p>
             {item.version.description ||
               item.plugin.description ||

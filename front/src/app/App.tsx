@@ -115,6 +115,15 @@ function ConnectedWorkspace({
           me={me}
           projects={state.data.projects}
         />
+      ) : route.kind === "baseline-package" ? (
+        <Package
+          key={`${route.slug}:${route.name}:${route.version}`}
+          name={route.name}
+          filters={{}}
+          token={token}
+          expire={expire}
+          baseline={{ project: route.slug, version: route.version }}
+        />
       ) : route.kind === "package" ? (
         <Package
           key={route.name}

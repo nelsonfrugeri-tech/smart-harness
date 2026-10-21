@@ -35,6 +35,8 @@ export function useRoute() {
   }
   if (path === "/" || path === "/workspace")
     return { kind: "workspace" } as const;
+  const baseline = readBaselineRoute(path);
+  if (baseline) return baseline;
   const match = /^\/workspace\/projects\/([^/]+)\/?$/.exec(path);
   try {
     if (match)
@@ -46,4 +48,29 @@ export function useRoute() {
 }
 export function projectPath(slug: string) {
   return `/workspace/projects/${encodeURIComponent(slug)}`;
+}
+
+function readBaselineRoute(path: string) {
+  const match =
+    /^\/workspace\/projects\/([^/]+)\/packages\/([^/]+)\/versions\/([^/]+)\/?$/.exec(
+      path,
+    );
+  try {
+    if (match)
+      return {
+        kind: "baseline-package",
+        slug: decodeURIComponent(match[1]),
+        name: decodeURIComponent(match[2]),
+        version: decodeURIComponent(match[3]),
+      } as const;
+  } catch {
+    /* Malformed paths remain unavailable. */
+  }
+}
+export function baselinePackagePath(
+  slug: string,
+  name: string,
+  version: string,
+) {
+  return `${projectPath(slug)}/packages/${encodeURIComponent(name)}/versions/${encodeURIComponent(version)}`;
 }
