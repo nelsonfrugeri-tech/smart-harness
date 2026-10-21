@@ -32,10 +32,10 @@ Fora do compose, a API também precisa de um S3 (variáveis `S3_*`). Pelo compos
 | `PUT /v1/projects/{slug}/baseline/{plugin}` `{version}` | só JWT, ADMIN da squad do projeto | `{plugin, version}`; fixa a versão no pacote base (rollback = versão mais antiga) |
 | `POST /v1/drafts` `{tenant, visibility?, files[{path, content}]}` | só JWT, membro da squad | `201 Draft` com `ETag: "<revision>"` |
 | `GET /v1/drafts?cursor=&limit=` | só JWT | `Page<DraftSummary>`: os rascunhos do próprio usuário, sem conteúdo |
-| `GET /v1/drafts/{id}` | só JWT, autor ou ADMIN da squad | `Draft` com `ETag` |
+| `GET /v1/drafts/{id}` | só JWT, autor; ADMIN da squad só com a revisão atual enviada | `Draft` com `ETag` |
 | `PATCH /v1/drafts/{id}` `{files?, visibility?}` + `If-Match` | só JWT, autor | `Draft`; sem `If-Match` → `428`; revisão antiga → `412` |
 | `POST /v1/drafts/{id}/validate` | só JWT, autor | `{valid, digest, findings[]}` |
-| `GET /v1/drafts/{id}/archive` | JWT ou token do gateway, autor ou ADMIN da squad | o tar.gz validado, com `x-package-digest`; sem validação → `409` |
+| `GET /v1/drafts/{id}/archive` | JWT ou token do gateway, autor; ADMIN da squad só com a revisão atual enviada | o tar.gz validado, com `x-package-digest`; sem validação → `409` |
 | `POST /v1/drafts/{id}/submit` | só JWT, autor | `201 Contribution` |
 | `GET /v1/contributions?view=mine\|review&cursor=&limit=` | só JWT | `Page<Contribution>` |
 | `GET /v1/contributions/{id}` | só JWT, autor ou ADMIN da squad | `Contribution` |
@@ -114,7 +114,7 @@ POST /v1/drafts ──► PATCH (If-Match) ──► POST /validate ──► ha
                          contribuição enviada
 ```
 
-- **Rascunho** (`drafts`, migration `0006`): os arquivos ficam no SQLite como texto (`files`, JSON). Só o autor vê; um ADMIN da squad também lê, para revisar. `visibility` é `squad` (padrão) ou `organization`. Toda edição sobe a `revision`, que vai no `ETag`. O `PATCH` exige `If-Match`.
+- **Rascunho** (`drafts`, migration `0006`): os arquivos ficam no SQLite como texto (`files`, JSON). Só o autor vê até enviar. Um ADMIN da squad lê o detalhe e o archive só enquanto existe contribuição `submitted` da revisão atual; antes do envio e depois de uma edição, recebe 404, como se o rascunho não existisse. `visibility` é `squad` (padrão) ou `organization`. Toda edição sobe a `revision`, que vai no `ETag`. O `PATCH` exige `If-Match`.
 - **Caminhos e limites**: cada caminho é relativo, em POSIX, sem `/` no início, letra de drive, `\`, NUL ou segmento vazio, `.` ou `..`; não pode repetir nem ficar abaixo de outro arquivo. Limites: 500 arquivos, 1 MiB por arquivo, 4 MiB no total e 6 MiB de corpo (`bodyLimit` de `POST` e `PATCH`). A checagem roda no `POST`/`PATCH` e de novo no `validate`, antes da primeira escrita: caminho inválido responde `400 invalid_path` sem criar arquivo. `src/domain/drafts.ts` também confere que o caminho resolvido fica dentro do diretório temporário.
 - **Validar** (`POST /v1/drafts/{id}/validate`): grava os arquivos num diretório temporário novo, roda `harness validate`, `generate --target claude-code` e `pack` (o mesmo passo de `prepareVersion`) e grava o tar.gz no object storage pelo digest do `pack`. Por isso o arquivo vai para o storage no `validate`, e não no `submit`: o `harness draft pull` precisa dos bytes antes do envio. O resultado só é gravado se a revisão não mudou (`UPDATE ... WHERE revision = ?`); senão, `409 draft_changed`. O digest guardado é o do `pack` depois do `generate`, não o `digest` do relatório do `validate` (que é da árvore crua).
 - **Testar**: `harness draft pull <id>` baixa `GET /v1/drafts/{id}/archive` (aceita o token do gateway) e confere o digest.

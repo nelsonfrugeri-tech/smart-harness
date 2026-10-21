@@ -118,13 +118,16 @@ describe("drafts", () => {
       expect(draftCount()).toBe(0);
     });
 
-    it("the author and an ADMIN of the squad read a draft; another member gets 404", async () => {
+    it("before submit only the author reads a draft; an ADMIN of the squad and others get 404", async () => {
       const id = (await createDraft(app, dev)).json().id;
       const get = async (email: string) =>
         app.inject({ method: "GET", url: `/v1/drafts/${id}`, headers: bearer(await login(app, email)) });
 
       expect((await get(DEV)).statusCode).toBe(200);
-      expect((await get(ADMIN)).statusCode).toBe(200);
+      const byAdmin = await get(ADMIN);
+      expect(byAdmin.statusCode).toBe(404);
+      expect(byAdmin.json().code).toBe("not_found");
+      expect(byAdmin.body).not.toContain("skills/demo-skill");
       expect((await get(SECOND_DEV)).statusCode).toBe(404);
       expect((await get(CARTOES_DEV)).statusCode).toBe(404);
     });
@@ -165,9 +168,14 @@ describe("drafts", () => {
       expect(updated.json()).toMatchObject({ revision: 2, visibility: "organization", files });
     });
 
-    it("only the author edits: an ADMIN of the squad gets 403", async () => {
+    it("only the author edits: an ADMIN gets 404 before submit and 403 while reviewing", async () => {
       const id = (await createDraft(app, dev)).json().id;
-      const response = await patch(await login(app, ADMIN), id, { visibility: "organization" }, '"1"');
+      const adminToken = await login(app, ADMIN);
+      expect((await patch(adminToken, id, { visibility: "organization" }, '"1"')).statusCode).toBe(404);
+
+      await validateDraft(app, dev, id);
+      await submitDraft(app, dev, id);
+      const response = await patch(adminToken, id, { visibility: "organization" }, '"1"');
 
       expect(response.statusCode).toBe(403);
       expect(response.json().code).toBe("forbidden");
@@ -267,7 +275,7 @@ describe("drafts", () => {
       const id = (await createDraft(app, dev)).json().id;
       const response = await validateDraft(app, await login(app, ADMIN), id);
 
-      expect(response.statusCode).toBe(403);
+      expect(response.statusCode).toBe(404);
       expect(harness.calls).toEqual([]);
     });
   });
@@ -281,14 +289,14 @@ describe("drafts", () => {
       expect(response.json().code).toBe("draft_not_validated");
     });
 
-    it("serves the validated archive with its digest, also to the gateway token and to an ADMIN", async () => {
+    it("serves the validated archive with its digest to the author, also with the gateway token", async () => {
       const id = (await createDraft(app, dev)).json().id;
       const { digest } = (await validateDraft(app, dev, id)).json();
       const shg = (
         await app.inject({ method: "POST", url: "/v1/me/gateway-tokens", headers: bearer(dev), payload: { name: "cli" } })
       ).json().token;
 
-      for (const token of [dev, shg, await login(app, ADMIN)]) {
+      for (const token of [dev, shg]) {
         const response = await app.inject({ method: "GET", url: `/v1/drafts/${id}/archive`, headers: bearer(token) });
         expect(response.statusCode).toBe(200);
         expect(response.headers["content-type"]).toBe("application/gzip");
@@ -301,6 +309,80 @@ describe("drafts", () => {
         headers: bearer(await login(app, SECOND_DEV)),
       });
       expect(other.statusCode).toBe(404);
+    });
+  });
+
+  describe("reviewer access to a draft", () => {
+    // The approver's `harness draft pull` uses the gateway token on the archive.
+    async function adminReads(id: string) {
+      const adminJwt = await login(app, ADMIN);
+      const adminShg = (
+        await app.inject({ method: "POST", url: "/v1/me/gateway-tokens", headers: bearer(adminJwt), payload: { name: "cli" } })
+      ).json().token;
+      const detail = await app.inject({ method: "GET", url: `/v1/drafts/${id}`, headers: bearer(adminJwt) });
+      const archive = await app.inject({ method: "GET", url: `/v1/drafts/${id}/archive`, headers: bearer(adminShg) });
+      return { detail, archive };
+    }
+
+    it("before submit an ADMIN of the squad gets 404 on the detail and the archive", async () => {
+      const id = (await createDraft(app, dev)).json().id;
+      await validateDraft(app, dev, id);
+
+      const { detail, archive } = await adminReads(id);
+
+      expect(detail.statusCode).toBe(404);
+      expect(archive.statusCode).toBe(404);
+      expect(archive.json().code).toBe("not_found");
+      expect(archive.headers["x-package-digest"]).toBeUndefined();
+    });
+
+    it("after submit an ADMIN reads the submitted revision and pulls its archive", async () => {
+      const id = (await createDraft(app, dev)).json().id;
+      const { digest } = (await validateDraft(app, dev, id)).json();
+      await submitDraft(app, dev, id);
+
+      const { detail, archive } = await adminReads(id);
+
+      expect(detail.statusCode).toBe(200);
+      expect(detail.json()).toMatchObject({ revision: 1, files: packageFiles(), validation: { digest } });
+      expect(archive.statusCode).toBe(200);
+      expect(archive.headers["x-package-digest"]).toBe(digest);
+      expect(sha256(archive.rawPayload)).toBe(digest);
+      // A DEV of the squad never reviews, so the draft stays hidden from them.
+      const byDev = await app.inject({ method: "GET", url: `/v1/drafts/${id}`, headers: bearer(await login(app, SECOND_DEV)) });
+      expect(byDev.statusCode).toBe(404);
+    });
+
+    it("after an edit the new revision is private again until the next submit", async () => {
+      const id = (await createDraft(app, dev)).json().id;
+      await validateDraft(app, dev, id);
+      await submitDraft(app, dev, id);
+      const edited = await patch(dev, id, { files: packageFiles("demo-contrib", "1.1.0") }, '"1"');
+      expect(edited.statusCode).toBe(200);
+
+      const afterEdit = await adminReads(id);
+      expect(afterEdit.detail.statusCode).toBe(404);
+      expect(afterEdit.detail.body).not.toContain("1.1.0");
+      expect(afterEdit.archive.statusCode).toBe(404);
+
+      const { digest } = (await validateDraft(app, dev, id)).json();
+      expect((await submitDraft(app, dev, id)).statusCode).toBe(201);
+      const afterResubmit = await adminReads(id);
+      expect(afterResubmit.detail.json()).toMatchObject({ revision: 2, validation: { digest } });
+      expect(afterResubmit.archive.headers["x-package-digest"]).toBe(digest);
+    });
+
+    it("a submitted contribution of an older revision does not open the current one", async () => {
+      const id = (await createDraft(app, dev)).json().id;
+      await validateDraft(app, dev, id);
+      await submitDraft(app, dev, id);
+      // Simulates a stale submitted row: only the revision binding keeps the draft private.
+      db.prepare("UPDATE drafts SET revision = revision + 1, validated_revision = NULL, validated_digest = NULL, validated_size_bytes = NULL, validated_manifest = NULL WHERE id = ?").run(id);
+
+      const { detail, archive } = await adminReads(id);
+
+      expect(detail.statusCode).toBe(404);
+      expect(archive.statusCode).toBe(404);
     });
   });
 
