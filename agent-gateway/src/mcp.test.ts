@@ -220,6 +220,65 @@ describe("MCP endpoint", () => {
   });
 });
 
+describe("MCP endpoint with an unavailable tool catalog", () => {
+  const SENTINEL = "CATALOG-ERROR-SENTINEL";
+  let fixture: Fixture;
+  let calls: string[];
+
+  beforeAll(async () => {
+    calls = [];
+    const failingCatalog = {
+      server: "github",
+      listTools(): never {
+        throw new Error(SENTINEL);
+      },
+      async callTool() {
+        calls.push("callTool");
+        return { content: [] };
+      },
+    };
+    fixture = await createFixture({ backends: [failingCatalog] });
+  });
+  afterAll(async () => {
+    await fixture.close();
+  });
+
+  function rpc(body: unknown) {
+    return fetch(fixture.mcpUrl("investimentos-api", "github"), {
+      method: "POST",
+      headers: { ...MCP_HEADERS, authorization: `Bearer ${fixture.token(DEV)}` },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("audits exactly one generic error for tools/call and never runs the tool", async () => {
+    const before = fixture.auditRows().length;
+
+    const response = await rpc({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "get_repo", arguments: { repo: "acme-fake/investimentos-api" } },
+    });
+    const text = await response.text();
+
+    expect(text).not.toContain(SENTINEL);
+    expect(calls).toHaveLength(0);
+    const rows = fixture.auditRows().slice(before);
+    expect(rows).toHaveLength(1);
+    expect(JSON.parse(rows[0]?.details ?? "{}")).toMatchObject({ outcome: "error", reason: "catalog_unavailable" });
+    expect(rows[0]?.details).not.toContain(SENTINEL);
+  });
+
+  it("answers tools/list with a generic error", async () => {
+    const response = await rpc({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });
+    const text = await response.text();
+
+    expect(text).not.toContain(SENTINEL);
+    expect(text).toContain("error");
+  });
+});
+
 describe("token rule shared with the API", () => {
   it("uses the same SQL text as ACTIVE_GATEWAY_TOKEN_SQL in the control plane", () => {
     const source = readFileSync(new URL("../../control-plane/src/db/repos/gateway-tokens.ts", import.meta.url), "utf8");

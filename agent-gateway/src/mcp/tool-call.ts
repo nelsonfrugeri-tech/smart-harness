@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { Outcome } from "../db/audit.ts";
-import type { McpBackend, ToolAccess, ToolContext } from "./backend.ts";
+import type { McpBackend, ToolAccess, ToolContext, ToolDefinition } from "./backend.ts";
 
 // Decides whether a tools/call may reach the backend, and runs it when it may.
 // The result carries only what the audit trail may store: no argument values besides the resource id.
@@ -22,7 +22,18 @@ export async function executeToolCall(
   name: string,
   args: Record<string, unknown>,
 ): Promise<ToolCallOutcome> {
-  const tool = (await backend.listTools(ctx)).find((candidate) => candidate.name === name);
+  const tools = await discoverTools(backend, ctx);
+  if (tools === null) {
+    return {
+      result: errorResult("The tool catalog is unavailable."),
+      outcome: "error",
+      reason: "catalog_unavailable",
+      resourceType: null,
+      resourceId: null,
+      resourceCount: null,
+    };
+  }
+  const tool = tools.find((candidate) => candidate.name === name);
   if (tool?.access === undefined) {
     return denied("tool_not_declared", null, null);
   }
@@ -51,6 +62,15 @@ export async function executeToolCall(
     return denied("resource_not_allowed", access.resourceType, resourceId);
   }
   return run(backend, ctx, name, args, { resourceType: access.resourceType, resourceId, resourceCount: null });
+}
+
+// Null when the catalog cannot be read. The error text is dropped: it may contain internal details.
+export async function discoverTools(backend: McpBackend, ctx: ToolContext): Promise<ToolDefinition[] | null> {
+  try {
+    return await backend.listTools(ctx);
+  } catch {
+    return null;
+  }
 }
 
 function extractResourceId(access: Extract<ToolAccess, { kind: "resource" }>, args: Record<string, unknown>): string | null {

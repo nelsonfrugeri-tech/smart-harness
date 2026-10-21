@@ -1,7 +1,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { McpBackend, ToolContext } from "./backend.ts";
-import { executeToolCall, type ToolCallOutcome } from "./tool-call.ts";
+import { discoverTools, executeToolCall, type ToolCallOutcome } from "./tool-call.ts";
 
 export type ToolCallRecorder = (tool: string, call: ToolCallOutcome) => void;
 
@@ -14,7 +14,10 @@ export function createMcpServer(backend: McpBackend, ctx: ToolContext, record: T
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    const tools = await backend.listTools(ctx);
+    const tools = await discoverTools(backend, ctx);
+    if (tools === null) {
+      throw new Error("The tool catalog is unavailable.");
+    }
     return {
       tools: tools
         .filter((tool) => tool.access !== undefined)
