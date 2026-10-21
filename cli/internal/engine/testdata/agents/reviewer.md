@@ -3,7 +3,7 @@ name: reviewer
 description: "Reviews code changes and points out risks."
 tools: Read, Glob, Grep, Bash, mcp__plugin_example_docs__*
 skills:
-  - code-review
+  - "code-review"
 model: sonnet
 ---
 

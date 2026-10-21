@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "example",
+  "version": "1.0.0",
+  "description": "Example package with one agent, one skill and one MCP server through the gateway.",
+  "author": {
+    "name": "Smart Harness"
+  }
+}
