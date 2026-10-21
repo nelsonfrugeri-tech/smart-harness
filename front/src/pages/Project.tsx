@@ -1,0 +1,145 @@
+import { useCallback } from "react";
+import { ArrowLeft, Bot, Braces, Plug } from "lucide-react";
+import { api, type SetupPlan, type WorkspaceData } from "../api/client";
+import { useResource } from "../app/useResource";
+import { navigate, projectPath } from "../app/navigation";
+import { followLink } from "../components/Shell";
+import {
+  Badge,
+  EmptyState,
+  PageHeading,
+  SectionTitle,
+} from "../components/Primitives";
+import { Loading, RequestError } from "../components/RequestState";
+interface Props {
+  slug: string;
+  token: string;
+  expire: () => void;
+  projects: WorkspaceData["projects"];
+}
+export function Project({ slug, token, expire, projects }: Props) {
+  const load = useCallback(
+    (signal: AbortSignal) => api.plan(slug, token, signal),
+    [slug, token],
+  );
+  const { state, retry } = useResource(slug, load, expire);
+  return (
+    <div className="page project-page">
+      <div className="project-toolbar">
+        <a className="text-link" href="/workspace" onClick={followLink}>
+          <ArrowLeft size={16} />
+          Todos os projetos
+        </a>
+        <label className="project-select">
+          <span>PROJETO</span>
+          <select
+            aria-label="Projeto"
+            value={
+              projects.some((project) => project.slug === slug) ? slug : ""
+            }
+            onChange={(event) => navigate(projectPath(event.target.value))}
+          >
+            <option value="" disabled>
+              Selecionar projeto
+            </option>
+            {projects.map((project) => (
+              <option key={project.slug} value={project.slug}>
+                {project.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {state.status === "loading" ? (
+        <Loading label="Carregando composição do projeto…" />
+      ) : state.status === "error" ? (
+        <RequestError error={state.error} retry={retry} />
+      ) : (
+        <ProjectContent plan={state.data} />
+      )}
+    </div>
+  );
+}
+function ProjectContent({ plan }: { plan: SetupPlan }) {
+  return (
+    <>
+      <PageHeading
+        eyebrow={plan.project.tenant.name}
+        title={plan.project.name}
+        description={plan.project.description || "Sem descrição cadastrada."}
+      />
+      <section className="baseline-intro focus-project">
+        <div>
+          <Badge tone="white">Pacote base do projeto</Badge>
+          <h2>O contexto que acompanha seu trabalho.</h2>
+          <p>
+            Agentes, skills e integrações definidos pela squad, nas versões
+            selecionadas para este projeto.
+          </p>
+        </div>
+      </section>
+      <SectionTitle title="Composição do pacote base" />
+      {plan.baseline.length === 0 ? (
+        <EmptyState
+          title="Pacote base ainda não definido"
+          description="A squad ainda não vinculou pacotes a este projeto."
+        />
+      ) : (
+        <div className="baseline-list">
+          {plan.baseline.map((item) => (
+            <Package
+              key={`${item.plugin.name}@${item.version.version}`}
+              item={item}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+const componentLabels = {
+  agent: "Agente",
+  skill: "Skill",
+  mcp: "MCP",
+} as const;
+const componentIcons = { agent: Bot, skill: Braces, mcp: Plug } as const;
+function Package({ item }: { item: SetupPlan["baseline"][number] }) {
+  return (
+    <section className="panel package-panel">
+      <div className="section-heading">
+        <div>
+          <h3>{item.plugin.name}</h3>
+          <p>
+            {item.version.description ||
+              item.plugin.description ||
+              "Sem descrição cadastrada."}
+          </p>
+        </div>
+        <Badge tone="blue">v{item.version.version} · fixada</Badge>
+      </div>
+      {item.components.length === 0 ? (
+        <p>Este pacote não possui componentes cadastrados.</p>
+      ) : (
+        <ul className="component-list">
+          {item.components.map((component) => {
+            const Icon = componentIcons[component.kind];
+            return (
+              <li key={`${component.kind}:${component.name}`}>
+                <span className="capability-icon">
+                  <Icon size={21} />
+                </span>
+                <div>
+                  <span className="component-kind">
+                    {componentLabels[component.kind]}
+                  </span>
+                  <h4>{component.name}</h4>
+                  <p>{component.description || "Sem descrição cadastrada."}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
