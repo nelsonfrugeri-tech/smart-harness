@@ -54,6 +54,9 @@ A saída depende só da entrada: o mesmo pacote gera sempre os mesmos bytes.
 | `SH-AGT-002` | campo proibido (`hooks`, `mcpServers`, `permissionMode`) |
 | `SH-AGT-003` | tool lógica desconhecida |
 | `SH-AGT-004` | servidor MCP não declarado em `mcp.json` do pacote |
+| `SH-AGT-005` | arquivo malformado: sem frontmatter; `name` ou `description` ausente ou inválido; `name` diferente do nome do arquivo; `tools`, `skills` ou `model` fora do formato; corpo vazio |
+
+`SH-AGT-005` protege a saída: `name` vira nome de arquivo e sai sem aspas, então só aceita `a-z 0-9 -`, começando por letra; `description` deve ter uma linha; `skills` e `model` saem sem aspas e só aceitam `A-Z a-z 0-9 . _ : [ ] -`.
 
 ## Exemplos
 
