@@ -29,6 +29,17 @@ Fora do compose, a API também precisa de um S3 (variáveis `S3_*`). Pelo compos
 | `POST /v1/me/gateway-tokens` `{name}` | só JWT | `201 {id, name, token, created_at, expires_at}`; o `token` aparece só aqui |
 | `GET /v1/me/gateway-tokens?cursor=&limit=` | só JWT | `Page<{id, name, created_at, expires_at, revoked_at}>`, do mais novo para o mais antigo, sem valor nem hash |
 | `DELETE /v1/me/gateway-tokens/{id}` | só JWT | `204`; revogar de novo também responde `204`; token de outro usuário responde `404` |
+| `PUT /v1/projects/{slug}/baseline/{plugin}` `{version}` | só JWT, ADMIN da squad do projeto | `{plugin, version}`; fixa a versão no pacote base (rollback = versão mais antiga) |
+| `POST /v1/drafts` `{tenant, visibility?, files[{path, content}]}` | só JWT, membro da squad | `201 Draft` com `ETag: "<revision>"` |
+| `GET /v1/drafts?cursor=&limit=` | só JWT | `Page<DraftSummary>`: os rascunhos do próprio usuário, sem conteúdo |
+| `GET /v1/drafts/{id}` | só JWT, autor ou ADMIN da squad | `Draft` com `ETag` |
+| `PATCH /v1/drafts/{id}` `{files?, visibility?}` + `If-Match` | só JWT, autor | `Draft`; sem `If-Match` → `428`; revisão antiga → `412` |
+| `POST /v1/drafts/{id}/validate` | só JWT, autor | `{valid, digest, findings[]}` |
+| `GET /v1/drafts/{id}/archive` | JWT ou token do gateway, autor ou ADMIN da squad | o tar.gz validado, com `x-package-digest`; sem validação → `409` |
+| `POST /v1/drafts/{id}/submit` | só JWT, autor | `201 Contribution` |
+| `GET /v1/contributions?view=mine\|review&cursor=&limit=` | só JWT | `Page<Contribution>` |
+| `GET /v1/contributions/{id}` | só JWT, autor ou ADMIN da squad | `Contribution` |
+| `POST /v1/contributions/{id}/approve` `{digest, comment?}` | só JWT, ADMIN da squad que não é o autor | `Contribution` publicada |
 
 ```bash
 JWT=$(curl -s -X POST 127.0.0.1:8080/v1/auth/dev-login -H 'content-type: application/json' \
@@ -88,7 +99,32 @@ curl -s 127.0.0.1:8080/v1/projects/investimentos-api/setup-plan -H "Authorizatio
 1. `prepareVersion(harness, dir)`, assíncrono: chama `harness validate <dir> --json`; depois, numa cópia do diretório, `harness generate <dir> --target claude-code` e `harness pack <dir> -o <file>`. Confere que o digest impresso pelo `pack` é o sha256 do arquivo e lê o manifesto (`plugin.json`, pastas de `skills/`, arquivos de `dev.smartharness/agents/` e servidores de `mcp.json`). Não grava nada.
 2. `persistVersion(...)`: só ADMIN da squad dona publica. Confere o digest contra os bytes (um byte alterado impede a publicação), grava o arquivo no storage e, depois, a versão no banco, numa transação síncrona. Se o banco falhar, o arquivo fica sem versão e é reaproveitado quando o mesmo conteúdo for publicado. Republicar a mesma versão com o mesmo digest não muda nada; com outro digest, falha.
 
-O `HarnessClient` é uma interface. `src/harness/cli-client.ts` roda o binário com `execFile`, sem shell e com timeout; os testes usam um fake. A aprovação (#16) usa só o segundo passo.
+O `HarnessClient` é uma interface. `src/harness/cli-client.ts` roda o binário com `execFile`, sem shell e com timeout; os testes usam um fake. A API usa o `harness` do `PATH` (no container, `/usr/local/bin/harness`).
+
+## Contribuição: rascunho, validação, aprovação e rollback
+
+```text
+POST /v1/drafts ──► PATCH (If-Match) ──► POST /validate ──► harness draft pull ──► POST /submit ──► POST /approve
+                       │                    │ grava o tar.gz no storage                                │ uma transação SQLite
+                       └ invalida a         │ pelo digest do `pack`                                    └ versão + contribuição + auditoria
+                         contribuição enviada
+```
+
+- **Rascunho** (`drafts`, migration `0006`): os arquivos ficam no SQLite como texto (`files`, JSON). Só o autor vê; um ADMIN da squad também lê, para revisar. `visibility` é `squad` (padrão) ou `organization`. Toda edição sobe a `revision`, que vai no `ETag`. O `PATCH` exige `If-Match`.
+- **Caminhos e limites**: cada caminho é relativo, em POSIX, sem `/` no início, letra de drive, `\`, NUL ou segmento vazio, `.` ou `..`; não pode repetir nem ficar abaixo de outro arquivo. Limites: 500 arquivos, 1 MiB por arquivo, 4 MiB no total e 6 MiB de corpo (`bodyLimit` de `POST` e `PATCH`). A checagem roda no `POST`/`PATCH` e de novo no `validate`, antes da primeira escrita: caminho inválido responde `400 invalid_path` sem criar arquivo. `src/domain/drafts.ts` também confere que o caminho resolvido fica dentro do diretório temporário.
+- **Validar** (`POST /v1/drafts/{id}/validate`): grava os arquivos num diretório temporário novo, roda `harness validate`, `generate --target claude-code` e `pack` (o mesmo passo de `prepareVersion`) e grava o tar.gz no object storage pelo digest do `pack`. Por isso o arquivo vai para o storage no `validate`, e não no `submit`: o `harness draft pull` precisa dos bytes antes do envio. O resultado só é gravado se a revisão não mudou (`UPDATE ... WHERE revision = ?`); senão, `409 draft_changed`. O digest guardado é o do `pack` depois do `generate`, não o `digest` do relatório do `validate` (que é da árvore crua).
+- **Testar**: `harness draft pull <id>` baixa `GET /v1/drafts/{id}/archive` (aceita o token do gateway) e confere o digest.
+- **Enviar** (`contributions`, migration `0007`): o `submit` só confere que existe validação da revisão atual e fixa digest, tamanho e manifesto. Uma contribuição `submitted` por rascunho (índice único parcial). Editar o rascunho, na mesma transação do `PATCH`, muda a contribuição para `invalidated`.
+- **Aprovar**: um ADMIN da squad que não é o autor envia o `digest` que revisou. A aprovação é uma única transação síncrona (`db.transaction(...).immediate()` em `src/domain/contributions.ts`): relê a contribuição, confere estado e digest, grava plugin, versão e componentes (`insertPublishedVersion`), marca a contribuição como `published` e grava a auditoria `contribution.approved`. Não chama o binário nem o storage. Qualquer falha desfaz tudo. O banco também recusa `reviewer_id = author_id`.
+- **Pacote base e rollback**: `PUT /v1/projects/{slug}/baseline/{plugin}` `{version}` fixa a versão; rollback é fixar uma versão anterior. O setup-plan seguinte já traz a versão, e o `harness sync` a instala. Auditoria: `baseline.pinned`.
+- O manifesto publicado usa `name`, `version` e `description` do `plugin.json` e os componentes do relatório do `harness validate`, nunca do corpo da requisição. Tipo do pacote e `keywords` ficam fora deste escopo.
+- As rotas usam `/validate`, `/submit` e `/approve` em vez de `:validate`: no Fastify 5, `/:id::validate` e `/:id::submit` viram a mesma rota (`FST_ERR_DUPLICATED_ROUTE`).
+
+```bash
+JWT=$(curl -s -X POST 127.0.0.1:8080/v1/auth/dev-login -H 'content-type: application/json' -d '{"email":"dev@smart-harness.local"}' | jq -r .access_token)
+ID=$(curl -s -X POST 127.0.0.1:8080/v1/drafts -H "Authorization: Bearer $JWT" -H 'content-type: application/json' -d @draft.json | jq -r .id)
+curl -s -X POST "127.0.0.1:8080/v1/drafts/$ID/validate" -H "Authorization: Bearer $JWT" | jq '.valid, .digest'
+```
 
 ### Seed do Marketplace
 

@@ -34,6 +34,9 @@ const GATEWAY_TOKEN_READS = [
   "/v1/projects/:slug/setup-plan",
 ];
 
+// Accepts the token too (`harness draft pull`), but the zero id is no draft: 404, not 401.
+const GATEWAY_TOKEN_DRAFT_ARCHIVE = "/v1/drafts/:id/archive";
+
 // Turns a route template into a URL that exists in the seed.
 function concreteUrl(template: string): string {
   return template
@@ -165,6 +168,9 @@ describe("gateway tokens", () => {
       const response = await get(concreteUrl(route.url), token);
       if (GATEWAY_TOKEN_READS.includes(route.url)) {
         expect(response.statusCode, route.url).toBe(200);
+      } else if (route.url === GATEWAY_TOKEN_DRAFT_ARCHIVE) {
+        expect(response.statusCode, route.url).toBe(404);
+        expect(response.json().code, route.url).toBe("not_found");
       } else {
         expect(response.statusCode, route.url).toBe(401);
         expect(response.json().code, route.url).toBe("gateway_token_not_allowed");

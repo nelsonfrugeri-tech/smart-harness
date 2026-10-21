@@ -34,6 +34,21 @@ export function decodeCursor(cursor: string | undefined, type: "string" | "numbe
   throw new HttpProblem(400, "invalid_cursor", "cursor is invalid; start again without it");
 }
 
+// Lists ordered by (created_at, id) use the key "<created_at> <id>" of the last row of the page.
+export function timeCursorKey(row: { createdAt: string; id: string }): string {
+  return `${row.createdAt} ${row.id}`;
+}
+
+export function decodeTimeCursor(cursor: string | undefined): { createdAt: string; id: string } | undefined {
+  const key = decodeCursor(cursor, "string");
+  if (key === undefined) return undefined;
+  const [createdAt, id, ...rest] = key.split(" ");
+  if (!createdAt || !id || rest.length > 0) {
+    throw new HttpProblem(400, "invalid_cursor", "cursor is invalid; start again without it");
+  }
+  return { createdAt, id };
+}
+
 // Repositories are asked for limit + 1 rows: the extra row only tells that another page exists.
 export function toPage<T, K extends string | number>(
   rows: T[],

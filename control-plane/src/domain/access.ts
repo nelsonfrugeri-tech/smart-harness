@@ -41,6 +41,12 @@ export function buildPrincipal(user: User, memberships: Membership[]): Principal
   };
 }
 
+// True when the caller is an ADMIN of this tenant. Publishing, approving and pinning a
+// baseline all use this one rule.
+export function isAdminOf(principal: Principal, tenantId: string): boolean {
+  return principal.memberships.some((membership) => membership.tenant.id === tenantId && membership.role === "ADMIN");
+}
+
 // Serializes the scope for SQL as `tenant_id IN (SELECT value FROM json_each(?))`.
 // Throws when a caller passes no scope, so an unscoped query never runs.
 export function scopeTenantIdsJson(scope: Scope): string {

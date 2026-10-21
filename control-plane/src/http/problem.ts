@@ -27,19 +27,30 @@ export class HttpProblem extends Error {
   readonly code: string;
   readonly detail: string | undefined;
   readonly headers: Record<string, string>;
+  readonly errors: FieldError[] | undefined;
 
   constructor(
     status: number,
     code: string,
     detail?: string,
     headers: Record<string, string> = {},
+    errors?: FieldError[],
   ) {
     super(detail ?? code);
     this.status = status;
     this.code = code;
     this.detail = detail;
     this.headers = headers;
+    this.errors = errors;
   }
+}
+
+export function forbidden(code: string, detail: string): HttpProblem {
+  return new HttpProblem(403, code, detail);
+}
+
+export function conflict(code: string, detail: string): HttpProblem {
+  return new HttpProblem(409, code, detail);
 }
 
 export function notFound(detail = "resource not found"): HttpProblem {
@@ -87,7 +98,7 @@ export function registerProblemHandlers(app: FastifyInstance): void {
   app.setErrorHandler((error: FastifyError | HttpProblem, request, reply) => {
     if (error instanceof HttpProblem) {
       reply.headers(error.headers);
-      return sendProblem(request, reply, error.status, error.code, error.detail);
+      return sendProblem(request, reply, error.status, error.code, error.detail, error.errors);
     }
 
     if (error.validation) {

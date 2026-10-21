@@ -8,8 +8,8 @@ import {
 } from "../../db/repos/gateway-tokens.ts";
 import { generateGatewayToken } from "../../domain/gateway-token.ts";
 import { authenticate, type AuthDeps } from "../auth.ts";
-import { decodeCursor, pageQuerySchema, toPage, type Page } from "../pagination.ts";
-import { HttpProblem, notFound } from "../problem.ts";
+import { decodeTimeCursor, pageQuerySchema, toPage, type Page } from "../pagination.ts";
+import { notFound } from "../problem.ts";
 
 export interface GatewayTokenDeps extends AuthDeps {
   gatewayTokenTtlDays: number;
@@ -66,7 +66,7 @@ export function registerGatewayTokenRoutes(app: FastifyInstance, deps: GatewayTo
     async (request): Promise<Page<GatewayTokenRecord>> => {
       const { scope } = await authenticate(request, deps);
       const { cursor, limit } = request.query;
-      const rows = listGatewayTokens(deps.db, scope.userId, { after: decodeTokenCursor(cursor), limit: limit + 1 });
+      const rows = listGatewayTokens(deps.db, scope.userId, { after: decodeTimeCursor(cursor), limit: limit + 1 });
       const page = toPage(rows, limit, (row) => `${row.created_at} ${row.id}`);
       return { items: page.rows, next_cursor: page.nextCursor };
     },
@@ -99,15 +99,4 @@ export function registerGatewayTokenRoutes(app: FastifyInstance, deps: GatewayTo
       return reply.code(204).send();
     },
   );
-}
-
-// The cursor key is "<created_at> <id>" of the last row of the previous page.
-function decodeTokenCursor(cursor: string | undefined): { createdAt: string; id: string } | undefined {
-  const key = decodeCursor(cursor, "string");
-  if (key === undefined) return undefined;
-  const [createdAt, id, ...rest] = key.split(" ");
-  if (!createdAt || !id || rest.length > 0) {
-    throw new HttpProblem(400, "invalid_cursor", "cursor is invalid; start again without it");
-  }
-  return { createdAt, id };
 }

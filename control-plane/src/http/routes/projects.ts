@@ -1,11 +1,18 @@
 import type { FastifyInstance } from "fastify";
-import { listBaselines, listMarketplace, type BaselineEntry } from "../../db/repos/marketplace.ts";
+import { recordAuditEvent } from "../../db/repos/audit.ts";
+import { listBaselines, listMarketplace, pinBaselineVersion, type BaselineEntry } from "../../db/repos/marketplace.ts";
 import { findProjectBySlug, listProjects } from "../../db/repos/projects.ts";
-import { COMPONENT_KINDS, type ComponentKind } from "../../domain/marketplace.ts";
+import { isAdminOf } from "../../domain/access.ts";
+import {
+  COMPONENT_KINDS,
+  PLUGIN_NAME_PATTERN,
+  VERSION_PATTERN,
+  type ComponentKind,
+} from "../../domain/marketplace.ts";
 import { authenticate, GATEWAY_TOKEN_ALLOWED, type AuthDeps } from "../auth.ts";
 import { pluginView } from "../marketplace-views.ts";
 import { DEFAULT_LIMIT, toPage } from "../pagination.ts";
-import { notFound } from "../problem.ts";
+import { forbidden, notFound } from "../problem.ts";
 
 export interface ProjectRoutesDeps extends AuthDeps {
   gatewayPublicUrl: string;
@@ -83,6 +90,58 @@ export function registerProjectRoutes(app: FastifyInstance, deps: ProjectRoutesD
         // Continue with GET /v1/marketplace?project=<slug>&cursor=<next_cursor>.
         optional: { items: optional.rows.map(pluginView), next_cursor: optional.nextCursor },
       };
+    },
+  );
+
+  // Pins one plugin version in the project's baseline. Rollback is pinning an older version;
+  // the next setup-plan carries it and `harness sync` installs it. ADMIN of the project's squad
+  // only, with the login JWT. The pin and its audit event are one transaction.
+  app.put<{ Params: { slug: string; plugin: string }; Body: { version: string } }>(
+    "/v1/projects/:slug/baseline/:plugin",
+    {
+      schema: {
+        params: {
+          type: "object",
+          required: ["slug", "plugin"],
+          properties: {
+            slug: { type: "string", minLength: 1, maxLength: 100 },
+            plugin: { type: "string", pattern: PLUGIN_NAME_PATTERN },
+          },
+        },
+        body: {
+          type: "object",
+          required: ["version"],
+          additionalProperties: false,
+          properties: { version: { type: "string", pattern: VERSION_PATTERN } },
+        },
+      },
+    },
+    async (request) => {
+      const principal = await authenticate(request, deps);
+      const { slug, plugin } = request.params;
+      const { version } = request.body;
+      const project = findProjectBySlug(deps.db, principal.scope, slug);
+      if (!project) throw notFound("project not found");
+      if (!isAdminOf(principal, project.tenantId)) {
+        throw forbidden("forbidden", "only an ADMIN of the project's squad changes its baseline");
+      }
+
+      const pinned = deps.db
+        .transaction(() => {
+          if (!pinBaselineVersion(deps.db, principal.scope, { projectSlug: slug, pluginName: plugin, version })) {
+            return false;
+          }
+          recordAuditEvent(deps.db, principal.scope, {
+            action: "baseline.pinned",
+            tenantId: project.tenantId,
+            correlationId: request.id,
+            details: { project: slug, plugin, version },
+          });
+          return true;
+        })
+        .immediate();
+      if (!pinned) throw notFound("plugin version not found");
+      return { plugin, version };
     },
   );
 }

@@ -199,60 +199,55 @@ export function savePublishedVersion(
   if (!tenantIds.includes(input.tenantId)) {
     throw new PublishError("forbidden", `tenant ${input.tenantId} is outside the publisher's scope`);
   }
+  return db.transaction(() => insertPublishedVersion(db, scope.userId, input)).immediate();
+}
+
+// The writes of a publication: the plugin when it is new, the version and its components.
+// It opens no transaction of its own, so the caller decides the boundary: savePublishedVersion
+// wraps it alone, the approval wraps it together with the contribution update and the audit.
+// Throws PublishError plugin_owned_by_other_squad or version_exists before writing anything.
+export function insertPublishedVersion(
+  db: Db,
+  publishedBy: string,
+  input: NewVersion,
+): { status: "created" | "unchanged"; versionId: number } {
   const { manifest } = input;
+  const plugin = db.prepare("SELECT id, tenant_id AS tenantId FROM plugins WHERE name = ?").get(manifest.name) as
+    | { id: string; tenantId: string }
+    | undefined;
+  if (plugin && plugin.tenantId !== input.tenantId) {
+    throw new PublishError("plugin_owned_by_other_squad", `plugin ${manifest.name} belongs to another squad`);
+  }
+  const pluginId = plugin?.id ?? randomUUID();
+  if (!plugin) {
+    db.prepare("INSERT INTO plugins (id, tenant_id, name) VALUES (?, ?, ?)").run(pluginId, input.tenantId, manifest.name);
+  }
 
-  return db.transaction(() => {
-    const plugin = db.prepare("SELECT id, tenant_id AS tenantId FROM plugins WHERE name = ?").get(manifest.name) as
-      | { id: string; tenantId: string }
-      | undefined;
-    if (plugin && plugin.tenantId !== input.tenantId) {
-      throw new PublishError("plugin_owned_by_other_squad", `plugin ${manifest.name} belongs to another squad`);
-    }
-    const pluginId = plugin?.id ?? randomUUID();
-    if (!plugin) {
-      db.prepare("INSERT INTO plugins (id, tenant_id, name) VALUES (?, ?, ?)").run(
-        pluginId,
-        input.tenantId,
-        manifest.name,
+  const existing = db
+    .prepare("SELECT id, digest FROM plugin_versions WHERE plugin_id = ? AND version = ?")
+    .get(pluginId, manifest.version) as { id: number; digest: string } | undefined;
+  if (existing) {
+    if (existing.digest !== input.digest) {
+      throw new PublishError(
+        "version_exists",
+        `${manifest.name}@${manifest.version} is already published with digest ${existing.digest}`,
       );
     }
+    return { status: "unchanged", versionId: existing.id };
+  }
 
-    const existing = db
-      .prepare("SELECT id, digest FROM plugin_versions WHERE plugin_id = ? AND version = ?")
-      .get(pluginId, manifest.version) as { id: number; digest: string } | undefined;
-    if (existing) {
-      if (existing.digest !== input.digest) {
-        throw new PublishError(
-          "version_exists",
-          `${manifest.name}@${manifest.version} is already published with digest ${existing.digest}`,
-        );
-      }
-      return { status: "unchanged" as const, versionId: existing.id };
-    }
-
-    const { lastInsertRowid } = db
-      .prepare(
-        `INSERT INTO plugin_versions (plugin_id, version, visibility, description, digest, size_bytes, published_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        pluginId,
-        manifest.version,
-        input.visibility,
-        manifest.description,
-        input.digest,
-        input.sizeBytes,
-        scope.userId,
-      );
-    const versionId = Number(lastInsertRowid);
-    const insertComponent = db.prepare(
-      "INSERT INTO components (version_id, kind, name, description) VALUES (?, ?, ?, ?)",
-    );
-    for (const component of manifest.components) {
-      insertComponent.run(versionId, component.kind, component.name, component.description);
-    }
-    return { status: "created" as const, versionId };
-  }).immediate();
+  const { lastInsertRowid } = db
+    .prepare(
+      `INSERT INTO plugin_versions (plugin_id, version, visibility, description, digest, size_bytes, published_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(pluginId, manifest.version, input.visibility, manifest.description, input.digest, input.sizeBytes, publishedBy);
+  const versionId = Number(lastInsertRowid);
+  const insertComponent = db.prepare("INSERT INTO components (version_id, kind, name, description) VALUES (?, ?, ?, ?)");
+  for (const component of manifest.components) {
+    insertComponent.run(versionId, component.kind, component.name, component.description);
+  }
+  return { status: "created", versionId };
 }
 
 // Pins a version in the project's baseline. Returns false when the project is outside the
