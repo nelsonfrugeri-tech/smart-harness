@@ -570,11 +570,12 @@ export interface components {
     };
     /** @description The whole file set. At most 500 files, 1 MiB per file and 4 MiB in total (UTF-8 bytes); the request body limit is 6 MiB. */
     DraftFiles: components["schemas"]["DraftFile"][];
-    /** @description name, version and description read from plugin.json */
+    /** @description name and version from plugin.json; description and keywords from the validation report (they fall back to plugin.json) */
     PackageRef: {
       name: string;
       version: string;
       description: string;
+      keywords: string[];
     };
     /** @description The last successful validation, always of the current revision. digest is the sha256 of the archive `harness pack` wrote after `harness generate`; that archive is in object storage and is what an approval publishes. */
     DraftValidation: {
