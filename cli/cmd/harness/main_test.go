@@ -12,13 +12,13 @@ func TestVersionPrintsVersionAndCommit(t *testing.T) {
 	code := run([]string{"version"}, &stdout, &stderr)
 
 	if code != 0 {
-		t.Fatalf("código de saída = %d, esperado 0", code)
+		t.Fatalf("exit code = %d, want 0", code)
 	}
 	if got, want := stdout.String(), "harness 1.2.3 (commit abc1234)\n"; got != want {
-		t.Fatalf("stdout = %q, esperado %q", got, want)
+		t.Fatalf("stdout = %q, want %q", got, want)
 	}
 	if stderr.Len() != 0 {
-		t.Fatalf("stderr inesperado: %q", stderr.String())
+		t.Fatalf("unexpected stderr: %q", stderr.String())
 	}
 }
 
@@ -29,13 +29,13 @@ func TestUnknownOrMissingCommandPrintsUsage(t *testing.T) {
 		code := run(args, &stdout, &stderr)
 
 		if code != 2 {
-			t.Errorf("args %q: código de saída = %d, esperado 2", args, code)
+			t.Errorf("args %q: exit code = %d, want 2", args, code)
 		}
 		if got, want := stderr.String(), usage+"\n"; got != want {
-			t.Errorf("args %q: stderr = %q, esperado %q", args, got, want)
+			t.Errorf("args %q: stderr = %q, want %q", args, got, want)
 		}
 		if stdout.Len() != 0 {
-			t.Errorf("args %q: stdout inesperado: %q", args, stdout.String())
+			t.Errorf("args %q: unexpected stdout: %q", args, stdout.String())
 		}
 	}
 }

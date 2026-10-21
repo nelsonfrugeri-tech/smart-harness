@@ -1,12 +1,12 @@
-# Build a partir da raiz do repositório: docker build -f agent-gateway/Dockerfile .
+# Build from the repository root: docker build -f agent-gateway/Dockerfile .
 
-# 1. Instala só as dependências de produção do gateway.
+# 1. Installs only the gateway production dependencies.
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY agent-gateway/package.json agent-gateway/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-# 2. Imagem final: Node executa o TypeScript direto, sem etapa de build.
+# 2. Final image: Node runs the TypeScript directly, with no build step.
 FROM node:24-alpine
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8081
 WORKDIR /app
