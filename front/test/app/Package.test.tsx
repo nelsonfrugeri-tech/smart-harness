@@ -3,8 +3,8 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createHash, webcrypto } from "node:crypto";
 import { gzipSync } from "node:zlib";
-import { App } from "./App";
-import { deferred, json, plan, respond } from "../test/fixtures";
+import { App } from "../../src/app/App";
+import { deferred, json, plan, respond } from "../../src/test/fixtures";
 const bytes = Uint8Array.from(gzipSync("Package test archive"));
 const digest = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const current = {

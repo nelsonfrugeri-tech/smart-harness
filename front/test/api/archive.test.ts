@@ -1,8 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { createHash, webcrypto } from "node:crypto";
 import { gzipSync } from "node:zlib";
-import { fetchArchive } from "./archive";
-import { plan, json } from "../test/fixtures";
+import { fetchArchive } from "../../src/api/archive";
+import { plan, json } from "../../src/test/fixtures";
 const bytes = Uint8Array.from(gzipSync("Package archive test"));
 const digest = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 const version = {

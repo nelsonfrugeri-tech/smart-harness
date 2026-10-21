@@ -3,7 +3,7 @@ import hooks from "eslint-plugin-react-hooks";
 export default tseslint.config(
   ...tseslint.configs.recommended,
   {
-    files: ["src/**/*.{ts,tsx}"],
+    files: ["src/**/*.{ts,tsx}", "test/**/*.{ts,tsx}"],
     plugins: { "react-hooks": hooks },
     rules: {
       "react-hooks/rules-of-hooks": "error",
@@ -16,7 +16,7 @@ export default tseslint.config(
   },
   {
     // Declarative views retain a size guard without splitting markup into artificial layers.
-    files: ["src/**/*.tsx"],
+    files: ["src/**/*.tsx", "test/**/*.tsx"],
     rules: {
       "max-lines-per-function": [
         "error",
