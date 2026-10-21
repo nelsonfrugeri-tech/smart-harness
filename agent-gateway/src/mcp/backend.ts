@@ -16,8 +16,10 @@ export type ToolAccess =
   // arguments do not identify one (the call is then denied).
   | { kind: "resource"; resourceType: string; extract(args: Record<string, unknown>): string | null }
   // The tool searches. It receives the allowed resources in ctx.allowedResources and must search
-  // only in them. With an empty list the gateway answers with an empty result and skips the backend.
-  | { kind: "search"; resourceType: string };
+  // only in them. With an empty list the gateway denies the call and skips the backend.
+  | { kind: "search"; resourceType: string }
+  // The tool reads the context of the caller's own project (ctx.project); it names no external resource.
+  | { kind: "project" };
 
 export interface ToolDefinition {
   name: string;

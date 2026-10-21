@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { FastifyInstance } from "fastify";
-import { seedLocalData } from "../../control-plane/seed/local-data.ts";
+import { seedLocalData, type GatewayResources } from "../../control-plane/seed/local-data.ts";
 import { openDatabase as openApiDatabase, type Db as ApiDb } from "../../control-plane/src/db/database.ts";
 import { insertGatewayToken, revokeGatewayToken } from "../../control-plane/src/db/repos/gateway-tokens.ts";
 import { runMigrations } from "../../control-plane/src/db/migrate.ts";
@@ -36,6 +36,8 @@ export interface FixtureOptions {
   backends?: McpBackend[];
   allowedOrigins?: string[];
   logStream?: { write(line: string): void };
+  // Real resources for investimentos-api, instead of the fictitious examples of the seed.
+  resources?: GatewayResources;
 }
 
 export async function createFixture(options: FixtureOptions = {}): Promise<Fixture> {
@@ -43,7 +45,7 @@ export async function createFixture(options: FixtureOptions = {}): Promise<Fixtu
   const path = join(dir, "control-plane.sqlite");
   const apiDb = openApiDatabase(path);
   runMigrations(apiDb);
-  seedLocalData(apiDb);
+  seedLocalData(apiDb, options.resources);
   addSecondInvestimentosProject(apiDb);
 
   const readDb = openReadDatabase(path);

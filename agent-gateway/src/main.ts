@@ -1,8 +1,8 @@
-import { echoBackend } from "./backends/echo.ts";
+import { configuredBackends } from "./backends/index.ts";
 import { loadConfig } from "./config.ts";
 import { createAuditSink } from "./db/audit.ts";
 import { openAuditDatabase, openReadDatabase, type Db } from "./db/database.ts";
-import { createRegistry, type McpBackend } from "./mcp/backend.ts";
+import { createRegistry } from "./mcp/backend.ts";
 import { buildServer } from "./server.ts";
 
 // Startup order: config, databases, HTTP. The control plane must have created and migrated the
@@ -15,8 +15,7 @@ try {
   const auditDb = openAuditDatabase(config.databasePath);
   databases.push(auditDb);
 
-  // Real backends (github, trello, notion, project) arrive with #14.
-  const backends: McpBackend[] = config.appEnv === "local" ? [echoBackend] : [];
+  const backends = configuredBackends(config);
   const app = buildServer({
     readDb,
     auditDb,

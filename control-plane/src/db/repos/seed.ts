@@ -60,6 +60,14 @@ export function upsertGatewayPermission(
   }
 }
 
+// Removes every resource of one server for a project, so the seed can replace them.
+export function deleteGatewayPermissions(db: Db, projectSlug: string, server: string): void {
+  db.prepare(
+    `DELETE FROM gateway_permissions
+      WHERE server = ? AND project_id IN (SELECT id FROM projects WHERE slug = ?)`,
+  ).run(server, projectSlug);
+}
+
 export function upsertProject(
   db: Db,
   tenantId: string,

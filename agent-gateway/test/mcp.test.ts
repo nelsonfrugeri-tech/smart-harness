@@ -163,18 +163,17 @@ describe("MCP endpoint", () => {
     expect(JSON.parse(textOf(result))).toEqual({ searched: ["acme-fake/investimentos-web"] });
   });
 
-  it("answers a search tool with an empty result and skips the backend when the project has no resources", async () => {
+  it("denies a search tool and skips the backend when the project has no resources", async () => {
     const client = await connect("conta-digital", "github");
     github.calls.length = 0;
     const before = fixture.auditRows().length;
 
     const result = await client.callTool({ name: "search_code", arguments: { query: "x" } });
 
-    expect(result.isError).not.toBe(true);
-    expect(result.content).toEqual([]);
+    expect(result.isError).toBe(true);
     expect(github.calls).toHaveLength(0);
     const details = JSON.parse(fixture.auditRows().slice(before)[0]?.details ?? "{}");
-    expect(details).toMatchObject({ outcome: "ok", resource_count: 0 });
+    expect(details).toMatchObject({ outcome: "denied", reason: "no_allowed_resources", resource_type: "repo" });
   });
 
   it("hides a tool that declares no resource and denies calling it", async () => {

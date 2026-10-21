@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { listMembershipsOfUser } from "../../src/db/repos/identity.ts";
 import { seededDatabase, userId } from "../test-support.ts";
-import { seedLocalData } from "../../seed/local-data.ts";
+import { gatewayResourcesFromEnv, seedLocalData } from "../../seed/local-data.ts";
 
 function counts(db: ReturnType<typeof seededDatabase>) {
   return db
@@ -42,6 +42,41 @@ describe("seedLocalData", () => {
       { project: "investimentos-api", server: "trello", type: "board" },
     ]);
     db.close();
+  });
+
+  it("replaces the example resources of a server with the ones from the environment and keeps the others", () => {
+    const db = seededDatabase();
+    const resources = gatewayResourcesFromEnv({
+      GITHUB_REPOS: " Acme/Investimentos-API , acme/other ",
+      TRELLO_BOARD_ID: "AbC123xy",
+      NOTION_PAGE_IDS: "1A2B3C4D-1111-2222-3333-444455556666,0123456789abcdef0123456789abcdef",
+    });
+
+    seedLocalData(db, resources);
+    seedLocalData(db, resources);
+
+    const rows = db
+      .prepare(
+        `SELECT g.server, g.resource_id AS id FROM gateway_permissions g
+           JOIN projects p ON p.id = g.project_id WHERE p.slug = 'investimentos-api' ORDER BY g.server, g.resource_id`,
+      )
+      .all();
+    expect(rows).toEqual([
+      { server: "echo", id: "demo-item" },
+      { server: "github", id: "acme/investimentos-api" },
+      { server: "github", id: "acme/other" },
+      { server: "notion", id: "0123456789abcdef0123456789abcdef" },
+      { server: "notion", id: "1a2b3c4d111122223333444455556666" },
+      { server: "trello", id: "AbC123xy" },
+    ]);
+    db.close();
+  });
+
+  it("keeps the examples when the environment variables are empty and rejects malformed entries", () => {
+    expect(gatewayResourcesFromEnv({ GITHUB_REPOS: "", TRELLO_BOARD_ID: " ", NOTION_PAGE_IDS: "," })).toEqual({});
+    expect(() => gatewayResourcesFromEnv({ GITHUB_REPOS: "not-a-repo" })).toThrow(/GITHUB_REPOS/);
+    expect(() => gatewayResourcesFromEnv({ TRELLO_BOARD_ID: "a/b" })).toThrow(/TRELLO_BOARD_ID/);
+    expect(() => gatewayResourcesFromEnv({ NOTION_PAGE_IDS: "short" })).toThrow(/NOTION_PAGE_IDS/);
   });
 
   it("is idempotent: a second run keeps the same rows and ids", () => {
