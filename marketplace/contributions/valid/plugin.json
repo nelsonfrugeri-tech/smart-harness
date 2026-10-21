@@ -1,0 +1,7 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "go-software-engineer",
+  "version": "0.1.0",
+  "description": "Go software engineer agent with an HTTP contract testing skill.",
+  "keywords": ["go", "http", "contract-testing"]
+}
