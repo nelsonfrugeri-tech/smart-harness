@@ -240,3 +240,88 @@ func sha256Hex(data []byte) string {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
 }
+
+// indent shifts every line of s by two spaces, to nest a block under a key.
+func indent(s string) string {
+	return "  " + strings.ReplaceAll(strings.TrimSuffix(s, "\n"), "\n", "\n  ") + "\n"
+}
+
+const agentPath = "dev.smartharness/agents/reviewer.agent.md"
+
+// agentFile returns a valid agent, with extra lines appended to the frontmatter.
+func agentFile(extra string) string {
+	return "---\nname: reviewer\ndescription: Reviews code changes.\ntools: [read]\n" + extra + "---\n\nReview.\n"
+}
+
+// A YAML or JSON feature that changes what the client reads (merge key, anchor, alias, tag,
+// duplicate key, second document) is SH-STR-003: validate fails and generate writes nothing.
+func TestUnsupportedYAMLAndJSONFeaturesAreRejected(t *testing.T) {
+	const skillPath = "skills/code-review/SKILL.md"
+	const mcpStart = `{"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json", "mcpServers": `
+	cases := []struct {
+		name, path, data string
+		want             []string
+	}{
+		{"skill merge key with inline hooks", skillPath, skillFile("<<:\n" + indent(skillHooks)), []string{"SH-STR-003", "SH-EXE-001"}},
+		{"skill merge key with an alias", skillPath, skillFile("metadata: &base\n" + indent(skillHooks) + "<<: *base\n"), []string{"SH-STR-003", "SH-EXE-001"}},
+		{"skill alias", skillPath, skillFile("license: &l MIT\ncompatibility: *l\n"), []string{"SH-STR-003"}},
+		{"skill standard tag", skillPath, skillFile("license: !!str MIT\n"), []string{"SH-STR-003"}},
+		{"skill custom tag", skillPath, skillFile("license: !custom MIT\n"), []string{"SH-STR-003"}},
+		{"skill duplicate top-level key", skillPath, skillFile("description: Second description.\n"), []string{"SH-STR-003"}},
+		{"skill duplicate nested key", skillPath, skillFile("metadata:\n  owner: a\n  owner: b\n"), []string{"SH-STR-003"}},
+		{"skill second YAML document", skillPath, skillFile("...\n--- {hooks: {}}\n"), []string{"SH-STR-003"}},
+		{"agent merge key with hooks", agentPath, agentFile("<<: {hooks: {}}\n"), []string{"SH-STR-003", "SH-AGT-002"}},
+		{"agent alias", agentPath, agentFile("model: &m sonnet\nx: *m\n"), []string{"SH-STR-003"}},
+		{"mcp.json duplicate key", "mcp.json", mcpStart + `{"docs": {"type": "stdio", "command": "node"}}, "mcpServers": ` +
+			`{"docs": {"type": "streamable-http", "url": "http://127.0.0.1:8081/mcp/projects/example/docs"}}}`, []string{"SH-STR-003"}},
+		{"mcp.json duplicate nested key", "mcp.json", mcpStart + `{"docs": {"type": "stdio", "type": "streamable-http", ` +
+			`"url": "http://127.0.0.1:8081/mcp/projects/example/docs"}}}`, []string{"SH-STR-003"}},
+		{"plugin.json duplicate key", "plugin.json", `{"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json", ` +
+			`"name": "example", "version": "1.0.0", "description": "d", "name": "example"}`, []string{"SH-STR-003"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := copyExample(t)
+			if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(tc.path)), []byte(tc.data), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			code, out, _ := harness("validate", dir, "--json")
+			if code != 1 || !strings.Contains(out, `"path": "`+tc.path+`"`) {
+				t.Fatalf("validate: code %d, out %s", code, out)
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(out, `"code": "`+want+`"`) {
+					t.Fatalf("validate: %s missing, out %s", want, out)
+				}
+			}
+			code, stdout, errOut := harness("generate", dir, "--target", "claude-code")
+			if code != 1 || stdout != "" || !strings.Contains(errOut, "SH-STR-003") || !strings.Contains(errOut, "nothing was generated") {
+				t.Fatalf("generate: code %d, stdout %q, stderr %s", code, stdout, errOut)
+			}
+			for _, generated := range []string{".claude-plugin", ".mcp.json", "agents"} {
+				if _, err := os.Stat(filepath.Join(dir, generated)); err == nil {
+					t.Fatalf("generate wrote %s", generated)
+				}
+			}
+		})
+	}
+}
+
+func TestPlainYAMLStillPasses(t *testing.T) {
+	dir := copyExample(t)
+	skill := skillFile("license: \"MIT\"\nmetadata:\n  owner: team\n  tags: [a, b]\n")
+	if err := os.WriteFile(filepath.Join(dir, "skills", "code-review", "SKILL.md"), []byte(skill), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(agentPath)), []byte(agentFile("model: sonnet\n")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if code, out, _ := harness("validate", dir, "--json"); code != 0 {
+		t.Fatalf("validate: code %d, out %s", code, out)
+	}
+	if code, _, errOut := harness("generate", dir, "--target", "claude-code"); code != 0 {
+		t.Fatalf("generate: code %d, stderr %s", code, errOut)
+	}
+}

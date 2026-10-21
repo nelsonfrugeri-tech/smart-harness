@@ -18,9 +18,11 @@ Arquivo `dev.smartharness/agents/<nome>.agent.md`: frontmatter YAML e corpo Mark
 
 `tools` e `skills` aceitam lista YAML em bloco ou em linha. Outros campos não são validados e não saem na conversão.
 
+O frontmatter é YAML simples. São rejeitados com `SH-STR-003`, em qualquer nível: anchor (`&`), alias (`*`), merge key (`<<`), tag explícita (`!!str`, `!x`), chave que não é string, chave repetida e segundo documento YAML.
+
 ## Campos proibidos
 
-`hooks`, `mcpServers` e `permissionMode`: o Claude Code ignora os três em agents de plugin; o contrato os rejeita.
+`hooks`, `mcpServers` e `permissionMode`: o Claude Code ignora os três em agents de plugin; o contrato os rejeita. A regra vale para as chaves escritas e para o mapa depois de resolver merge e alias.
 
 ## Tools lógicas
 
@@ -54,6 +56,7 @@ A saída depende só da entrada: o mesmo pacote gera sempre os mesmos bytes.
 | `SH-AGT-002` | campo proibido (`hooks`, `mcpServers`, `permissionMode`) |
 | `SH-AGT-003` | tool lógica desconhecida |
 | `SH-AGT-004` | servidor MCP não declarado em `mcp.json` do pacote |
+| `SH-STR-003` | recurso de YAML fora do frontmatter simples (anchor, alias, merge key, tag, chave repetida, segundo documento) |
 | `SH-AGT-005` | arquivo malformado: sem frontmatter; `name` ou `description` ausente ou inválido; `name` diferente do nome do arquivo; `tools`, `skills` ou `model` fora do formato; corpo vazio |
 
 `SH-AGT-005` protege a saída: `name` vira nome de arquivo e sai sem aspas, então só aceita `a-z 0-9 -`, começando por letra; `description` deve ter uma linha; `skills` e `model` só aceitam `A-Z a-z 0-9 . _ : [ ] -`; `model` sai sem aspas.

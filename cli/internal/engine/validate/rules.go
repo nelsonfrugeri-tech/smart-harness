@@ -70,23 +70,23 @@ func checkMCP(tree pkg.Tree, gatewayOrigin string) []pkg.Finding {
 	if !ok {
 		return nil
 	}
-	var doc struct {
-		MCPServers map[string]map[string]json.RawMessage `json:"mcpServers"`
-	}
-	if json.Unmarshal(file.Data, &doc) != nil {
+	// Maps, not a struct: encoding/json matches struct fields without case, and keys must be exact.
+	var doc map[string]json.RawMessage
+	var servers map[string]map[string]json.RawMessage
+	if json.Unmarshal(file.Data, &doc) != nil || json.Unmarshal(doc["mcpServers"], &servers) != nil {
 		return nil
 	}
 	var findings []pkg.Finding
 	add := func(code, hint, format string, a ...any) {
 		findings = append(findings, pkg.Finding{Code: code, Path: pkg.MCPPath, Message: fmt.Sprintf(format, a...), Hint: hint})
 	}
-	names := make([]string, 0, len(doc.MCPServers))
-	for name := range doc.MCPServers {
+	names := make([]string, 0, len(servers))
+	for name := range servers {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		server := doc.MCPServers[name]
+		server := servers[name]
 		for _, key := range []string{"headers", "env"} {
 			if _, present := server[key]; present {
 				add(pkg.CodeHeaders, "remove it; the generated layer adds the gateway token", "server %q must not declare %s", name, key)

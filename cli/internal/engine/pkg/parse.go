@@ -87,7 +87,7 @@ func parseManifest(t Tree) (Manifest, []Finding) {
 	if err := json.Unmarshal(file.Data, &raw); err != nil {
 		return m, bad("plugin.json is not a JSON object: %v", err)
 	}
-	var findings []Finding
+	findings := duplicateKeyFindings(file)
 	for _, key := range sortedKeys(raw) {
 		// hooks is reported by validate as SH-EXE-001, the more specific rule.
 		if !manifestFields[key] && key != "hooks" {
@@ -172,7 +172,7 @@ func parseMCP(t Tree) ([]MCPServer, map[string]bool, []Finding) {
 	if err := json.Unmarshal(file.Data, &raw); err != nil {
 		return nil, declared, []Finding{bad("mcp.json is not a JSON object: %v", err)}
 	}
-	var findings []Finding
+	findings := duplicateKeyFindings(file)
 	for _, key := range sortedKeys(raw) {
 		if key != "$schema" && key != "mcpServers" {
 			findings = append(findings, bad("field %q is not allowed in mcp.json", key))
@@ -307,16 +307,21 @@ func parseSkill(dir, path string, data []byte) (Skill, []Finding) {
 	if !ok {
 		return s, []Finding{finding(CodeSkillFile, 1, "SKILL.md must start with a YAML frontmatter between '---' lines")}
 	}
-	fields, err := frontmatterFields(fm)
+	front, err := parseFrontmatter(fm)
 	if err != nil {
 		return s, []Finding{finding(CodeSkillFile, 1, "frontmatter is not a YAML mapping: %v", err)}
 	}
-	var findings []Finding
-	// Claude Code runs the hooks of a skill frontmatter while the skill is active.
-	if f, present := fields["hooks"]; present {
-		findings = append(findings, Finding{Code: CodeHooks, Path: path, Line: f.line,
+	findings := unsupportedFindings(path, front.unsupported)
+	// Claude Code runs the hooks of a skill frontmatter while the skill is active. Checked on the
+	// keys as written and on the mapping after merges, so a merge cannot hide the field.
+	if line, present := front.has("hooks"); present {
+		findings = append(findings, Finding{Code: CodeHooks, Path: path, Line: line,
 			Message: "skill frontmatter must not declare hooks", Hint: "remove the hooks field; packages cannot run commands"})
 	}
+	if len(front.unsupported) > 0 {
+		return s, findings
+	}
+	fields := front.fields
 	name, nameField := fields.str("name")
 	desc, descField := fields.str("description")
 	if !nameField.ok || !descField.ok {

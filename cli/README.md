@@ -62,13 +62,16 @@ Depois de `generate --target claude-code`, o mesmo diretório ganha `.claude-plu
 | `SH-SEC-002` | Plataforma | Nenhum arquivo com forma de credencial (GitHub, Anthropic, OpenAI, Slack, AWS, chave privada, JWT, `Bearer <20+>`) |
 | `SH-MCP-001` | Plataforma | Servidor `streamable-http` com URL `<gateway-origin>/mcp/projects/<projeto>/<servidor>` |
 | `SH-MCP-002` | Plataforma | Sem `stdio`, `command`, `args` nem `cwd` |
-| `SH-EXE-001` | Plataforma | Sem hooks: pasta `hooks/`, arquivo `hooks.json` ou campo `hooks` no `plugin.json` ou no frontmatter do `SKILL.md` |
+| `SH-EXE-001` | Plataforma | Sem hooks: pasta `hooks/`, arquivo `hooks.json` ou campo `hooks` no `plugin.json` ou no frontmatter do `SKILL.md`, escrito ou trazido por merge |
 | `SH-EXE-002` | Plataforma | Sem executáveis: `bin/`, `skills/<n>/scripts/`, bit de execução, `#!` ou cabeçalho ELF, Mach-O, PE ou WebAssembly |
 | `SH-STR-001` | Plataforma | Só os arquivos do layout acima; sem symlink, arquivo especial, `\` ou `:` no caminho |
 | `SH-STR-002` | Plataforma | Arquivo gerado idêntico à saída do gerador |
+| `SH-STR-003` | Plataforma | YAML simples no frontmatter de `SKILL.md` e de agente: sem anchor (`&`), alias (`*`), merge key (`<<`), tag explícita (`!!str`, `!x`), chave que não é string, chave repetida em qualquer nível ou segundo documento. JSON de `plugin.json` e `mcp.json` sem chave repetida em nenhum objeto |
 | `SH-NAM-001` | Plataforma | Nome não reservado pelo Claude Code: sem `.`, sem prefixo `cc-plugin-` e sem as palavras `claude`, `anthropic` ou `anthropics` |
 | `SH-VER-001` | Plataforma | `version` em SemVer e `description` presentes |
 | `SH-LIM-001` | Plataforma | Até 2.000 arquivos, 5 MiB por arquivo e 50 MiB no total |
+
+`SH-STR-003` existe porque o cliente resolve merge, alias e chave repetida (o último valor vence) antes de ler o arquivo. Uma regra que lesse só as chaves escritas veria outro conteúdo. Um `<<:` com `hooks:` no `SKILL.md`, por exemplo, registra um hook no Claude Code 2.1.305. Como defesa extra, os campos proibidos também são procurados no mapa já resolvido.
 
 `SH-NAM-001` segue a checagem de nome do `claude plugin validate` ([plugins-reference](https://code.claude.com/docs/en/plugins-reference), consultada em 2026-10-21). Ela também rejeita os casos que o Claude Code só avisa, porque `--strict` transforma aviso em erro.
 

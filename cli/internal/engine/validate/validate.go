@@ -1,7 +1,7 @@
 // Package validate checks a package against the Agent Plugins and Agent Skills specs, the agent
 // contract and the platform policy, and produces a stable report.
 //
-// pkg.Parse reports the spec and contract codes (AP-*, AS-*, SH-AGT-*); this package adds the
+// pkg.Parse reports the spec and contract codes (AP-*, AS-*, SH-AGT-*) and SH-STR-003; this package adds the
 // platform codes (SH-SEC, SH-MCP, SH-EXE, SH-STR, SH-NAM, SH-VER). cli/README.md lists them all.
 package validate
 

@@ -33,18 +33,23 @@ func ParseAgent(filePath string, data []byte, declared map[string]bool) (Agent, 
 		add(CodeAgentFile, 1, contract, "agent file must start with a YAML frontmatter between '---' lines")
 		return Agent{}, findings
 	}
-	fs, err := frontmatterFields(fm)
+	front, err := parseFrontmatter(fm)
 	if err != nil {
 		add(CodeAgentFile, 1, contract, "frontmatter is not a YAML mapping: %v", err)
 		return Agent{}, findings
 	}
-	a := Agent{Path: filePath}
-
+	findings = append(findings, unsupportedFindings(filePath, front.unsupported)...)
+	// Checked on the keys as written and on the mapping after merges, so a merge cannot hide a field.
 	for _, key := range forbiddenAgentFields {
-		if f, present := fs[key]; present {
-			add(CodeAgentField, f.line, "remove the field; the platform does not allow it in agents", "field %q is not allowed", key)
+		if line, present := front.has(key); present {
+			add(CodeAgentField, line, "remove the field; the platform does not allow it in agents", "field %q is not allowed", key)
 		}
 	}
+	if len(front.unsupported) > 0 {
+		return Agent{}, findings
+	}
+	fs := front.fields
+	a := Agent{Path: filePath}
 
 	stem := strings.TrimSuffix(path.Base(filePath), AgentSuffix)
 	name, nl := fs.str("name")
