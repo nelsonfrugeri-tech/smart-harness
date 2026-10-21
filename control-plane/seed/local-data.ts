@@ -10,7 +10,7 @@ export const TENANTS = [
   { slug: "cartoes", name: "Cartões" },
 ] as const;
 
-type TenantSlug = (typeof TENANTS)[number]["slug"];
+export type TenantSlug =(typeof TENANTS)[number]["slug"];
 
 const PROJECTS: { tenant: TenantSlug; slug: string; name: string; description: string }[] = [
   {

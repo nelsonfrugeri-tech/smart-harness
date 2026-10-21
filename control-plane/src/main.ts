@@ -4,8 +4,9 @@ import { loadConfig } from "./config.ts";
 import { openDatabase, type Db } from "./db/database.ts";
 import { runMigrations } from "./db/migrate.ts";
 import { buildServer } from "./http/server.ts";
+import { createPackageStorage, createS3Client } from "./storage/packages.ts";
 
-// Startup order: config, database, migrations, HTTP. Any failure stops the process.
+// Startup order: config, database, migrations, package bucket, HTTP. Any failure stops the process.
 let db: Db | undefined;
 try {
   const config = loadConfig();
@@ -15,8 +16,12 @@ try {
   db = openDatabase(config.databasePath);
   const applied = runMigrations(db);
 
-  const app = buildServer({ db, config, logger: true });
+  const storage = createPackageStorage(createS3Client(config.storage), config.storage.bucket);
+  await storage.ensureBucket();
+
+  const app = buildServer({ db, storage, config, logger: true });
   app.log.info({ applied_migrations: applied, app_env: config.appEnv }, "database migrated");
+  app.log.info({ bucket: config.storage.bucket }, "package bucket ready");
   app.addHook("onClose", async () => db?.close());
 
   // Closes the server when the container stops, without waiting for SIGKILL.

@@ -35,6 +35,14 @@ export function upsertMembership(db: Db, userId: string, tenantId: string, role:
   ).run(userId, tenantId, role);
 }
 
+export function tenantIdBySlug(db: Db, slug: string): string {
+  const row = db.prepare("SELECT id FROM tenants WHERE slug = ?").get(slug) as { id: string } | undefined;
+  if (!row) {
+    throw new Error(`tenant ${slug} not found; run npm run seed first`);
+  }
+  return row.id;
+}
+
 export function upsertProject(
   db: Db,
   tenantId: string,

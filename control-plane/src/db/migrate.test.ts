@@ -72,12 +72,23 @@ describe("runMigrations", () => {
   });
 
   it("applies the repository migrations to an empty database", () => {
-    expect(runMigrations(db)).toEqual(["0001_initial.sql"]);
+    expect(runMigrations(db)).toEqual(["0001_initial.sql", "0002_marketplace.sql"]);
 
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all()
       .map((row) => (row as { name: string }).name);
-    expect(tables).toEqual(["audit_events", "memberships", "projects", "schema_migrations", "tenants", "users"]);
+    expect(tables).toEqual([
+      "audit_events",
+      "components",
+      "memberships",
+      "plugin_versions",
+      "plugins",
+      "project_baseline",
+      "projects",
+      "schema_migrations",
+      "tenants",
+      "users",
+    ]);
   });
 });
