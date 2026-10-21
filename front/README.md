@@ -2,7 +2,8 @@
 
 Workspace React + TypeScript + Vite integrado à API. Login local, identidade e
 papéis por squad, projetos autorizados e composição do pacote base nas versões
-fixadas pelo backend. Interface em pt-BR; tipos HTTP gerados do OpenAPI.
+fixadas pelo backend. Marketplace de pacotes com busca, filtros de componentes,
+complementos por projeto e paginação real. Interface em pt-BR; tipos HTTP gerados do OpenAPI.
 
 ## Executar com a API local
 
@@ -53,7 +54,33 @@ formulário informa que o login local está indisponível; integração OIDC é 
 
 O estado sem memberships é coberto por teste automatizado, pois o seed padrão
 não inclui esse usuário. Não altere o seed apenas para demonstrar essa tela.
-O Marketplace completo, download, tokens e setup fazem parte das próximas issues.
+
+## Demonstrar o Marketplace
+
+1. Entre como `dev@smart-harness.local` e abra **Marketplace**. Os cards mostram
+   pacote, versão visível, squad dona e composição. Não aparecem pacotes de Cartões.
+2. Pesquise `golang` no campo do shell e pressione Enter. Filtre **Pacotes contendo →
+   MCPs**: o resultado continua sendo o pacote completo, com seus outros componentes.
+3. Em **Contexto**, selecione os complementos de Investimentos (ou use **Explorar
+   complementos** na página do projeto). `code-review` aparece; o pacote base
+   `investimentos-base` não aparece entre os complementos. **Marketplace geral**
+   remove o contexto de projeto; **Limpar filtros** também remove busca e tipo.
+4. Recarregue a URL, abra um pacote e use **Voltar aos resultados**. Busca, tipo e
+   projeto permanecem na URL. Teste também voltar/avançar do navegador.
+5. Abra `/marketplace?limit=1` para exercitar a paginação do backend. Clique
+   **Carregar mais** até o fim. O indicador informa pacotes carregados, sem inventar
+   um total global. `limit` aceita inteiros de 1 a 100; o padrão é 20.
+6. Com a primeira página carregada, ative **Network → Offline** e clique **Carregar
+   mais**. Os cards permanecem; volte para **Online** e use **Tentar novamente**.
+   Não é necessário parar nenhuma API compartilhada. Cursor inválido oferece
+   **Reiniciar consulta**, coberto por teste determinístico de resposta HTTP.
+7. Saia e entre como `dev.cartoes@smart-harness.local`. Confira `cartoes-base` e
+   `code-review` organizacional, sem os pacotes de Conta/Investimentos. Uma URL de
+   complementos sem acesso mostra indisponibilidade, e não uma busca vazia.
+
+A tela de pacote desta entrega permite conferir a composição da última versão
+visível. Histórico de versões e download pertencem à #27; tokens e setup também
+ficam para suas respectivas issues.
 
 ## Verificar e gerar tipos
 
@@ -88,10 +115,14 @@ seleção e dados; requests anteriores são cancelados e resultados tardios são
 ignorados. Papéis vêm de `/me`; o cliente não interpreta claims como autorização.
 Nenhum token é registrado em logs ou telemetria.
 
-As quatro operações HTTP têm timeout de 10 segundos e cancelamento. Seguindo a
+As operações HTTP têm timeout de 10 segundos e cancelamento. Seguindo a
 convenção da Fase 1 em `CLAUDE.md`, não há retry automático, backoff nem circuit
 breaker: uma falha termina em erro recuperável, com retry explícito do usuário.
 A tela troca para loading e desabilita envio repetido; não existe polling.
+No Marketplace, busca/tipo/projeto reiniciam paginação e cancelam requests antigos.
+O cursor da API permanece opaco e só em memória; páginas são deduplicadas por nome
+único do pacote. Falha incremental preserva os itens já carregados. A lista é
+consultada novamente ao retornar do pacote, preservando os filtros da URL.
 `correlation_id` de Problem JSON fica acessível em “Informações para suporte”.
 A lista de projetos respeita o limite de até 100 da API, que não tem cursor.
 O plano retorna opcionais, mas esta entrega renderiza somente o baseline fixado.
@@ -100,7 +131,7 @@ O plano retorna opcionais, mas esta entrega renderiza somente o baseline fixado.
 
 - `src/api`: client HTTP compartilhado e tipos gerados.
 - `src/app`: sessão, navegação pelo History API e ciclo de requests.
-- `src/pages`: login, workspace e composição do projeto.
+- `src/pages`: login, workspace, composição do projeto, Marketplace e pacote.
 - `src/components`: shell e primitives reaproveitadas do protótipo.
 - `src/styles`: tokens, layout original e adaptação responsiva.
 - `src/test`: fixtures exclusivas dos testes; não fazem parte do fluxo do produto.

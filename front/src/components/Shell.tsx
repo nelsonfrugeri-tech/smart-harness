@@ -1,4 +1,11 @@
-import { BookOpen, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import {
+  BookOpen,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  X,
+  PackageSearch,
+} from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -8,6 +15,8 @@ import {
 } from "react";
 import type { Me } from "../api/client";
 import { navigate, useRoute } from "../app/navigation";
+import { marketplaceSearch } from "../app/marketplaceQuery";
+import { MarketplaceSearch } from "./MarketplaceSearch";
 import { Button } from "./Primitives";
 export function followLink(event: MouseEvent<HTMLAnchorElement>) {
   if (
@@ -19,7 +28,7 @@ export function followLink(event: MouseEvent<HTMLAnchorElement>) {
   )
     return;
   event.preventDefault();
-  navigate(event.currentTarget.pathname);
+  navigate(event.currentTarget.pathname + event.currentTarget.search);
 }
 export function Shell({
   children,
@@ -32,7 +41,15 @@ export function Shell({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const route = useRoute();
-  const routeKey = route.kind === "project" ? route.slug : route.kind;
+  const isMarketplace =
+    route.kind === "marketplace" || route.kind === "package";
+  const filters = isMarketplace ? route.filters : {};
+  const routeKey =
+    route.kind === "project"
+      ? route.slug
+      : route.kind === "package"
+        ? route.name
+        : route.kind;
   useEffect(() => {
     document.getElementById("main")?.focus();
   }, [routeKey]);
@@ -123,7 +140,8 @@ export function Shell({
         <div className="nav-label">DESENVOLVER</div>
         <nav aria-label="Navegação principal">
           <a
-            className="nav-item active"
+            className={`nav-item ${!isMarketplace ? "active" : ""}`}
+            aria-current={!isMarketplace ? "page" : undefined}
             href="/workspace"
             onClick={(event) => {
               followLink(event);
@@ -132,6 +150,18 @@ export function Shell({
           >
             <LayoutDashboard size={19} />
             Meu workspace
+          </a>
+          <a
+            className={`nav-item ${isMarketplace ? "active" : ""}`}
+            aria-current={isMarketplace ? "page" : undefined}
+            href="/marketplace"
+            onClick={(event) => {
+              followLink(event);
+              setMobileOpen(false);
+            }}
+          >
+            <PackageSearch size={19} />
+            Marketplace
           </a>
         </nav>
         <div className="membership-list">
@@ -167,8 +197,12 @@ export function Shell({
         <header className="topbar">
           <div className="breadcrumb">
             <BookOpen size={16} />
-            <strong>Workspace</strong>
+            <strong>{isMarketplace ? "Marketplace" : "Workspace"}</strong>
           </div>
+          <MarketplaceSearch
+            key={marketplaceSearch(filters)}
+            filters={filters}
+          />
           <Button variant="ghost" onClick={logout}>
             <LogOut size={16} />
             Sair
