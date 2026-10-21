@@ -223,3 +223,31 @@ Roteiro integrado: criar um token, usar `Authorization: Bearer` em
 registrar o header; revogar pelo frontend e repetir a mesma leitura, esperando 401.
 Saia e entre com outra conta: os itens anteriores não devem aparecer. Em viewport
 estreito, use Tab/Enter para criar, fechar e cancelar/confirmar revogação.
+
+## Preparação real (#29)
+
+A página de cada projeto mostra o baseline fixado e instruções para a CLI entregue
+em #10: `harness setup '<slug>' --api-url '<url>'`, `harness doctor` e `harness sync`.
+O setup consulta novamente o plano atual da API; uma alteração posterior ao plano
+exibido exige recarregar a página para comparar a composição. O browser não recebe
+estado da instalação local. Nenhum clique conclui a preparação.
+
+`HARNESS_PUBLIC_API_URL` configura a URL sugerida para o terminal. Configure-a
+explicitamente quando o proxy usa endereço interno (por exemplo, um hostname de
+Docker). Sem ela, usa `HARNESS_API_TARGET` ou `http://127.0.0.1:8080`; a UI recusa
+HTTP fora de loopback, credenciais, query e fragmento. O usuário pode corrigir a URL
+no campo antes de copiar. Esses valores públicos nunca devem conter credenciais.
+O proxy `/v1` do Vite não é apresentado como endereço de API para o terminal.
+
+No primeiro setup, crie o token em **Meus tokens** e cole-o no prompt sem eco, sem
+variável exportada nem segredo no comando. A CLI guarda-o em `~/.claude/settings.json`
+com permissões restritas; usa-o nos comandos seguintes. A UI só lista complementos;
+para instalá-los use `--include-optional nome,outro`. A paginação continua com o
+cursor opaco de `setup-plan.optional.next_cursor` em `/v1/marketplace?project=...`.
+
+Roteiro: abra Investimentos, confira o pin e copie o comando; a mensagem confirma
+somente cópia. Em ambiente isolado, execute setup e doctor seguindo a tela. Confira
+no terminal os arquivos/plugins aplicados e as linhas `ok`/`FAIL` com `fix:`. Execute
+sync e confira o resultado no terminal. Volte à UI: ela não declara instalado nem
+conectado. Troque de projeto/conta, force falha de rede ou acesso e confirme que os
+comandos do projeto anterior somem. Teste larguras 390, 768 e 1440 e navegação Tab.
