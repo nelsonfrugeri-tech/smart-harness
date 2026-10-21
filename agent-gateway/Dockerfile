@@ -4,11 +4,12 @@
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY agent-gateway/package.json agent-gateway/package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+# better-sqlite3 ships prebuilt binaries (musl included), so no install script or compiler is needed.
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
 # 2. Final image: Node runs the TypeScript directly, with no build step.
 FROM node:24-alpine
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=8081
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8081 DATABASE_PATH=/data/control-plane.sqlite
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY agent-gateway/package.json ./

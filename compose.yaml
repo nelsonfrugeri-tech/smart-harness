@@ -42,10 +42,20 @@ services:
       dockerfile: agent-gateway/Dockerfile
     ports:
       - "127.0.0.1:${GATEWAY_PORT:-8081}:8081"
+    environment:
+      # The echo test backend only exists with APP_ENV=local.
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Browser origins allowed to call /mcp, comma separated. Empty: any request with an Origin header is refused.
+      ALLOWED_ORIGINS: ${GATEWAY_ALLOWED_ORIGINS:-}
     volumes:
+      # Same file as the API: the gateway reads tokens and permissions and appends audit events.
       - sqlite-data:/data
+    depends_on:
+      api:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/healthz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/readyz').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
       interval: 10s
       timeout: 3s
       retries: 3

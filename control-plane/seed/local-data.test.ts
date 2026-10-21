@@ -25,6 +25,25 @@ describe("seedLocalData", () => {
     db.close();
   });
 
+  it("allows github, trello, notion and echo resources only for investimentos-api", () => {
+    const db = seededDatabase();
+
+    const rows = db
+      .prepare(
+        `SELECT p.slug AS project, g.server, g.resource_type AS type
+           FROM gateway_permissions g JOIN projects p ON p.id = g.project_id ORDER BY g.server`,
+      )
+      .all();
+
+    expect(rows).toEqual([
+      { project: "investimentos-api", server: "echo", type: "item" },
+      { project: "investimentos-api", server: "github", type: "repo" },
+      { project: "investimentos-api", server: "notion", type: "page" },
+      { project: "investimentos-api", server: "trello", type: "board" },
+    ]);
+    db.close();
+  });
+
   it("is idempotent: a second run keeps the same rows and ids", () => {
     const db = seededDatabase();
     const before = db.prepare("SELECT id, slug FROM tenants ORDER BY slug").all();

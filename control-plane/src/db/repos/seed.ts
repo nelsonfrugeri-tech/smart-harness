@@ -43,6 +43,23 @@ export function tenantIdBySlug(db: Db, slug: string): string {
   return row.id;
 }
 
+// Allows one resource of an MCP server for a project. An unknown project slug is an error.
+export function upsertGatewayPermission(
+  db: Db,
+  permission: { projectSlug: string; server: string; resourceType: string; resourceId: string },
+): void {
+  const { changes } = db
+    .prepare(
+      `INSERT INTO gateway_permissions (project_id, server, resource_type, resource_id)
+       SELECT id, ?, ?, ? FROM projects WHERE slug = ?
+       ON CONFLICT DO NOTHING`,
+    )
+    .run(permission.server, permission.resourceType, permission.resourceId, permission.projectSlug);
+  if (changes === 0 && !db.prepare("SELECT 1 FROM projects WHERE slug = ?").get(permission.projectSlug)) {
+    throw new Error(`project ${permission.projectSlug} not found; seed the projects first`);
+  }
+}
+
 export function upsertProject(
   db: Db,
   tenantId: string,
