@@ -10,16 +10,20 @@ import {
   ApiError,
   type GatewayToken,
   type GatewayTokenCreated,
+  type WorkspaceData,
 } from "../api/client";
 import { useResource } from "../app/useResource";
 import { Button, EmptyState, PageHeading } from "../components/Primitives";
 import { Loading, RequestError } from "../components/RequestState";
+import { projectPath } from "../app/navigation";
+import { followLink } from "../components/Shell";
 import { CopyValue } from "../components/CopyValue";
 interface Props {
   token: string;
   expire: () => void;
+  project?: WorkspaceData["projects"][number];
 }
-export function GatewayTokens({ token, expire }: Props) {
+export function GatewayTokens({ token, expire, project }: Props) {
   const [cursor, setCursor] = useState<string>();
   const [created, setCreated] = useState<GatewayTokenCreated>();
   const [selected, setSelected] = useState<GatewayToken>();
@@ -95,10 +99,7 @@ export function GatewayTokens({ token, expire }: Props) {
   }
   return (
     <div className="page tokens-page">
-      <PageHeading
-        title="Meus tokens"
-        description="Credenciais pessoais para a CLI e o gateway. O segredo aparece somente na criação."
-      />
+      <TokensHeading project={project} />
       {created ? (
         <CreatedToken created={created} close={() => setCreated(undefined)} />
       ) : (
@@ -114,6 +115,7 @@ export function GatewayTokens({ token, expire }: Props) {
               onChange={(event) => setName(event.target.value)}
               disabled={busy}
               autoComplete="off"
+              placeholder="Ex.: notebook de trabalho"
             />
           </label>
           <Button type="submit" disabled={busy || !name.trim()}>
@@ -281,5 +283,37 @@ function MutationError({
         Atualizar lista
       </Button>
     </div>
+  );
+}
+
+function TokensHeading({
+  project,
+}: {
+  project?: WorkspaceData["projects"][number];
+}) {
+  return (
+    <>
+      <PageHeading
+        title="Meus tokens"
+        description="Credenciais pessoais para a CLI e o gateway. O segredo aparece somente na criação."
+      />
+      {project && (
+        <section className="notice token-context">
+          <div>
+            <strong>Preparando {project.name}</strong>
+            <p>
+              Crie a credencial, guarde o segredo e volte para executar o setup.
+            </p>
+            <a
+              className="text-link"
+              href={`${projectPath(project.slug)}#setup`}
+              onClick={followLink}
+            >
+              Voltar à preparação de {project.name}
+            </a>
+          </div>
+        </section>
+      )}
+    </>
   );
 }

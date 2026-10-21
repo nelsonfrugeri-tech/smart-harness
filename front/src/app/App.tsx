@@ -103,7 +103,15 @@ function ConnectedWorkspace({
           <Unavailable />
         </div>
       ) : route.kind === "tokens" ? (
-        <GatewayTokens token={token} expire={expire} />
+        <GatewayTokens
+          token={token}
+          expire={expire}
+          project={
+            state.status === "success"
+              ? state.data.projects.find((item) => item.slug === route.project)
+              : undefined
+          }
+        />
       ) : state.status === "loading" ? (
         <Loading />
       ) : state.status === "error" ? (

@@ -67,6 +67,7 @@ export function Package({ name, filters, token, expire, baseline }: Props) {
           token={token}
           expire={expire}
           pinned={Boolean(project)}
+          setupProject={project ?? filters.project}
         />
       )}
     </div>
@@ -78,12 +79,14 @@ function PackageDetail({
   token,
   expire,
   pinned,
+  setupProject,
 }: {
   item: PluginItem;
   filters: MarketplaceFilters;
   token: string;
   expire: () => void;
   pinned: boolean;
+  setupProject?: string;
 }) {
   const download = useArchiveDownload(item.plugin.name, token, expire);
   return (
@@ -96,15 +99,27 @@ function PackageDetail({
           "Sem descrição cadastrada."
         }
         action={
-          <Button
-            onClick={() => {
-              if (!download.busy) void download.download(item.version);
-            }}
-            aria-disabled={download.busy}
-          >
-            <Download size={17} />
-            Baixar v{item.version.version}
-          </Button>
+          <div className="package-actions">
+            {setupProject && (
+              <a
+                className="button button-primary"
+                href={`${projectPath(setupProject)}#setup`}
+                onClick={followLink}
+              >
+                Preparar ambiente
+              </a>
+            )}
+            <Button
+              variant={setupProject ? "secondary" : "primary"}
+              onClick={() => {
+                if (!download.busy) void download.download(item.version);
+              }}
+              aria-disabled={download.busy}
+            >
+              <Download size={17} />
+              Baixar v{item.version.version}
+            </Button>
+          </div>
         }
       />
       <div className="package-detail-meta">
@@ -115,22 +130,33 @@ function PackageDetail({
         </Badge>
         <PackageSummary item={item} />
       </div>
+      {setupProject && !pinned && (
+        <p className="package-optional-note">
+          Complemento opcional: o setup padrão instala apenas o pacote base.
+          Para incluir este pacote, use{" "}
+          <code>--include-optional {item.plugin.name}</code> no setup.
+        </p>
+      )}
       {pinned && (
         <a
           className="text-link latest-package-link"
-          href={packagePath(item.plugin.name, filters)}
+          href={packagePath(item.plugin.name, {
+            ...filters,
+            project: setupProject,
+          })}
           onClick={followLink}
         >
           Ver versão mais recente disponível
         </a>
       )}
       <DownloadFeedback state={download.state} retry={download.download} />
-      <section
+      <details
         className="panel package-release"
         aria-label="Versão em exibição"
       >
+        <summary>Informações técnicas da versão</summary>
         <VersionMetadata version={item.version} />
-      </section>
+      </details>
       <section className="panel package-panel package-detail-content">
         <h2>Componentes do pacote</h2>
         <p className="package-summary">

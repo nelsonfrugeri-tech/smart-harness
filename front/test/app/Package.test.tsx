@@ -65,8 +65,9 @@ it("shows package metadata and authenticated download from a direct URL", async 
   expect(
     await screen.findByRole("button", { name: "Baixar v1.0.0" }),
   ).toBeTruthy();
+  await userEvent.click(screen.getByText("Informações técnicas da versão"));
   const metadata = within(
-    screen.getByRole("region", { name: "Versão em exibição" }),
+    screen.getByRole("group", { name: "Versão em exibição" }),
   );
   expect(metadata.getByText("Somente a squad")).toBeTruthy();
   expect(metadata.getByText(digest)).toBeTruthy();
@@ -108,6 +109,11 @@ it("retains the pinned version and components on direct reload without asking fo
   );
   render(<App />);
   await screen.findByText("Versão fixada no projeto");
+  expect(
+    screen
+      .getByRole("link", { name: "Preparar ambiente" })
+      .getAttribute("href"),
+  ).toBe("/workspace/projects/investimentos-api#setup");
   expect(screen.getByText("investment-guide")).toBeTruthy();
   expect(
     screen.getByText("Composição da versão 1.0.0, fixada para este projeto."),
