@@ -172,12 +172,16 @@ export function Shell({
         <SidebarIdentity me={me} />
       </aside>
       <div className="main-shell" inert={mobileOpen}>
-        <header className="topbar">
+        <header
+          className={`topbar ${route.kind === "marketplace" ? "catalog-topbar" : ""}`}
+        >
           <div className="breadcrumb">
             <BookOpen size={16} />
             <strong>{isMarketplace ? "Marketplace" : "Workspace"}</strong>
           </div>
-          <MarketplaceSearch filters={filters} />
+          {route.kind !== "marketplace" && (
+            <MarketplaceSearch filters={filters} />
+          )}
           <Button variant="ghost" onClick={logout}>
             <LogOut size={16} />
             Sair

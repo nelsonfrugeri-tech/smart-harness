@@ -17,8 +17,13 @@ it("discovers whole packages using API filters from a reloadable URL", async () 
   expect(
     await screen.findByRole("heading", { name: "investment-base" }),
   ).toBeTruthy();
-  expect(screen.getByText("investment-guide")).toBeTruthy();
-  expect(screen.getByText("go-practices")).toBeTruthy();
+  expect(screen.getByText("1 agente")).toBeTruthy();
+  expect(screen.getByText("1 skill")).toBeTruthy();
+  expect(screen.queryByText("investment-guide")).toBeNull();
+  expect(screen.queryByText("go-practices")).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "Com skills", pressed: true }),
+  ).toBeTruthy();
   const request = fetcher.mock.calls
     .map(([input]) => String(input))
     .find((path) => path.startsWith("/v1/marketplace"));
@@ -131,8 +136,8 @@ it("resets pages on filter changes, ignores delayed pages and preserves filter f
   render(<App />);
   await screen.findByRole("button", { name: "Carregar mais" });
   await userEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
-  const filter = screen.getByRole("combobox", { name: "Pacotes contendo" });
-  await userEvent.selectOptions(filter, "mcp");
+  const filter = screen.getByRole("button", { name: "Com MCPs" });
+  await userEvent.click(filter);
   expect(document.activeElement).toBe(filter);
   await screen.findByRole("heading", { name: "review-tools" });
   await act(async () =>
@@ -142,7 +147,7 @@ it("resets pages on filter changes, ignores delayed pages and preserves filter f
   expect(screen.queryByRole("heading", { name: "investment-base" })).toBeNull();
   expect(location.search).toContain("kind=mcp");
 });
-it("submits shell search by keyboard and reloads filters on browser navigation", async () => {
+it("submits catalog search by keyboard and reloads filters on browser navigation", async () => {
   mockMarketplace((url) =>
     json({
       items: url.searchParams.get("q") === "review" ? [second] : [first],
@@ -170,12 +175,11 @@ it("submits shell search by keyboard and reloads filters on browser navigation",
   });
   await screen.findByRole("heading", { name: "investment-base" });
   expect(
-    screen.getByRole("combobox", { name: "Pacotes contendo" }),
-  ).toHaveProperty("value", "mcp");
-  expect(screen.getByRole("combobox", { name: "Contexto" })).toHaveProperty(
-    "value",
-    "investimentos-api",
-  );
+    screen.getByRole("button", { name: "Com MCPs", pressed: true }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("combobox", { name: "Pacotes disponíveis" }),
+  ).toHaveProperty("value", "investimentos-api");
   expect(screen.getByRole("searchbox")).toHaveProperty("value", "");
   expect(document.activeElement).toBe(search);
 });
@@ -197,6 +201,10 @@ it("opens the selected package and keeps query context on return", async () => {
   expect(location.pathname).toBe("/marketplace/packages/investment-base");
   expect(location.search).toBe("?kind=skill&q=go&limit=1");
   await screen.findByRole("heading", { name: "Componentes do pacote" });
+  expect(screen.getByRole("region", { name: "Agentes" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Skills" })).toBeTruthy();
+  expect(screen.getByText("investment-guide")).toBeTruthy();
+  expect(screen.getByText("go-practices")).toBeTruthy();
   await userEvent.click(
     screen.getByRole("link", { name: "Voltar aos resultados" }),
   );
@@ -375,4 +383,39 @@ it("preserves punctuation in direct search URLs", async () => {
   expect(new URL(request!, "http://localhost").searchParams.get("q")).toBe(
     "where?here",
   );
+});
+
+it("keeps a single catalog search and operates component filters with the keyboard", async () => {
+  const requests: URL[] = [];
+  mockMarketplace((url) => {
+    requests.push(url);
+    return json({ items: [first], next_cursor: null });
+  });
+  render(<App />);
+  await screen.findByRole("heading", { name: "investment-base" });
+  expect(screen.getAllByRole("searchbox")).toHaveLength(1);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("searchbox"));
+  await user.tab();
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: "Buscar" }),
+  );
+  await user.tab();
+  expect(document.activeElement).toBe(
+    screen.getByRole("button", { name: "Todos" }),
+  );
+  await user.keyboard("{Enter}");
+  expect(
+    screen.getByRole("button", { name: "Todos", pressed: true }),
+  ).toBeTruthy();
+  expect(new URLSearchParams(location.search).has("kind")).toBe(false);
+  await user.tab();
+  const agentFilter = screen.getByRole("button", { name: "Com agentes" });
+  expect(document.activeElement).toBe(agentFilter);
+  await user.keyboard(" ");
+  await waitFor(() =>
+    expect(requests.at(-1)?.searchParams.get("kind")).toBe("agent"),
+  );
+  expect(agentFilter.getAttribute("aria-pressed")).toBe("true");
+  expect(document.activeElement).toBe(agentFilter);
 });

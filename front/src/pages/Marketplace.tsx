@@ -1,20 +1,12 @@
 import { ArrowRight, Package } from "lucide-react";
 import type { Me, PluginItem, WorkspaceData } from "../api/client";
-import {
-  marketplacePath,
-  packagePath,
-  type MarketplaceFilters,
-} from "../app/marketplaceQuery";
-import { navigate } from "../app/navigation";
+import { packagePath, type MarketplaceFilters } from "../app/marketplaceQuery";
 import { useMarketplace } from "../app/useMarketplace";
-import {
-  Badge,
-  Button,
-  EmptyState,
-  PageHeading,
-} from "../components/Primitives";
+import { Button, EmptyState, PageHeading } from "../components/Primitives";
 import { Loading, RequestError } from "../components/RequestState";
-import { PackageContents } from "../components/PackageContents";
+import { PackageSummary } from "../components/PackageSummary";
+import { MarketplaceSearch } from "../components/MarketplaceSearch";
+import { MarketplaceFilters as CatalogFilters } from "../components/MarketplaceFilters";
 import { followLink } from "../components/Shell";
 interface Props {
   filters: MarketplaceFilters;
@@ -30,7 +22,6 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
   return (
     <div className="page marketplace-page">
       <PageHeading
-        eyebrow={filters.project ? "COMPLEMENTOS DO PROJETO" : "DESCUBRIR"}
         title="Marketplace"
         description={
           filters.project
@@ -38,62 +29,13 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
             : "Encontre pacotes com agentes, skills e MCPs para o seu trabalho."
         }
       />
-      <div className="marketplace-filters panel">
-        <label>
-          <span>Pacotes contendo</span>
-          <select
-            aria-label="Pacotes contendo"
-            value={filters.kind ?? ""}
-            onChange={(event) =>
-              navigate(
-                marketplacePath({
-                  ...filters,
-                  kind: event.target.value as MarketplaceFilters["kind"],
-                }),
-              )
-            }
-          >
-            <option value="">Todos os componentes</option>
-            <option value="agent">Agentes</option>
-            <option value="skill">Skills</option>
-            <option value="mcp">MCPs</option>
-          </select>
-        </label>
-        <label>
-          <span>Contexto</span>
-          <select
-            aria-label="Contexto"
-            value={filters.project ?? ""}
-            onChange={(event) =>
-              navigate(
-                marketplacePath({
-                  ...filters,
-                  project: event.target.value || undefined,
-                }),
-              )
-            }
-          >
-            <option value="">Marketplace geral</option>
-            {filters.project && !project && (
-              <option value={filters.project}>Projeto indisponível</option>
-            )}
-            {projects.map((item) => (
-              <option key={item.slug} value={item.slug}>
-                Complementos · {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {(filtered || filters.project) && (
-          <a
-            className="text-link"
-            href={marketplacePath({ limit: filters.limit })}
-            onClick={followLink}
-          >
-            Limpar filtros
-          </a>
-        )}
-      </div>
+      <section
+        className="catalog-discovery"
+        aria-label="Buscar e filtrar pacotes"
+      >
+        <MarketplaceSearch filters={filters} prominent />
+        <CatalogFilters filters={filters} projects={projects} />
+      </section>
       {filters.q && (
         <p className="search-context">
           Busca por <strong>“{filters.q}”</strong>
@@ -199,25 +141,27 @@ function PackageCard({
 }) {
   return (
     <article className="panel marketplace-card">
-      <div className="package-meta">
+      <div className="package-card-heading">
         <span className="package-symbol">
-          <Package size={22} />
+          <Package size={22} aria-hidden="true" />
         </span>
-        <Badge tone="blue">v{item.version.version}</Badge>
+        <h2>
+          <a href={packagePath(item.plugin.name, filters)} onClick={followLink}>
+            {item.plugin.name}
+            <ArrowRight size={17} aria-hidden="true" />
+          </a>
+        </h2>
       </div>
-      <h2>
-        <a href={packagePath(item.plugin.name, filters)} onClick={followLink}>
-          {item.plugin.name}
-          <ArrowRight size={17} aria-hidden="true" />
-        </a>
-      </h2>
       <p className="package-description">
         {item.version.description ||
           item.plugin.description ||
           "Sem descrição cadastrada."}
       </p>
-      <p className="package-owner">{item.plugin.tenant.name}</p>
-      <PackageContents item={item} compact />
+      <PackageSummary item={item} />
+      <footer className="package-card-footer">
+        <span className="package-owner">{item.plugin.tenant.name}</span>
+        <span className="package-version">v{item.version.version}</span>
+      </footer>
     </article>
   );
 }

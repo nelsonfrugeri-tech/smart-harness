@@ -7,8 +7,10 @@ import {
 import { navigate } from "../app/navigation";
 export function MarketplaceSearch({
   filters,
+  prominent = false,
 }: {
   filters: MarketplaceFilters;
+  prominent?: boolean;
 }) {
   const [query, setQuery] = useState(filters.q ?? "");
   useEffect(() => {
@@ -16,7 +18,7 @@ export function MarketplaceSearch({
   }, [filters.q, filters.kind, filters.project, filters.limit]);
   return (
     <form
-      className="marketplace-search"
+      className={`marketplace-search ${prominent ? "catalog-search" : ""}`}
       role="search"
       onSubmit={(event) => {
         event.preventDefault();
@@ -26,6 +28,7 @@ export function MarketplaceSearch({
       <label className="sr-only" htmlFor="marketplace-search">
         Buscar pacotes e componentes
       </label>
+      {prominent && <Search size={21} aria-hidden="true" />}
       <input
         id="marketplace-search"
         type="search"
@@ -34,8 +37,12 @@ export function MarketplaceSearch({
         onChange={(event) => setQuery(event.target.value)}
         maxLength={100}
       />
-      <button type="submit" className="icon-button" aria-label="Buscar">
-        <Search size={19} />
+      <button
+        type="submit"
+        className={prominent ? "button button-primary" : "icon-button"}
+        aria-label="Buscar"
+      >
+        {prominent ? "Buscar" : <Search size={19} />}
       </button>
     </form>
   );

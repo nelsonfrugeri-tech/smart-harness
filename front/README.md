@@ -58,12 +58,12 @@ não inclui esse usuário. Não altere o seed apenas para demonstrar essa tela.
 ## Demonstrar o Marketplace
 
 1. Entre como `dev@smart-harness.local` e abra **Marketplace**. Os cards mostram
-   pacote, versão visível, squad dona e composição. Não aparecem pacotes de Cartões.
-2. Pesquise `golang` no campo do shell e pressione Enter. Filtre **Pacotes contendo →
+   pacote, descrição, contagem por componente, squad dona e versão visível. Não aparecem pacotes de Cartões.
+2. Pesquise `golang` no campo principal do catálogo e pressione Enter. Ative **Com
    MCPs**: o resultado continua sendo o pacote completo, com seus outros componentes.
-3. Em **Contexto**, selecione os complementos de Investimentos (ou use **Explorar
+3. Em **Pacotes disponíveis**, selecione **Complementos de Investimentos** (ou use **Explorar
    complementos** na página do projeto). `code-review` aparece; o pacote base
-   `investimentos-base` não aparece entre os complementos. **Marketplace geral**
+   `investimentos-base` não aparece entre os complementos. **Todos os pacotes disponíveis**
    remove o contexto de projeto; **Limpar filtros** também remove busca e tipo.
 4. Recarregue a URL, abra um pacote e use **Voltar aos resultados**. Busca, tipo e
    projeto permanecem na URL. Teste também voltar/avançar do navegador.
@@ -78,8 +78,10 @@ não inclui esse usuário. Não altere o seed apenas para demonstrar essa tela.
    `code-review` organizacional, sem os pacotes de Conta/Investimentos. Uma URL de
    complementos sem acesso mostra indisponibilidade, e não uma busca vazia.
 
-A tela de pacote desta entrega permite conferir a composição da última versão
-visível. Histórico de versões e download pertencem à #27; tokens e setup também
+A tela de pacote desta entrega agrupa agentes, skills e MCPs da última versão
+visível. Os botões de tipo selecionam pacotes que contêm esses componentes; Tab,
+Enter e Espaço permitem operá-los mantendo o foco. Há uma única busca no catálogo,
+logo abaixo do título, e busca no shell nas demais páginas. Histórico de versões e download pertencem à #27; tokens e setup também
 ficam para suas respectivas issues.
 
 ## Verificar e gerar tipos

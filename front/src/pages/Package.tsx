@@ -6,8 +6,9 @@ import {
   type MarketplaceFilters,
 } from "../app/marketplaceQuery";
 import { useResource } from "../app/useResource";
+import { PackageSummary } from "../components/PackageSummary";
 import { PackageContents } from "../components/PackageContents";
-import { Badge, PageHeading } from "../components/Primitives";
+import { PageHeading } from "../components/Primitives";
 import { Loading, RequestError } from "../components/RequestState";
 import { followLink } from "../components/Shell";
 export function Package({
@@ -43,21 +44,26 @@ export function Package({
       ) : (
         <>
           <PageHeading
-            eyebrow={state.data.plugin.tenant.name}
             title={state.data.plugin.name}
             description={
               state.data.version.description ||
               state.data.plugin.description ||
               "Sem descrição cadastrada."
             }
-            action={<Badge tone="blue">v{state.data.version.version}</Badge>}
           />
-          <section className="panel package-panel">
+          <div className="package-detail-meta">
+            <span>{state.data.plugin.tenant.name}</span>
+            <span className="package-version">
+              v{state.data.version.version}
+            </span>
+            <PackageSummary item={state.data} />
+          </div>
+          <section className="panel package-panel package-detail-content">
             <h2>Componentes do pacote</h2>
             <p className="package-summary">
               Composição da última versão disponível para sua conta.
             </p>
-            <PackageContents item={state.data} />
+            <PackageContents item={state.data} grouped />
           </section>
         </>
       )}
