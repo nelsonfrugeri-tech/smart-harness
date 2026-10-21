@@ -1,8 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { createPackageStorage } from "../src/storage/packages.ts";
-import { FakeS3, seededDatabase, TEST_BUCKET } from "../src/test-support.ts";
-import { FIXTURES, PACKAGES_DIR, seedMarketplace } from "./marketplace.ts";
+import { createPackageStorage } from "../../src/storage/packages.ts";
+import { FakeS3, seededDatabase, TEST_BUCKET } from "../test-support.ts";
+import { FIXTURES, PACKAGES_DIR, seedMarketplace } from "../../seed/marketplace.ts";
 
 // Expected archive paths of each declared component, in the package layout of the ADR.
 function expectedPaths(kind: string, name: string): string[] {

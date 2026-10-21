@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { echoBackend } from "./backends/echo.ts";
-import { ACTIVE_GATEWAY_TOKEN_SQL } from "./db/access.ts";
-import { hashGatewayToken } from "./domain/gateway-token.ts";
+import { echoBackend } from "../src/backends/echo.ts";
+import { ACTIVE_GATEWAY_TOKEN_SQL } from "../src/db/access.ts";
+import { hashGatewayToken } from "../src/domain/gateway-token.ts";
 import {
   connectClient,
   countingBackend,

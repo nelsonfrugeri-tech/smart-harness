@@ -11,11 +11,11 @@ import { openDatabase as openApiDatabase, type Db as ApiDb } from "../../control
 import { insertGatewayToken, revokeGatewayToken } from "../../control-plane/src/db/repos/gateway-tokens.ts";
 import { runMigrations } from "../../control-plane/src/db/migrate.ts";
 import { generateGatewayToken } from "../../control-plane/src/domain/gateway-token.ts";
-import { echoBackend } from "./backends/echo.ts";
-import { createAuditSink } from "./db/audit.ts";
-import { openAuditDatabase, openReadDatabase, type Db } from "./db/database.ts";
-import { createRegistry, type McpBackend } from "./mcp/backend.ts";
-import { buildServer } from "./server.ts";
+import { echoBackend } from "../src/backends/echo.ts";
+import { createAuditSink } from "../src/db/audit.ts";
+import { openAuditDatabase, openReadDatabase, type Db } from "../src/db/database.ts";
+import { createRegistry, type McpBackend } from "../src/mcp/backend.ts";
+import { buildServer } from "../src/server.ts";
 
 export interface Fixture {
   app: FastifyInstance;

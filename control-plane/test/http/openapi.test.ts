@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { Db } from "../db/database.ts";
+import type { Db } from "../../src/db/database.ts";
 import { login, marketplaceFixture, registeredRoutes, testServer } from "../test-support.ts";
 
 interface ResponseObject {

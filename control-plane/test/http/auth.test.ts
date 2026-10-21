@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { SignJWT } from "jose";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "../db/database.ts";
-import { findProjectBySlug } from "../db/repos/projects.ts";
-import { upsertUser } from "../db/repos/seed.ts";
+import type { Db } from "../../src/db/database.ts";
+import { findProjectBySlug } from "../../src/db/repos/projects.ts";
+import { upsertUser } from "../../src/db/repos/seed.ts";
 import { login, seededDatabase, TEST_SECRET, tenantId, testServer, userId } from "../test-support.ts";
-import { authenticate } from "./auth.ts";
-import { notFound } from "./problem.ts";
+import { authenticate } from "../../src/http/auth.ts";
+import { notFound } from "../../src/http/problem.ts";
 
 const DEV = "dev@smart-harness.local";
 const DEV_CARTOES = "dev.cartoes@smart-harness.local";

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "../../db/database.ts";
-import { upsertUser } from "../../db/repos/seed.ts";
+import type { Db } from "../../../src/db/database.ts";
+import { upsertUser } from "../../../src/db/repos/seed.ts";
 import { login, marketplaceFixture, TEST_GATEWAY_URL, TEST_SECRET, testServer } from "../../test-support.ts";
 
 const DEV = "dev@smart-harness.local"; // DEV in investimentos and conta

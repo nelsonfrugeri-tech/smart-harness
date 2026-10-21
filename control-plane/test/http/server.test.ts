@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "../db/database.ts";
+import type { Db } from "../../src/db/database.ts";
 import { seededDatabase, testServer } from "../test-support.ts";
 
 describe("control-plane server", () => {

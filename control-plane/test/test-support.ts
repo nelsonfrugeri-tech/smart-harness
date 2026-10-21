@@ -10,11 +10,11 @@ import {
 import type { FastifyInstance } from "fastify";
 import { seedLocalData } from "../seed/local-data.ts";
 import { seedMarketplace } from "../seed/marketplace.ts";
-import type { AppEnv } from "./config.ts";
-import { openDatabase, type Db } from "./db/database.ts";
-import { runMigrations } from "./db/migrate.ts";
-import { buildServer } from "./http/server.ts";
-import { createPackageStorage, type PackageStorage, type S3Sender } from "./storage/packages.ts";
+import type { AppEnv } from "../src/config.ts";
+import { openDatabase, type Db } from "../src/db/database.ts";
+import { runMigrations } from "../src/db/migrate.ts";
+import { buildServer } from "../src/http/server.ts";
+import { createPackageStorage, type PackageStorage, type S3Sender } from "../src/storage/packages.ts";
 
 export const TEST_SECRET = new TextEncoder().encode("test-secret-with-at-least-32-characters");
 

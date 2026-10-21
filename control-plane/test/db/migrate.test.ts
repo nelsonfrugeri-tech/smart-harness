@@ -2,8 +2,8 @@ import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { openDatabase, type Db } from "./database.ts";
-import { runMigrations } from "./migrate.ts";
+import { openDatabase, type Db } from "../../src/db/database.ts";
+import { runMigrations } from "../../src/db/migrate.ts";
 
 describe("runMigrations", () => {
   let dir: string;

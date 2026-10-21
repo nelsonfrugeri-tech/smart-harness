@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { listMembershipsOfUser } from "../src/db/repos/identity.ts";
-import { seededDatabase, userId } from "../src/test-support.ts";
-import { seedLocalData } from "./local-data.ts";
+import { listMembershipsOfUser } from "../../src/db/repos/identity.ts";
+import { seededDatabase, userId } from "../test-support.ts";
+import { seedLocalData } from "../../seed/local-data.ts";
 
 function counts(db: ReturnType<typeof seededDatabase>) {
   return db

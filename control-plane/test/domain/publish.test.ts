@@ -4,13 +4,13 @@ import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { Db } from "../db/database.ts";
-import { findUserByEmail, listMembershipsOfUser } from "../db/repos/identity.ts";
-import { createPackageStorage, type PackageStorage } from "../storage/packages.ts";
+import type { Db } from "../../src/db/database.ts";
+import { findUserByEmail, listMembershipsOfUser } from "../../src/db/repos/identity.ts";
+import { createPackageStorage, type PackageStorage } from "../../src/storage/packages.ts";
 import { FakeS3, seededDatabase, TEST_BUCKET, tenantId } from "../test-support.ts";
-import { buildPrincipal, type Principal } from "./access.ts";
-import { PublishError, type PreparedPackage } from "./marketplace.ts";
-import { persistVersion, prepareVersion, type HarnessClient } from "./publish.ts";
+import { buildPrincipal, type Principal } from "../../src/domain/access.ts";
+import { PublishError, type PreparedPackage } from "../../src/domain/marketplace.ts";
+import { persistVersion, prepareVersion, type HarnessClient } from "../../src/domain/publish.ts";
 
 function principal(db: Db, email: string): Principal {
   const user = findUserByEmail(db, email);

@@ -8,3 +8,4 @@
 - Código fácil de explicar: pastas por responsabilidade, nomes explícitos, poucas dependências justificadas no README do componente.
 - No Node, libs padrão de mercado são bem-vindas.
 - Sem padrões de resiliência (retry, backoff, circuit breaker) na Fase 1.
+- TypeScript: `src/` só tem código de produção; testes e helpers de teste ficam em `test/`, espelhando `src/`. Go: `_test.go` ao lado do código, por convenção da linguagem.

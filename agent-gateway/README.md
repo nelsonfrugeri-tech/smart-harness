@@ -59,7 +59,7 @@ escritor espera o outro. Um endpoint interno na API adicionaria uma credencial e
 proteger e a dependência da API estar de pé para auditar. Em troca, o gateway conhece a tabela `audit_events`.
 O gateway abre o arquivo duas vezes: leitura (`readonly`) para token, memberships, projetos e permissões, e
 escrita só para o `INSERT` de auditoria. Falha ao auditar derruba a chamada com 500 (sem retry). Evidência:
-`src/audit-concurrency.test.ts` roda dois processos (um grava como a API, outro como o gateway), 500 escritas cada, e
+`test/audit-concurrency.test.ts` roda dois processos (um grava como a API, outro como o gateway), 500 escritas cada, e
 confere 1.000 linhas e `PRAGMA integrity_check` = `ok`. O arquivo é criado e migrado pela API; o gateway só abre
 (`fileMustExist`) e no compose sobe depois da API saudável.
 

@@ -4,4 +4,5 @@
 cli/bin
 .git
 .env
-**/test-support.ts
+control-plane/test
+agent-gateway/test
