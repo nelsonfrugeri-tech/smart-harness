@@ -2,6 +2,9 @@
 import { createHash } from "node:crypto";
 
 export type Visibility = "squad" | "organization";
+export type PluginType = "connector" | "skill" | "agent";
+export const PLUGIN_TYPES: readonly PluginType[] = ["connector", "skill", "agent"];
+
 export type ComponentKind = "agent" | "skill" | "mcp";
 
 export const VISIBILITIES: readonly Visibility[] = ["squad", "organization"];
@@ -22,6 +25,7 @@ export interface PackageManifest {
   name: string;
   version: string;
   description: string;
+  keywords?: string[];
   components: Component[];
 }
 

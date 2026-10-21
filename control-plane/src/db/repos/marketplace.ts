@@ -5,6 +5,7 @@ import {
   PublishError,
   type Component,
   type ComponentKind,
+  type PluginType,
   type PackageManifest,
   type Visibility,
 } from "../../domain/marketplace.ts";
@@ -15,8 +16,15 @@ import {
 const VISIBLE = `(p.tenant_id IN (SELECT value FROM json_each(@scope))
    OR (v.visibility = 'organization' AND json_array_length(@scope) > 0))`;
 
+const PACKAGE_TYPE = `CASE
+  WHEN EXISTS (SELECT 1 FROM components c WHERE c.version_id = v.id)
+   AND NOT EXISTS (SELECT 1 FROM components c WHERE c.version_id = v.id AND c.kind <> 'mcp') THEN 'connector'
+  WHEN EXISTS (SELECT 1 FROM components c WHERE c.version_id = v.id)
+   AND NOT EXISTS (SELECT 1 FROM components c WHERE c.version_id = v.id AND c.kind <> 'skill') THEN 'skill'
+  ELSE 'agent' END`;
+
 const VERSION_COLUMNS = `v.id, v.version, v.visibility, v.description, v.digest,
-  v.size_bytes AS sizeBytes, v.published_at AS publishedAt`;
+  v.keywords, v.size_bytes AS sizeBytes, v.published_at AS publishedAt`;
 
 export interface TenantRef {
   slug: string;
@@ -31,6 +39,7 @@ export interface VersionRecord {
   digest: string;
   sizeBytes: number;
   publishedAt: string;
+  keywords: string;
 }
 
 // A plugin with its latest visible version and that version's components.
@@ -43,6 +52,7 @@ export interface PluginEntry {
 
 export interface MarketplaceFilter {
   kind?: ComponentKind;
+  type?: PluginType;
   q?: string;
   name?: string;
   // Keyset pagination: only plugins whose name sorts after this one.
@@ -79,9 +89,11 @@ export function listMarketplace(db: Db, scope: Scope, filter: MarketplaceFilter)
           AND (@after IS NULL OR p.name > @after)
           AND (@kind IS NULL OR EXISTS (
                 SELECT 1 FROM components c WHERE c.version_id = v.id AND c.kind = @kind))
+          AND (@type IS NULL OR (${PACKAGE_TYPE}) = @type)
           AND (@pattern IS NULL
                 OR p.name LIKE @pattern ESCAPE '\\'
                 OR v.description LIKE @pattern ESCAPE '\\'
+                OR EXISTS (SELECT 1 FROM json_each(v.keywords) k WHERE k.value LIKE @pattern ESCAPE '\\')
                 OR EXISTS (SELECT 1 FROM components c
                             WHERE c.version_id = v.id
                               AND (c.name LIKE @pattern ESCAPE '\\' OR c.description LIKE @pattern ESCAPE '\\')))
@@ -95,6 +107,7 @@ export function listMarketplace(db: Db, scope: Scope, filter: MarketplaceFilter)
       name: filter.name ?? null,
       after: filter.afterName ?? null,
       kind: filter.kind ?? null,
+      type: filter.type ?? null,
       pattern: filter.q === undefined ? null : `%${escapeLike(filter.q)}%`,
       excluded: filter.excludeBaselineOf ?? null,
       limit: filter.limit,
@@ -232,14 +245,15 @@ export function savePublishedVersion(
 
     const { lastInsertRowid } = db
       .prepare(
-        `INSERT INTO plugin_versions (plugin_id, version, visibility, description, digest, size_bytes, published_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO plugin_versions (plugin_id, version, visibility, description, keywords, digest, size_bytes, published_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         pluginId,
         manifest.version,
         input.visibility,
         manifest.description,
+        JSON.stringify(manifest.keywords ?? []),
         input.digest,
         input.sizeBytes,
         scope.userId,
@@ -319,6 +333,7 @@ function withComponents(db: Db, rows: EntryRow[]): PluginEntry[] {
       digest: row.digest,
       sizeBytes: row.sizeBytes,
       publishedAt: row.publishedAt,
+      keywords: row.keywords,
     },
     components: componentsByVersion.get(row.id) ?? [],
   }));

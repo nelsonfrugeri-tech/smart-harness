@@ -33,6 +33,8 @@ export interface ValidationFinding {
 }
 
 export interface ValidationReport {
+  description?: string;
+  keywords?: string[];
   valid: boolean;
   findings: ValidationFinding[];
 }
@@ -70,7 +72,7 @@ export async function prepareVersion(harness: HarnessClient, sourceDir: string):
         `harness pack printed ${digest} but the archive hashes to ${digestOf(archive)}`,
       );
     }
-    return { manifest: await readManifest(packageDir), archive, digest };
+    return { manifest: await readManifest(packageDir, report), archive, digest };
   } finally {
     await rm(workDir, { recursive: true, force: true });
   }
@@ -119,7 +121,7 @@ export async function persistVersion(
 
 // Reads what the Marketplace lists from the package directory: plugin.json, the skill folders,
 // the agent files and the MCP server names. Only file names and JSON, no other parsing.
-export async function readManifest(dir: string): Promise<PackageManifest> {
+export async function readManifest(dir: string, report?: Pick<ValidationReport, "description" | "keywords">): Promise<PackageManifest> {
   const plugin = (await readJson(join(dir, "plugin.json"))) as Partial<PackageManifest> | undefined;
   if (!plugin) {
     throw new PublishError("invalid_package", "plugin.json is missing");
@@ -137,7 +139,8 @@ export async function readManifest(dir: string): Promise<PackageManifest> {
   const manifest: PackageManifest = {
     name: String(plugin.name ?? ""),
     version: String(plugin.version ?? ""),
-    description: String(plugin.description ?? ""),
+    description: report?.description ?? String(plugin.description ?? ""),
+    keywords: report?.keywords ?? plugin.keywords ?? [],
     components: [...agents, ...skills, ...servers].sort((a, b) =>
       `${a.kind}/${a.name}`.localeCompare(`${b.kind}/${b.name}`),
     ),
@@ -147,6 +150,9 @@ export async function readManifest(dir: string): Promise<PackageManifest> {
 }
 
 function checkManifest(manifest: PackageManifest): void {
+  if (manifest.keywords !== undefined && (!Array.isArray(manifest.keywords) || manifest.keywords.some((item) => typeof item !== "string"))) {
+    throw new PublishError("invalid_package", "keywords must be an array of strings");
+  }
   if (!isPluginName(manifest.name)) {
     throw new PublishError("invalid_package", `plugin name "${manifest.name}" is invalid`);
   }

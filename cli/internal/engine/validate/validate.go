@@ -20,7 +20,7 @@ import (
 const DefaultGatewayOrigin = "http://127.0.0.1:8081"
 
 // ReportVersion changes only when the report shape changes.
-const ReportVersion = "1"
+const ReportVersion = "2"
 
 // Options configures a validation.
 type Options struct {
@@ -35,10 +35,12 @@ type Options struct {
 type Report struct {
 	ReportVersion string      `json:"report_version"`
 	Valid         bool        `json:"valid"`
-	Plugin        string      `json:"plugin"`     // name as written in plugin.json, "" when absent
-	Version       string      `json:"version"`    // "" when absent
-	Digest        string      `json:"digest"`     // what `harness pack` would print; "" when pack would refuse the directory
-	Components    []Component `json:"components"` // valid components only, sorted by kind and name
+	Plugin        string      `json:"plugin"`      // name as written in plugin.json, "" when absent
+	Version       string      `json:"version"`     // "" when absent
+	Description   string      `json:"description"` // "" when absent
+	Keywords      []string    `json:"keywords"`    // [] when absent
+	Digest        string      `json:"digest"`      // what `harness pack` would print; "" when pack would refuse the directory
+	Components    []Component `json:"components"`  // valid components only, sorted by kind and name
 	Findings      []Finding   `json:"findings"`
 }
 
@@ -121,6 +123,7 @@ func Policy(p pkg.Package, tree pkg.Tree, parsed []pkg.Finding, opts Options) []
 func newReport(p pkg.Package, findings []pkg.Finding) Report {
 	pkg.SortFindings(findings)
 	r := Report{ReportVersion: ReportVersion, Plugin: p.Manifest.Name, Version: p.Manifest.Version,
+		Description: p.Manifest.Description, Keywords: append([]string{}, p.Manifest.Keywords...),
 		Components: []Component{}, Findings: []Finding{}}
 	for _, a := range p.Agents {
 		r.Components = append(r.Components, Component{Kind: "agent", Name: a.Name, Description: a.Description})

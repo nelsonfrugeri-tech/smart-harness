@@ -53,7 +53,13 @@ function parseReport(output: string): ValidationReport | undefined {
   try {
     const value = JSON.parse(output) as Partial<ValidationReport>;
     if (typeof value.valid !== "boolean") return undefined;
-    return { valid: value.valid, findings: Array.isArray(value.findings) ? value.findings : [] };
+    if (value.description !== undefined && typeof value.description !== "string") return undefined;
+    if (value.keywords !== undefined && (!Array.isArray(value.keywords) || value.keywords.some((tag) => typeof tag !== "string"))) return undefined;
+    return {
+      valid: value.valid, findings: Array.isArray(value.findings) ? value.findings : [],
+      ...(value.description === undefined ? {} : { description: value.description }),
+      ...(value.keywords === undefined ? {} : { keywords: value.keywords }),
+    };
   } catch {
     return undefined;
   }

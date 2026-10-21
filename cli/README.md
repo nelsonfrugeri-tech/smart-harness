@@ -92,10 +92,12 @@ Depois de `generate --target claude-code`, o mesmo diretório ganha `.claude-plu
 
 ## Regras do `validate --json`
 
+O relatório `report_version: "2"` inclui `description` (texto do manifesto, ou `""` quando ausente) e `keywords` (tags do manifesto, ou `[]` quando ausentes). Os valores são preservados sem normalização.
+
 `digest` é o que `harness pack` imprimiria; `""` quando o `pack` recusaria o diretório. `components` lista só os componentes válidos (`agent`, `mcp`, `skill`), ordenados por tipo e nome. Todo achado tem `severity: "error"`. Os achados saem ordenados por `path`, `line` e `code`. `line` é 1-based; `0` quando o defeito não tem linha. `findings` é `[]` quando o pacote é válido. Nenhuma mensagem repete o texto que parece segredo.
 
 ```json
-{"report_version": "1", "valid": false, "plugin": "example", "version": "1.0.0", "digest": "sha256:…",
+{"report_version": "2", "valid": false, "plugin": "example", "version": "1.0.0", "description": "Exemplo de pacote.", "keywords": ["review"], "digest": "sha256:…",
  "components": [{"kind": "agent", "name": "reviewer", "description": "…"}, {"kind": "mcp", "name": "docs", "description": ""}],
  "findings": [{"code": "SH-SEC-002", "severity": "error", "message": "…", "hint": "…", "path": "README.md", "line": 3}]}
 ```
@@ -119,7 +121,8 @@ Depois de `generate --target claude-code`, o mesmo diretório ganha `.claude-plu
 | `SH-STR-002` | Plataforma | Arquivo gerado idêntico à saída do gerador |
 | `SH-STR-003` | Plataforma | YAML simples no frontmatter de `SKILL.md` e de agente: sem anchor (`&`), alias (`*`), merge key (`<<`), tag explícita (`!!str`, `!x`), chave que não é string, chave repetida em qualquer nível ou segundo documento. JSON de `plugin.json` e `mcp.json` sem chave repetida em nenhum objeto |
 | `SH-NAM-001` | Plataforma | Nome não reservado pelo Claude Code: sem `.`, sem prefixo `cc-plugin-` e sem as palavras `claude`, `anthropic` ou `anthropics` |
-| `SH-VER-001` | Plataforma | `version` em SemVer e `description` presentes |
+| `SH-MAN-001` | Plataforma | `description` presente e não vazia após remover espaços |
+| `SH-VER-001` | Plataforma | `version` presente e em SemVer |
 | `SH-LIM-001` | Plataforma | Até 2.000 arquivos, 5 MiB por arquivo e 50 MiB no total |
 
 `SH-STR-003` existe porque o cliente resolve merge, alias e chave repetida (o último valor vence) antes de ler o arquivo. Uma regra que lesse só as chaves escritas veria outro conteúdo. Um `<<:` com `hooks:` no `SKILL.md`, por exemplo, registra um hook no Claude Code 2.1.305. Como defesa extra, os campos proibidos também são procurados no mapa já resolvido.

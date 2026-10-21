@@ -82,9 +82,10 @@ describe("workspace and setup-plan", () => {
     expect(plan.gateway).toEqual({ url: TEST_GATEWAY_URL });
     expect(plan.baseline.map((entry: { plugin: { name: string }; version: { version: string } }) =>
       `${entry.plugin.name}@${entry.version.version}`)).toEqual(["investimentos-base@1.2.1"]);
+    expect(plan.baseline[0]).toMatchObject({ type: "agent", keywords: [] });
     expect(plan.baseline[0].version.archive_url).toBe("/v1/plugins/investimentos-base/versions/1.2.1/archive");
     // conta-base is visible to the caller (DEV in conta) but not to the investimentos squad.
-    expect(plan.optional.items.map((entry: { plugin: { name: string } }) => entry.plugin.name)).toEqual(["code-review"]);
+    expect(plan.optional.items.map((entry: { plugin: { name: string } }) => entry.plugin.name)).toEqual(["code-review", "github-connector"]);
     expect(plan.optional.next_cursor).toBeNull();
   });
 
