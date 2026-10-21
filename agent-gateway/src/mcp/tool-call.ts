@@ -42,6 +42,7 @@ export async function executeToolCall(
 
   if (access.kind === "search") {
     if (allowed.length === 0) {
+      if (access.denyWhenEmpty === true) return denied("no_resources_allowed", access.resourceType, null);
       return {
         result: { content: [] },
         outcome: "ok",

@@ -48,8 +48,8 @@ describe("seedLocalData", () => {
   it("replaces sample service grants without retaining previously configured resources", () => {
     const db = seededDatabase();
     try {
-      seedLocalData(db, { githubRepo: "example/first", trelloBoard: "firstboard", notionPage: "firstpage" });
-      seedLocalData(db, { githubRepo: "example/second", trelloBoard: "secondboard", notionPage: "secondpage" });
+      seedLocalData(db, { githubRepos: ["example/first"], trelloBoardId: "firstboard", notionPageIds: ["firstpage"] });
+      seedLocalData(db, { githubRepos: ["example/second"], trelloBoardId: "secondboard", notionPageIds: ["secondpage"] });
       const rows = db.prepare("SELECT server, resource_id AS id FROM gateway_permissions ORDER BY server").all();
       expect(rows).toEqual([
         { server: "echo", id: "demo-item" },
@@ -58,6 +58,21 @@ describe("seedLocalData", () => {
         { server: "project", id: "investimentos-api" },
         { server: "trello", id: "secondboard" },
       ]);
+    } finally { db.close(); }
+  });
+
+  it("grants multiple configured resources, deduplicates them and revokes access for empty lists", () => {
+    const db = seededDatabase();
+    try {
+      const counts = seedLocalData(db, {
+        githubRepos: ["example/one", "example/two", " example/one ", ""],
+        notionPageIds: ["page-one", "page-two"],
+      });
+      expect(counts.gatewayPermissions).toBe(6);
+      expect(db.prepare("SELECT resource_id AS id FROM gateway_permissions WHERE server = 'github' ORDER BY resource_id").all()).toEqual([{ id: "example/one" }, { id: "example/two" }]);
+      expect(db.prepare("SELECT resource_id AS id FROM gateway_permissions WHERE server = 'notion' ORDER BY resource_id").all()).toEqual([{ id: "page-one" }, { id: "page-two" }]);
+      expect(seedLocalData(db).gatewayPermissions).toBe(2);
+      expect(db.prepare("SELECT server FROM gateway_permissions WHERE server IN ('github', 'trello', 'notion')").all()).toEqual([]);
     } finally { db.close(); }
   });
 

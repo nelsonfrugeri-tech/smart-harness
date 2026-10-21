@@ -2,9 +2,24 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { configuredBackends } from "../src/backends/index.ts";
 import { loadConfig } from "../src/config.ts";
+import { createNotionBackend } from "../src/backends/notion/index.ts";
 import { connectClient, createFixture, DEV } from "./test-support.ts";
 
 describe("project context through the authenticated MCP endpoint", () => {
+  it("audits denied Notion searches when no pages are allowed", async () => {
+    const fixture = await createFixture({ backends: [createNotionBackend({ token: "test-only", baseUrl: "http://127.0.0.1:9/" })] });
+    const client = await connectClient(fixture.mcpUrl("conta-digital", "notion"), fixture.token(DEV));
+    try {
+      const denied = await client.callTool({ name: "search_pages", arguments: { query: "ADR" } });
+      expect(denied.isError).toBe(true);
+      const rows = fixture.auditRows();
+      expect(rows).toHaveLength(1);
+      expect(JSON.parse(rows[0].details)).toMatchObject({ outcome: "denied", reason: "no_resources_allowed" });
+    } finally {
+      await client.close();
+      await fixture.close();
+    }
+  });
   it("reads real project documents and denies another project in the same squad", async () => {
     const config = loadConfig({ PROJECT_CONTEXT_ROOT: fileURLToPath(new URL("../../examples/", import.meta.url)) });
     const fixture = await createFixture({ backends: configuredBackends(config) });

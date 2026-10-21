@@ -50,19 +50,16 @@ const USERS: { email: string; name: string; memberships: [TenantSlug, Role][] }[
   { email: "dev.cartoes@smart-harness.local", name: "Dev Cartões", memberships: [["cartoes", "DEV"]] },
 ];
 
-// Local sample permissions. Tests use fixed placeholders; seed/run.ts supplies configured service ids.
+// Runtime service grants come only from explicit configuration, never from placeholder resources.
 const GATEWAY_PERMISSIONS = [
-  { projectSlug: "investimentos-api", server: "github", resourceType: "repo", resourceId: "acme-fake/investimentos-api" },
-  { projectSlug: "investimentos-api", server: "trello", resourceType: "board", resourceId: "board-investimentos-001" },
-  { projectSlug: "investimentos-api", server: "notion", resourceType: "page", resourceId: "page-investimentos-adrs" },
   { projectSlug: "investimentos-api", server: "echo", resourceType: "item", resourceId: "demo-item" },
   { projectSlug: "investimentos-api", server: "project", resourceType: "project", resourceId: "investimentos-api" },
 ] as const;
 
 export interface ServiceResources {
-  githubRepo?: string;
-  trelloBoard?: string;
-  notionPage?: string;
+  githubRepos?: readonly string[];
+  trelloBoardId?: string;
+  notionPageIds?: readonly string[];
 }
 
 // Idempotent: every write is an upsert, all in one transaction.
@@ -70,6 +67,14 @@ export function seedLocalData(
   db: Db,
   resources: ServiceResources = {},
 ): { tenants: number; projects: number; users: number; gatewayPermissions: number } {
+  const grant = (server: string, resourceType: string, resourceId: string) => ({ projectSlug: "investimentos-api", server, resourceType, resourceId });
+  const unique = (values: readonly string[]) => [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  const permissions = [
+    ...GATEWAY_PERMISSIONS,
+    ...unique(resources.githubRepos ?? []).map((id) => grant("github", "repo", id)),
+    ...unique(resources.trelloBoardId ? [resources.trelloBoardId] : []).map((id) => grant("trello", "board", id)),
+    ...unique(resources.notionPageIds ?? []).map((id) => grant("notion", "page", id)),
+  ];
   db.transaction(() => {
     const tenantIds = new Map<string, string>();
     for (const tenant of TENANTS) {
@@ -88,20 +93,15 @@ export function seedLocalData(
     // previous sample ids rather than silently leaving old boards and pages authorized.
     const clear = db.prepare(`DELETE FROM gateway_permissions
       WHERE project_id = (SELECT id FROM projects WHERE slug = 'investimentos-api') AND server = ?`);
-    for (const permission of GATEWAY_PERMISSIONS) {
-      clear.run(permission.server);
-      const resourceId = permission.server === "github" ? resources.githubRepo
-        : permission.server === "trello" ? resources.trelloBoard
-        : permission.server === "notion" ? resources.notionPage : undefined;
-      upsertGatewayPermission(db, { ...permission, resourceId: resourceId ?? permission.resourceId });
-    }
+    for (const server of ["github", "trello", "notion", "echo", "project"]) clear.run(server);
+    for (const permission of permissions) upsertGatewayPermission(db, permission);
   }).immediate();
 
   return {
     tenants: TENANTS.length,
     projects: PROJECTS.length,
     users: USERS.length,
-    gatewayPermissions: GATEWAY_PERMISSIONS.length,
+    gatewayPermissions: permissions.length,
   };
 }
 

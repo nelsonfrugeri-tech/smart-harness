@@ -10,7 +10,7 @@ const TOOLS: ToolDefinition[] = [
   {
     name: "search_pages", description: "Searches titles of explicitly allowed pages only, without a workspace-wide search.",
     inputSchema: { type: "object", properties: { query: { type: "string" }, cursor: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 50 } }, required: ["query"] },
-    access: { kind: "search", resourceType: "page" },
+    access: { kind: "search", resourceType: "page", denyWhenEmpty: true },
   },
 ];
 

@@ -41,7 +41,7 @@ Um backend implementa `McpBackend { server; listTools(ctx); callTool(ctx, name, 
 | Tipo | Como o gateway decide |
 | --- | --- |
 | `resource` | `extract(args)` devolve o id do repositório, board ou página. `null`, ou id fora da lista do projeto: negado. |
-| `search` | O backend recebe a lista permitida em `ctx.allowedResources` e busca só nela. Lista vazia: resultado vazio, sem chamar o backend. |
+| `search` | O backend recebe a lista permitida em `ctx.allowedResources` e busca só nela. Lista vazia não chama o backend: Notion nega a busca; os demais devolvem resultado vazio. |
 | sem `access` | Não aparece em `tools/list` e é negada em `tools/call`. |
 
 Chamada negada vira resultado `isError: true`, é auditada como `denied` e **não chega ao backend**. Falha do backend vira
@@ -87,10 +87,14 @@ O mapping explícito `investimentos-api → investimentos-api/` liga o slug da A
 `PROJECT_CONTEXT_ROOT`, sem inferir o caminho a partir de argumentos do usuário.
 
 O seed local concede acesso ao contexto somente para `investimentos-api`. No compose, configure
-`GITHUB_PROJECT_REPO`, `TRELLO_PROJECT_BOARD` e `NOTION_PROJECT_PAGE` com os recursos reais, além das credenciais
+`GITHUB_REPOS`, `TRELLO_BOARD_ID` e `NOTION_PAGE_IDS` com os recursos reais, além das credenciais
 do gateway. `docker compose exec -T api npm run seed` aplica esses identificadores. O seed é dono das
 permissões do projeto de exemplo nesses servidores: executá-lo novamente substitui os grants anteriores
-pelos configurados. Não é uma interface de administração para outros projetos.
+pelos configurados. `GITHUB_REPOS` e `NOTION_PAGE_IDS` são listas separadas por vírgula; o board é único.
+Campos vazios não concedem acesso externo: o runtime não usa recursos fictícios. O token GitHub deve ser
+fine-grained, somente leitura (Contents, Issues e Pull requests) e restrito aos repositórios configurados.
+As credenciais e IDs existentes são pré-requisitos do mantenedor; criar páginas, cards, boards ou features
+está fora do escopo. Não é uma interface de administração para outros projetos.
 
 ### Tools e limites
 
@@ -99,7 +103,7 @@ pelos configurados. Não é uma interface de administração para outros projeto
 | `project` | `project_overview`, `decisions_search`, `backlog_list`, `backlog_get`, `delivered_list` | Lê `project.yaml`, README e documentos Markdown com frontmatter; informa a fonte relativa ao repositório. |
 | `github` | `get_file_contents`, `issue_read`, `pull_request_read` e quatro buscas | Somente leitura; `owner/repo` precisa estar autorizado. |
 | `trello` | `list_cards`, `get_card` | Exigem `board`; o card consultado precisa pertencer ao board permitido. |
-| `notion` | `read_page`, `search_pages` | Pesquisa títulos somente das páginas permitidas; leitura de blocos textuais diretos, sem expandir páginas filhas, mentions ou synced blocks. |
+| `notion` | `read_page`, `search_pages` | Pesquisa títulos somente das páginas permitidas; sem páginas, busca negada e auditada. Leitura de blocos textuais diretos, sem expandir páginas filhas, mentions ou synced blocks. |
 
 GitHub usa o MCP oficial em `https://api.githubcopilot.com/mcp/readonly`. `search_code`, `search_commits`,
 `search_issues` e `search_pull_requests` exigem qualificadores positivos `repo:owner/repo`, todos permitidos.

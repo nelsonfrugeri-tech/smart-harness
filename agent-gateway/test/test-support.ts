@@ -43,7 +43,11 @@ export async function createFixture(options: FixtureOptions = {}): Promise<Fixtu
   const path = join(dir, "control-plane.sqlite");
   const apiDb = openApiDatabase(path);
   runMigrations(apiDb);
-  seedLocalData(apiDb);
+  seedLocalData(apiDb, {
+    githubRepos: ["acme-fake/investimentos-api"],
+    trelloBoardId: "board-investimentos-001",
+    notionPageIds: ["page-investimentos-adrs"],
+  });
   addSecondInvestimentosProject(apiDb);
 
   const readDb = openReadDatabase(path);

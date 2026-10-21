@@ -21,7 +21,11 @@ export const TEST_SECRET = new TextEncoder().encode("test-secret-with-at-least-3
 export function seededDatabase(): Db {
   const db = openDatabase(":memory:");
   runMigrations(db);
-  seedLocalData(db);
+  seedLocalData(db, {
+    githubRepos: ["acme-fake/investimentos-api"],
+    trelloBoardId: "board-investimentos-001",
+    notionPageIds: ["page-investimentos-adrs"],
+  });
   return db;
 }
 

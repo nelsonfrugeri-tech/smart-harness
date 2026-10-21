@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
+import { echoBackend } from "../../src/backends/echo.ts";
 import { executeToolCall } from "../../src/mcp/tool-call.ts";
 import { createNotionBackend } from "../../src/backends/notion/index.ts";
 import type { ToolContext } from "../../src/mcp/backend.ts";
@@ -102,6 +103,28 @@ describe("Notion backend", () => {
     expect(read.outcome).toBe("ok");
     expect(read.resourceId).toBe("11111111-1111-1111-1111-111111111111");
     expect((await executeToolCall(backend, permissionCtx, "read_page", { page: forbidden })).outcome).toBe("denied");
+  });
+
+  it("denies searches without permitted pages before invoking the backend", async () => {
+    let calls = 0;
+    const backend = createNotionBackend({ token: "secret" });
+    const observed = { ...backend, callTool: async () => { calls++; return { content: [] }; } };
+    const result = await executeToolCall(observed, { ...ctx, allowedResources: {} }, "search_pages", { query: "Page" });
+    expect(result.outcome).toBe("denied");
+    expect(result.reason).toBe("no_resources_allowed");
+    expect(result.result.isError).toBe(true);
+    expect(result.resourceType).toBe("page");
+    expect(calls).toBe(0);
+  });
+
+  it("preserves the empty-success default for other search tools", async () => {
+    let calls = 0;
+    const observed = { ...echoBackend, callTool: async () => { calls++; return { content: [] }; } };
+    const result = await executeToolCall(observed, { ...ctx, server: "echo", allowedResources: {} }, "echo_search", { query: "Page" });
+    expect(result.outcome).toBe("ok");
+    expect(result.result).toEqual({ content: [] });
+    expect(result.resourceCount).toBe(0);
+    expect(calls).toBe(0);
   });
 
   it("rejects invalid arguments and sanitizes upstream errors", async () => {
