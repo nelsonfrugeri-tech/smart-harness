@@ -147,8 +147,10 @@ export function Shell({
         <div className="nav-label">DESENVOLVER</div>
         <nav aria-label="Navegação principal">
           <a
-            className={`nav-item ${!isMarketplace ? "active" : ""}`}
-            aria-current={!isMarketplace ? "page" : undefined}
+            className={`nav-item ${!isMarketplace && route.kind !== "tokens" ? "active" : ""}`}
+            aria-current={
+              !isMarketplace && route.kind !== "tokens" ? "page" : undefined
+            }
             href="/workspace"
             onClick={(event) => {
               followLink(event);
@@ -171,6 +173,10 @@ export function Shell({
             Marketplace
           </a>
         </nav>
+        <TokensLink
+          active={route.kind === "tokens"}
+          close={() => setMobileOpen(false)}
+        />
         <SidebarIdentity me={me} />
       </aside>
       <div className="main-shell" inert={mobileOpen}>
@@ -233,5 +239,21 @@ function SidebarIdentity({ me }: { me: Me }) {
         </div>
       </div>
     </>
+  );
+}
+
+function TokensLink({ active, close }: { active: boolean; close: () => void }) {
+  return (
+    <a
+      className={`nav-item ${active ? "active" : ""}`}
+      aria-current={active ? "page" : undefined}
+      href="/profile/tokens"
+      onClick={(event) => {
+        followLink(event);
+        close();
+      }}
+    >
+      Meus tokens
+    </a>
   );
 }

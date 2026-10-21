@@ -16,6 +16,7 @@ export function useRoute() {
     () => location.pathname + location.search,
   );
   const { pathname: path, search } = new URL(url, location.origin);
+  if (path === "/profile/tokens") return { kind: "tokens" } as const;
   if (path === "/marketplace" || path.startsWith("/marketplace/packages/")) {
     const filters = readMarketplaceFilters(search);
     if (!filters) return { kind: "invalid-marketplace" } as const;

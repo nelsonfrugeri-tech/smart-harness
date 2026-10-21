@@ -11,6 +11,9 @@ export type PluginPage = components["schemas"]["PluginPage"];
 export type MarketplaceQuery = NonNullable<
   operations["listMarketplace"]["parameters"]["query"]
 >;
+export type GatewayToken = components["schemas"]["GatewayToken"];
+export type GatewayTokenCreated = components["schemas"]["GatewayTokenCreated"];
+export type GatewayTokenPage = components["schemas"]["GatewayTokenPage"];
 export type SetupPlan = components["schemas"]["SetupPlan"];
 export class ApiError extends Error {
   constructor(
@@ -25,25 +28,32 @@ interface RequestOptions {
   token?: string;
   signal: AbortSignal;
   email?: string;
+  method?: "POST" | "DELETE";
+  body?: unknown;
 }
 async function request<T>(path: string, options: RequestOptions): Promise<T> {
   const signal = AbortSignal.any([options.signal, AbortSignal.timeout(10000)]);
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
-  if (options.email) headers["Content-Type"] = "application/json";
+  if (options.email || options.body)
+    headers["Content-Type"] = "application/json";
   try {
     const response = await fetch(`/v1${path}`, {
-      method: options.email ? "POST" : "GET",
+      method: options.method ?? (options.email ? "POST" : "GET"),
       headers,
       signal,
       body: options.email
         ? JSON.stringify({ email: options.email })
-        : undefined,
+        : options.body
+          ? JSON.stringify(options.body)
+          : undefined,
       cache: "no-store",
       credentials: "omit",
     });
     if (!response.ok) throw await readProblem(response);
-    return (await response.json()) as T;
+    return response.status === 204
+      ? (undefined as T)
+      : ((await response.json()) as T);
   } catch (error) {
     if (options.signal.aborted)
       throw new DOMException("Cancelled", "AbortError");
@@ -66,6 +76,31 @@ export async function readProblem(response: Response): Promise<ApiError> {
   );
 }
 export const api = {
+  gatewayTokens: (
+    cursor: string | undefined,
+    token: string,
+    signal: AbortSignal,
+  ) => {
+    const params = new URLSearchParams({ limit: "20" });
+    if (cursor) params.set("cursor", cursor);
+    return request<GatewayTokenPage>(`/me/gateway-tokens?${params}`, {
+      token,
+      signal,
+    });
+  },
+  createGatewayToken: (name: string, token: string, signal: AbortSignal) =>
+    request<GatewayTokenCreated>("/me/gateway-tokens", {
+      token,
+      signal,
+      method: "POST",
+      body: { name },
+    }),
+  revokeGatewayToken: (id: string, token: string, signal: AbortSignal) =>
+    request<void>(`/me/gateway-tokens/${encodeURIComponent(id)}`, {
+      token,
+      signal,
+      method: "DELETE",
+    }),
   marketplace: (
     query: MarketplaceQuery,
     token: string,
