@@ -81,8 +81,49 @@ não inclui esse usuário. Não altere o seed apenas para demonstrar essa tela.
 A tela de pacote desta entrega agrupa agentes, skills e MCPs da última versão
 visível. Os botões de tipo selecionam pacotes que contêm esses componentes; Tab,
 Enter e Espaço permitem operá-los mantendo o foco. Há uma única busca no catálogo,
-logo abaixo do título, e busca no shell nas demais páginas. Histórico de versões e download pertencem à #27; tokens e setup também
-ficam para suas respectivas issues.
+logo abaixo do título, e busca no shell nas demais páginas. O histórico paginado permite baixar versões específicas sem mudar a composição
+em exibição. Tokens e setup ficam para suas respectivas issues.
+
+## Baixar e conferir um pacote
+
+1. Entre como `dev@smart-harness.local`, abra `investimentos-base` no Marketplace
+   e confira versão, squad, visibilidade, tamanho e SHA-256 publicado.
+2. Clique **Baixar v1.1.0**. O frontend busca o arquivo com Bearer e `no-store`,
+   valida status, tipo gzip, assinatura, tamanho e SHA-256 dos bytes recebidos.
+   Somente então envia o arquivo ao navegador. A confirmação informa integridade
+   conferida; baixar não instala o pacote.
+3. No histórico, baixe `1.0.0`: os componentes acima continuam sendo da versão
+   em exibição. Abra `/marketplace/packages/investimentos-base?limit=1` para
+   exercitar paginação real do histórico em páginas de uma versão.
+4. Abra o pacote base pelo workspace de Investimentos. A URL
+   `/workspace/projects/investimentos-api/packages/investimentos-base/versions/1.1.0`
+   conserva o projeto e a versão fixada no reload. O frontend relê o setup-plan;
+   um pin removido ou alterado mostra indisponibilidade, sem substituir por latest.
+5. Com a tela aberta, use **Network → Offline** antes do download; nenhum arquivo
+   deve ser salvo. Volte para **Online** e tente novamente. Uma resposta 401 encerra
+   a sessão; 404 não distingue ausência de falta de acesso; erro de storage oferece
+   retry. Para testar storage, pare somente um MinIO de stack isolada que você possua.
+6. No terminal, confira o arquivo salvo. Ajuste o caminho conforme a pasta de downloads
+   configurada no navegador e copie o digest da versão consultada:
+
+```sh
+PACKAGE_ARCHIVE="$HOME/Downloads/investimentos-base-1.1.0.tar.gz"
+PACKAGE_DIGEST='sha256:COLE_O_DIGEST_PUBLICADO'
+shasum -a 256 "$PACKAGE_ARCHIVE"
+# Na raiz do repositório; gera o binário somente dentro de front/:
+go -C cli build -o ../front/.harness-test ./cmd/harness
+./front/.harness-test unpack "$PACKAGE_ARCHIVE" ./front/.package-test --expect-digest "$PACKAGE_DIGEST"
+```
+
+O diretório de extração deve estar vazio ou não existir. `harness unpack` confere
+integridade e regras de extração do pacote. Os artefatos locais `.harness-test` e
+`.package-test/` estão ignorados pelo Git. Não envie o token na URL nem no comando.
+
+O download usa Web Crypto em HTTPS ou localhost, timeout de 30 segundos e memória
+proporcional ao arquivo. O arquivo não é mantido em cache pelo frontend; a object URL
+é revogada após sua ativação. Troca de sessão ou saída da tela cancela requests em
+andamento e impede salvar respostas tardias. O frontend não valida a semântica dos
+arquivos internos; a verificação do pacote é feita pela CLI.
 
 ## Verificar e gerar tipos
 
@@ -121,7 +162,7 @@ Nenhum token é registrado em logs ou telemetria.
 O lint cobre TypeScript e TSX, incluindo regras de hooks/dependências. Funções
 de lógica têm limite de 50 linhas; views declarativas TSX, 180 linhas.
 
-As operações HTTP têm timeout de 10 segundos e cancelamento. Seguindo a
+As operações JSON têm timeout de 10 segundos; downloads, 30 segundos. Ambas têm cancelamento. Seguindo a
 convenção da Fase 1 em `CLAUDE.md`, não há retry automático, backoff nem circuit
 breaker: uma falha termina em erro recuperável, com retry explícito do usuário.
 A tela troca para loading e desabilita envio repetido; não existe polling.
@@ -131,7 +172,8 @@ O cursor da API permanece opaco e só em memória; páginas são deduplicadas po
 consultada novamente ao retornar do pacote, preservando os filtros da URL.
 `correlation_id` de Problem JSON fica acessível em “Informações para suporte”.
 A lista de projetos respeita o limite de até 100 da API, que não tem cursor.
-O plano retorna opcionais, mas esta entrega renderiza somente o baseline fixado.
+O plano retorna opcionais; a página do projeto renderiza o baseline fixado e oferece
+navegação aos complementos no Marketplace.
 
 ## Organização e identidade visual
 
@@ -157,3 +199,8 @@ Referências técnicas consultadas em 21/10/2026:
 - [Vite: proxy do servidor](https://vite.dev/config/server-options#server-proxy)
 - [Vitest: configuração](https://vitest.dev/guide/)
 - [React Testing Library: setup](https://testing-library.com/docs/react-testing-library/setup/)
+
+Referências de download consultadas em 21/10/2026:
+
+- [Web Crypto: digest SHA-256](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest)
+- [Liberação de object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL_static)

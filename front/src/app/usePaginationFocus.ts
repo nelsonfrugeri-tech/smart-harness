@@ -1,12 +1,11 @@
 import { useEffect, useRef, type MouseEvent } from "react";
-import type { PluginItem } from "../api/client";
 interface PendingFocus {
   trigger: HTMLButtonElement;
   names: Set<string>;
   query: string;
 }
 export function usePaginationFocus(
-  items: PluginItem[],
+  names: string[],
   loading: boolean,
   query: string,
   more: () => void,
@@ -18,8 +17,8 @@ export function usePaginationFocus(
     const request = pending.current;
     pending.current = null;
     if (!request || request.query !== query) return;
-    focusPage(results.current, request, items);
-  }, [items, loading, query]);
+    focusPage(results.current, request, names);
+  }, [names, loading, query]);
   return {
     results,
     loadMore: (event?: MouseEvent<HTMLButtonElement>) => {
@@ -28,7 +27,7 @@ export function usePaginationFocus(
       if (trigger instanceof HTMLButtonElement)
         pending.current = {
           trigger,
-          names: new Set(items.map((item) => item.plugin.name)),
+          names: new Set(names),
           query,
         };
       more();
@@ -42,7 +41,7 @@ export function usePaginationFocus(
 function focusPage(
   results: HTMLDivElement | null,
   request: PendingFocus,
-  items: PluginItem[],
+  names: string[],
 ) {
   const active = document.activeElement;
   if (
@@ -50,15 +49,11 @@ function focusPage(
     !(active === document.body && !request.trigger.isConnected)
   )
     return;
-  const next = items.find((item) => !request.names.has(item.plugin.name));
-  const links = results?.querySelectorAll<HTMLAnchorElement>(
-    "a[data-package-name]",
-  );
+  const next = names.find((name) => !request.names.has(name));
+  const links = results?.querySelectorAll<HTMLElement>("[data-page-item]");
   const nextLink =
     next &&
-    Array.from(links ?? []).find(
-      (link) => link.dataset.packageName === next.plugin.name,
-    );
+    Array.from(links ?? []).find((link) => link.dataset.pageItem === next);
   const target =
     nextLink ||
     results?.querySelector<HTMLElement>(

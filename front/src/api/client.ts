@@ -5,6 +5,8 @@ export type Login =
   operations["devLogin"]["responses"][200]["content"]["application/json"];
 export type WorkspaceData = components["schemas"]["Workspace"];
 export type PluginItem = components["schemas"]["PluginItem"];
+export type PluginVersion = components["schemas"]["PluginVersion"];
+export type VersionPage = components["schemas"]["VersionPage"];
 export type PluginPage = components["schemas"]["PluginPage"];
 export type MarketplaceQuery = NonNullable<
   operations["listMarketplace"]["parameters"]["query"]
@@ -49,7 +51,7 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
     throw new ApiError(0, signal.aborted ? "timeout" : "network_error");
   }
 }
-async function readProblem(response: Response): Promise<ApiError> {
+export async function readProblem(response: Response): Promise<ApiError> {
   const value: unknown = await response.json().catch(() => null);
   const problem =
     value && typeof value === "object"
@@ -80,6 +82,20 @@ export const api = {
       token,
       signal,
     }),
+  versions: (
+    name: string,
+    limit: number,
+    cursor: string | undefined,
+    token: string,
+    signal: AbortSignal,
+  ) => {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) params.set("cursor", cursor);
+    return request<VersionPage>(
+      `/plugins/${encodeURIComponent(name)}/versions?${params}`,
+      { token, signal },
+    );
+  },
   login: (email: string, signal: AbortSignal) =>
     request<Login>("/auth/dev-login", { email, signal }),
   me: (token: string, signal: AbortSignal) =>

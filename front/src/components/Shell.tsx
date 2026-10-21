@@ -44,11 +44,13 @@ export function Shell({
     route.kind === "marketplace" || route.kind === "package";
   const filters = isMarketplace ? route.filters : {};
   const routeKey =
-    route.kind === "project"
-      ? `project:${route.slug}`
-      : route.kind === "package"
-        ? `package:${route.name}`
-        : route.kind;
+    route.kind === "baseline-package"
+      ? `baseline:${route.slug}:${route.name}:${route.version}`
+      : route.kind === "project"
+        ? `project:${route.slug}`
+        : route.kind === "package"
+          ? `package:${route.name}`
+          : route.kind;
   useEffect(() => {
     if (
       document.activeElement instanceof HTMLSelectElement &&

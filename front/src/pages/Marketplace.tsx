@@ -23,7 +23,7 @@ interface Props {
 export function Marketplace({ filters, token, expire, me, projects }: Props) {
   const { state, more, restart } = useMarketplace(filters, token, expire);
   const pagination = usePaginationFocus(
-    state.items,
+    state.items.map((item) => item.plugin.name),
     state.loading,
     marketplaceSearch(filters),
     more,
@@ -161,7 +161,7 @@ function PackageCard({
           <a
             href={packagePath(item.plugin.name, filters)}
             onClick={followLink}
-            data-package-name={item.plugin.name}
+            data-page-item={item.plugin.name}
           >
             {item.plugin.name}
             <ArrowRight size={17} aria-hidden="true" />
