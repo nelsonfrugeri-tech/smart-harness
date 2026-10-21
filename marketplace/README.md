@@ -5,7 +5,7 @@ Conteúdo do Marketplace interno no formato Agent Plugins. O núcleo contém age
 
 ## Pacote base de Investimentos
 
-`investimentos-base/` é a fonte canônica da versão `1.2.0`:
+`investimentos-base/` é a fonte canônica da versão `1.2.1`:
 
 | Componente | Uso |
 | --- | --- |
@@ -35,11 +35,11 @@ make seed
 
 O primeiro comando usa o engine real para validar a fonte, gerar a camada Claude Code numa
 pasta temporária, validar novamente e empacotar. Grava o archive em
-`control-plane/seed/packages/investimentos-base-1.2.0.tar.gz`; o segundo carrega o seed na stack
+`control-plane/seed/packages/investimentos-base-1.2.1.tar.gz`; o segundo carrega o seed na stack
 local já iniciada. O build recusa substituir uma versão existente com bytes diferentes: uma
-mudança exige incremento de `version` e nova entrada no seed. As versões `1.0.0` e `1.1.0`
+mudança exige incremento de `version` e nova entrada no seed. As versões `1.0.0`, `1.1.0` e `1.2.0`
 permanecem disponíveis, com seus archives originais. O baseline de `investimentos-api` passa a
-`1.2.0` quando o seed roda. `harness sync` aplica o novo plano numa instalação existente.
+`1.2.1` quando o seed roda. `harness sync` aplica o novo plano numa instalação existente.
 
 A fonte canônica não recebe arquivos gerados. É possível escolher um binário já compilado:
 
@@ -64,3 +64,8 @@ do archive com a fonte e o converter; ele não comprova carregamento no Claude C
 aos serviços externos. Essas etapas exigem a verificação de runtime acima.
 
 Exemplos válidos e inválidos de contribuição ficam em [`contributions/`](contributions/README.md).
+
+Os agentes carregam as três skills explicitamente pela tool `Skill`, inclusive no modo
+`--agent ... -p`. O `project_overview.resources` apresenta os recursos de GitHub, Trello e
+Notion autorizados para o projeto na configuração do gateway. Cada acesso continua validado
+pelo gateway. Sem recurso configurado, o agente pede esclarecimento e não inventa IDs.

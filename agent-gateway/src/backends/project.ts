@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse } from "yaml";
-import type { McpBackend, ToolDefinition } from "../mcp/backend.ts";
+import type { McpBackend, ToolDefinition, ToolContext } from "../mcp/backend.ts";
 import { pageOfList, reduceObject, type Item } from "../mcp/limits.ts";
 import { jsonResult, ToolError, withToolErrors } from "../mcp/result.ts";
 import { asArray, asRecord, asString } from "./rest.ts";
@@ -28,7 +28,7 @@ function tool(name: string, description: string, properties: Record<string, unkn
 }
 
 const TOOLS: ToolDefinition[] = [
-  tool("project_overview", "Name, stack, components and README of the project, with the number of ADRs, backlog items and delivered items.", {}),
+  tool("project_overview", "Name, stack, components and README of the project, authorized integration resources and the number of ADRs, backlog items and delivered items.", {}),
   tool("decisions_search", "Lists the project's ADRs whose title, tags or text contain the query (all ADRs when the query is empty).", {
     query: { type: "string" },
     ...CURSOR,
@@ -51,7 +51,7 @@ export function projectBackend(options: ProjectOptions): McpBackend {
 
         switch (name) {
           case "project_overview":
-            return jsonResult(await overview(dir, slug));
+            return jsonResult(await overview(dir, slug, ctx.projectResources ?? {}));
           case "decisions_search": {
             const query = typeof args.query === "string" ? args.query.trim().toLowerCase() : "";
             const docs = (await readDocs(dir, slug, "adr")).filter((doc) => matches(doc, query));
@@ -86,7 +86,7 @@ interface Doc {
   body: string;
 }
 
-async function overview(dir: string, slug: string): Promise<Item> {
+async function overview(dir: string, slug: string, resources: NonNullable<ToolContext["projectResources"]>): Promise<Item> {
   const manifest = asRecord(parse(await readOrFail(join(dir, "project.yaml"))));
   const readme = await readFile(join(dir, "README.md"), "utf8").catch(() => "");
   const count = async (folder: string) => (await readDocs(dir, slug, folder)).length;
@@ -95,6 +95,7 @@ async function overview(dir: string, slug: string): Promise<Item> {
     source: `${slug}/project.yaml`,
     name: asString(manifest.name),
     summary: asString(manifest.summary),
+    resources,
     stack: asArray(manifest.stack),
     components: asArray(manifest.components),
     counts: { decisions: await count("adr"), backlog: await count("backlog"), delivered: await count("delivered") },

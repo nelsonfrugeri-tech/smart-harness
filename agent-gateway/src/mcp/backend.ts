@@ -7,6 +7,8 @@ export interface ToolContext {
   server: string;
   correlationId: string;
   // Resources the project may use on this server, by resource type (for example repo: [...]).
+  // Authorization snapshot for integration discovery; never grants access by itself.
+  projectResources?: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>>;
   allowedResources: Readonly<Record<string, readonly string[]>>;
 }
 

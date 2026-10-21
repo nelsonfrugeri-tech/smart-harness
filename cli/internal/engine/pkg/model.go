@@ -59,6 +59,7 @@ type ToolKind string
 // Logical tools of the agent contract.
 const (
 	ToolRead     ToolKind = "read"
+	ToolSkill    ToolKind = "skill"
 	ToolEdit     ToolKind = "edit"
 	ToolShell    ToolKind = "shell"
 	ToolDelegate ToolKind = "delegate"

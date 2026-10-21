@@ -155,18 +155,20 @@ describe("Marketplace routes", () => {
 
     it("lists versions newest first, one per page", async () => {
       const first = (await get(DEV, "/v1/plugins/investimentos-base/versions?limit=1")).json();
-      expect(first.items.map((v: { version: string }) => v.version)).toEqual(["1.2.0"]);
+      expect(first.items.map((v: { version: string }) => v.version)).toEqual(["1.2.1"]);
       const second = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${first.next_cursor}`)).json();
-      expect(second.items.map((v: { version: string }) => v.version)).toEqual(["1.1.0"]);
+      expect(second.items.map((v: { version: string }) => v.version)).toEqual(["1.2.0"]);
       const third = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${second.next_cursor}`)).json();
-      expect(third).toMatchObject({ items: [{ version: "1.0.0" }], next_cursor: null });
+      expect(third.items.map((v: { version: string }) => v.version)).toEqual(["1.1.0"]);
+      const fourth = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${third.next_cursor}`)).json();
+      expect(fourth).toMatchObject({ items: [{ version: "1.0.0" }], next_cursor: null });
     });
   });
 
   it("GET /v1/plugins/{name} returns the latest version with its components", async () => {
     const body = (await get(DEV, "/v1/plugins/investimentos-base")).json<Item>();
 
-    expect(body.version.version).toBe("1.2.0");
+    expect(body.version.version).toBe("1.2.1");
     expect(body.components.map((c) => `${c.kind}:${c.name}`)).toEqual([
       "agent:investimentos-guide",
       "agent:reviewer",

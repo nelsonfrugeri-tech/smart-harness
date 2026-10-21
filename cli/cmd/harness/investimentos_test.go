@@ -57,6 +57,9 @@ func TestInvestimentosBaseline(t *testing.T) {
 				t.Fatalf("%s exposes %s", agent, forbidden)
 			}
 		}
+		if !strings.Contains(frontmatter, "Skill") {
+			t.Fatalf("%s missing Skill tool", agent)
+		}
 		for _, server := range []string{"project", "github", "trello", "notion"} {
 			if !strings.Contains(frontmatter, "mcp__plugin_investimentos-base_"+server+"__*") {
 				t.Fatalf("%s missing %s tools", agent, server)
@@ -76,7 +79,7 @@ func TestInvestimentosBaseline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fixture, err := os.ReadFile("../../../control-plane/seed/packages/investimentos-base-1.2.0.tar.gz")
+	fixture, err := os.ReadFile("../../../control-plane/seed/packages/investimentos-base-1.2.1.tar.gz")
 	if err != nil {
 		t.Fatal(err)
 	}

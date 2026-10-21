@@ -49,3 +49,15 @@ export function listAllowedResources(db: Db, projectId: string, server: string):
   }
   return byType;
 }
+
+// One project-scoped query; no credentials or resources of other projects are returned.
+export function listProjectResources(db: Db, projectId: string): Record<string, Record<string, string[]>> {
+  const rows = db.prepare(`SELECT server, resource_type AS type, resource_id AS id
+    FROM gateway_permissions WHERE project_id = ? ORDER BY server, resource_type, resource_id`).all(projectId) as { server: string; type: string; id: string }[];
+  const result: Record<string, Record<string, string[]>> = {};
+  for (const { server, type, id } of rows) {
+    if (!["github", "trello", "notion"].includes(server)) continue;
+    ((result[server] ??= {})[type] ??= []).push(id);
+  }
+  return result;
+}

@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "investimentos-base",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Investment project guidance, review and engineering workflow.",
   "keywords": [
     "go",

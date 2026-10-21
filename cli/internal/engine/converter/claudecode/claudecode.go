@@ -124,6 +124,8 @@ func Tools(plugin string, t pkg.Tool) []string {
 		return []string{"Edit", "Write"}
 	case pkg.ToolShell:
 		return []string{"Bash"}
+	case pkg.ToolSkill:
+		return []string{"Skill"}
 	case pkg.ToolDelegate:
 		return []string{"Agent"}
 	}

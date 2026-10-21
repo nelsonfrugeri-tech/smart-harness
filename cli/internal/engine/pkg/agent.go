@@ -77,12 +77,12 @@ func ParseAgent(filePath string, data []byte, declared map[string]bool) (Agent, 
 	case tl.present && !tl.ok:
 		add(CodeAgentFile, tl.line, contract, "tools must be a list of strings")
 	case len(tools) == 0:
-		add(CodeAgentTools, max(tl.line, 1), "declare at least one logical tool: read, edit, shell, delegate, mcp:<server>", "tools is missing or empty")
+		add(CodeAgentTools, max(tl.line, 1), "declare at least one logical tool: read, edit, shell, delegate, skill, mcp:<server>", "tools is missing or empty")
 	}
 	for _, raw := range tools {
 		tool, err := parseTool(raw)
 		if err != nil {
-			add(CodeAgentTool, tl.line, "use read, edit, shell, delegate, mcp:<server> or mcp:<server>/<tool>", "%v", err)
+			add(CodeAgentTool, tl.line, "use read, edit, shell, delegate, skill, mcp:<server> or mcp:<server>/<tool>", "%v", err)
 			continue
 		}
 		if tool.Kind == ToolMCP && !declared[tool.Server] {
@@ -122,7 +122,7 @@ func ParseAgent(filePath string, data []byte, declared map[string]bool) (Agent, 
 // parseTool reads one logical tool.
 func parseTool(raw string) (Tool, error) {
 	switch ToolKind(raw) {
-	case ToolRead, ToolEdit, ToolShell, ToolDelegate:
+	case ToolRead, ToolEdit, ToolShell, ToolDelegate, ToolSkill:
 		return Tool{Kind: ToolKind(raw)}, nil
 	}
 	rest, ok := strings.CutPrefix(raw, "mcp:")

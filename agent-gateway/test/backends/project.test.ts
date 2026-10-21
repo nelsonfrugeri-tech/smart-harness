@@ -47,6 +47,18 @@ describe("project backend with the reference project", () => {
     expect(overview.components.map((c: { name: string }) => c.name)).toContain("dynamo");
   });
 
+  it("discovers only this project's authorized integration resources and reflects revocation", async () => {
+    const overview = json(await client.callTool({ name: "project_overview", arguments: {} }));
+    expect(overview.resources).toEqual({
+      github: { repo: ["acme-fake/investimentos-api"] },
+      trello: { board: ["board-investimentos-001"] },
+      notion: { page: ["page-investimentos-adrs"] },
+    });
+    fixture.apiDb.prepare("DELETE FROM gateway_permissions WHERE project_id = (SELECT id FROM projects WHERE slug = 'investimentos-api') AND server = 'trello'").run();
+    const revoked = json(await client.callTool({ name: "project_overview", arguments: {} }));
+    expect(revoked.resources.trello).toBeUndefined();
+  });
+
   it("returns the ADRs with their source and finds one by its text", async () => {
     const all = json(await client.callTool({ name: "decisions_search", arguments: {} }));
     const found = json(await client.callTool({ name: "decisions_search", arguments: { query: "Scan" } }));
