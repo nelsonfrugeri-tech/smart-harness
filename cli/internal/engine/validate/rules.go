@@ -16,7 +16,7 @@ import (
 // semverRe is the official SemVer 2.0.0 expression (https://semver.org).
 var semverRe = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
 
-// checkManifest: SH-EXE-001 (hooks key), SH-NAM-001 (reserved name), SH-VER-001 (version, description).
+// checkManifest: SH-EXE-001 (hooks key), SH-NAM-001 (reserved name), SH-VER-001 (version), SH-MAN-001 (description).
 func checkManifest(p pkg.Package, tree pkg.Tree) []pkg.Finding {
 	var findings []pkg.Finding
 	if file, ok := tree.File(pkg.ManifestPath); ok {
@@ -39,7 +39,7 @@ func checkManifest(p pkg.Package, tree pkg.Tree) []pkg.Finding {
 			Message: fmt.Sprintf("version %q is not SemVer", m.Version), Hint: "set version such as 1.0.0"})
 	}
 	if strings.TrimSpace(m.Description) == "" {
-		findings = append(findings, pkg.Finding{Code: pkg.CodeVersion, Path: pkg.ManifestPath,
+		findings = append(findings, pkg.Finding{Code: pkg.CodeDescription, Path: pkg.ManifestPath,
 			Message: "description is required", Hint: "describe the plugin in one sentence"})
 	}
 	return findings

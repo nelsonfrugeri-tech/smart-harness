@@ -81,7 +81,11 @@ func TestExamplePackageGeneratesTheClaudeCodeLayer(t *testing.T) {
   "description": "Example package with one agent, one skill and one MCP server through the gateway.",
   "author": {
     "name": "Smart Harness"
-  }
+  },
+  "keywords": [
+    "code-review",
+    "example"
+  ]
 }
 `
 	if got[".claude-plugin/plugin.json"] != wantManifest {
