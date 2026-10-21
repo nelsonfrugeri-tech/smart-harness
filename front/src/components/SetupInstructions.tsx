@@ -2,6 +2,9 @@ import { useState } from "react";
 import type { SetupPlan } from "../api/client";
 import { CopyValue } from "./CopyValue";
 declare const __HARNESS_PUBLIC_API_URL__: string;
+// The published CLI release; the repository is private, so the page asks for GitHub access.
+const CLI_RELEASE_URL =
+  "https://github.com/nelsonfrugeri-tech/smart-harness/releases/tag/v0.1.0";
 function terminalURL(raw: string): string | undefined {
   try {
     const url = new URL(raw);
@@ -34,9 +37,14 @@ export function SetupInstructions({ plan }: { plan: SetupPlan }) {
       </p>
       <ol>
         <li>
-          Tenha a CLI <code>harness</code> desta plataforma no PATH e Claude
-          Code ≥ 2.1.305. Confira <code>harness version</code>. Esta é a versão
-          mínima exercitada pelo projeto.
+          Baixe o binário <code>harness</code> da sua plataforma na{" "}
+          <a href={CLI_RELEASE_URL} target="_blank" rel="noopener">
+            release v0.1.0 da CLI
+          </a>
+          , confira o <code>SHA256SUMS</code> e coloque o binário no PATH. O
+          roteiro completo está em <code>docs/onboarding.md</code>. Tenha também
+          o Claude Code ≥ 2.1.305, a versão mínima exercitada pelo projeto.
+          Confira <code>harness version</code>.
         </li>
         <li>
           Abra{" "}
