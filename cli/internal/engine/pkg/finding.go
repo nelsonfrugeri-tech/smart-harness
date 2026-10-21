@@ -35,7 +35,8 @@ const (
 	CodeStale        = "SH-STR-002" // generated file that differs from the generator output
 	CodeYAMLFeature  = "SH-STR-003" // anchor, alias, merge key, tag, duplicate key or extra document in YAML; duplicate key in JSON
 	CodeReservedName = "SH-NAM-001" // plugin name reserved by a harness
-	CodeVersion      = "SH-VER-001" // version or description missing, or version outside SemVer
+	CodeDescription  = "SH-MAN-001" // description missing or blank
+	CodeVersion      = "SH-VER-001" // version missing or outside SemVer
 	CodeLimits       = "SH-LIM-001" // file count or size above the limits
 )
 

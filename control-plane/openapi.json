@@ -165,9 +165,10 @@
         "summary": "Visible plugins ordered by name, each with its latest visible version",
         "description": "Visible means: owned by a squad of the caller, or published with visibility organization. A user without memberships sees nothing. With `project`, the list is the project's optionals: what the project's squad sees, minus the project's baseline.",
         "parameters": [
+          { "name": "type", "in": "query", "description": "Calculated package type", "schema": { "type": "string", "enum": ["connector", "skill", "agent"] } },
           { "name": "kind", "in": "query", "description": "Only plugins whose latest visible version ships a component of this kind", "schema": { "$ref": "#/components/schemas/ComponentKind" } },
           { "name": "project", "in": "query", "description": "Project slug; unknown or invisible answers 404", "schema": { "type": "string", "minLength": 1, "maxLength": 100 } },
-          { "name": "q", "in": "query", "description": "Case-insensitive substring of the plugin name, description or a component name or description", "schema": { "type": "string", "minLength": 1, "maxLength": 100 } },
+          { "name": "q", "in": "query", "description": "Case-insensitive substring of the plugin name, description, keywords or a component name or description", "schema": { "type": "string", "minLength": 1, "maxLength": 100 } },
           { "$ref": "#/components/parameters/Cursor" },
           { "$ref": "#/components/parameters/Limit" }
         ],
@@ -671,7 +672,7 @@
       "PluginItem": {
         "type": "object",
         "description": "A plugin with one version (the latest visible one, or the pinned one in a baseline) and that version's components",
-        "required": ["plugin", "version", "components"],
+        "required": ["plugin", "version", "components", "type", "keywords"],
         "additionalProperties": false,
         "properties": {
           "plugin": {
@@ -685,6 +686,8 @@
             }
           },
           "version": { "$ref": "#/components/schemas/PluginVersion" },
+          "type": { "type": "string", "enum": ["connector", "skill", "agent"], "description": "Only MCP components: connector; only skills: skill; otherwise: agent" },
+          "keywords": { "type": "array", "items": { "type": "string" } },
           "components": { "type": "array", "items": { "$ref": "#/components/schemas/Component" } }
         }
       },

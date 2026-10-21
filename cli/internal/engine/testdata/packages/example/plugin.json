@@ -3,6 +3,7 @@
   "name": "example",
   "version": "1.0.0",
   "description": "Example package with one agent, one skill and one MCP server through the gateway.",
+  "keywords": ["code-review", "example"],
   "author": {
     "name": "Smart Harness"
   }

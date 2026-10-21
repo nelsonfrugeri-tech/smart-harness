@@ -21,7 +21,7 @@ Fora do compose, a API também precisa de um S3 (variáveis `S3_*`). Pelo compos
 | `POST /v1/auth/dev-login` `{email}` | não | `{access_token, token_type, expires_in}`; a rota só existe com `APP_ENV=local` |
 | `GET /v1/me` | JWT ou token do gateway | `{user, memberships[{tenant, role}]}` |
 | `GET /v1/workspace` | JWT ou token do gateway | `{user, projects[{slug, name, description, tenant, counts, baseline}]}`, até 100 projetos |
-| `GET /v1/marketplace?kind=&project=&q=&cursor=&limit=` | JWT ou token do gateway | `Page<PluginItem>`: plugins visíveis em ordem de nome, cada um com a última versão visível |
+| `GET /v1/marketplace?type=&kind=&project=&q=&cursor=&limit=` | JWT ou token do gateway | `Page<PluginItem>`: plugins visíveis em ordem de nome, cada um com a última versão visível |
 | `GET /v1/plugins/{name}` | JWT ou token do gateway | `PluginItem` |
 | `GET /v1/plugins/{name}/versions?cursor=&limit=` | JWT ou token do gateway | `Page<PluginVersion>`, da mais nova para a mais antiga |
 | `GET /v1/plugins/{name}/versions/{version}/archive` | JWT ou token do gateway | o tar.gz, com o digest no header `x-package-digest` |
@@ -94,6 +94,10 @@ curl -s 127.0.0.1:8080/v1/projects/investimentos-api/setup-plan -H "Authorizatio
 - Localmente, o storage é o MinIO do compose (volume `minio-data`). Em produção, é o S3, sem mudar código: basta não definir `S3_ENDPOINT`. A API cria o bucket no startup, e o `/readyz` também verifica o bucket. Cada chamada ao S3 faz uma tentativa só, com timeouts explícitos (2 s para conectar, 30 s por requisição) e sem retry.
 - A imagem do MinIO é a da Chainguard (`cgr.dev/chainguard/minio`), fixada por digest, porque a imagem `minio/minio` deixou de ser publicada.
 
+Cada `PluginItem` inclui `type` e `keywords`. O tipo é calculado por versão: somente MCPs → `connector`; somente skills → `skill`; qualquer outra composição (inclusive vazia) → `agent`. `type` aceita esses três valores, combina com `kind`, `q` e `project`, e responde 400 para valores desconhecidos. `q` também pesquisa substrings das tags, sem interpretar `%` e `_` como wildcards. O setup-plan usa a mesma representação, respeitando a versão fixada.
+
+A migration `0008_plugin_keywords.sql` adiciona tags por versão com padrão `[]`. Não retroalimenta tags das versões existentes nem altera seus archives. Na publicação, o relatório v2 de `harness validate --json` fornece descrição e tags; relatórios antigos sem esses campos usam o manifesto como fallback.
+
 ### Publicação em dois passos (`src/domain/publish.ts`)
 
 1. `prepareVersion(harness, dir)`, assíncrono: chama `harness validate <dir> --json`; depois, numa cópia do diretório, `harness generate <dir> --target claude-code` e `harness pack <dir> -o <file>`. Confere que o digest impresso pelo `pack` é o sha256 do arquivo e lê o manifesto (`plugin.json`, pastas de `skills/`, arquivos de `dev.smartharness/agents/` e servidores de `mcp.json`). Não grava nada.
@@ -132,12 +136,16 @@ curl -s -X POST "127.0.0.1:8080/v1/drafts/$ID/validate" -H "Authorization: Beare
 
 | Plugin | Versões | Squad dona | Visibilidade | Pacote base de |
 | --- | --- | --- | --- | --- |
-| `investimentos-base` | 1.0.0, 1.1.0 | investimentos | squad | `investimentos-api` (1.1.0) |
-| `conta-base` | 1.0.0 | conta | squad | `conta-digital` |
-| `cartoes-base` | 1.0.0 | cartoes | squad | `cartoes-app` |
-| `code-review` | 1.0.0 | cartoes | organization | `cartoes-app` |
+| `investimentos-base` | 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.2.2 | investimentos | squad | `investimentos-api` (1.2.1) |
+| `conta-base` | 1.0.0, 1.0.1 | conta | squad | `conta-digital` |
+| `cartoes-base` | 1.0.0, 1.0.1 | cartoes | squad | `cartoes-app` |
+| `code-review` | 1.0.0, 1.0.1 | cartoes | organization | `cartoes-app` |
 
-Assim, `dev@smart-harness.local` (investimentos e conta) vê `code-review` e recebe 404 em `cartoes-base`. Os pacotes são fixtures já geradas e empacotadas (tar.gz reproduzível) em `seed/packages/`. O seed calcula o digest em Node e chama `persistVersion`. Quando o engine do `harness` (#9) entrar, o seed passa a montar os pacotes com `prepareVersion` a partir das fontes.
+| `github-connector` | 1.0.0 | investimentos | squad | opcional |
+
+As últimas versões incluem tags. Os pins anteriores permanecem inalterados. `node marketplace/build-metadata-fixtures.mjs [caminho-do-harness]`, na raiz, reproduz as cinco novas fixtures com validação, geração e pack pelo engine real; recusa sobrescrever bytes diferentes da mesma versão. A versão nova de Conta também atualiza a URL MCP legada para o endpoint por projeto exigido pelo engine atual.
+
+Assim, `dev@smart-harness.local` (investimentos e conta) vê `code-review` e recebe 404 em `cartoes-base`. Os pacotes são fixtures já geradas e empacotadas (tar.gz reproduzível) em `seed/packages/`. O seed calcula o digest em Node e chama `persistVersion`.
 
 ## Configuração
 

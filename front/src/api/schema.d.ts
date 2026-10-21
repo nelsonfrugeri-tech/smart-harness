@@ -483,6 +483,12 @@ export interface components {
         tenant: components["schemas"]["TenantRef"];
       };
       version: components["schemas"]["PluginVersion"];
+      /**
+       * @description Only MCP components: connector; only skills: skill; otherwise: agent
+       * @enum {string}
+       */
+      type: "connector" | "skill" | "agent";
+      keywords: string[];
       components: components["schemas"]["Component"][];
     };
     PluginPage: {
@@ -844,11 +850,13 @@ export interface operations {
   listMarketplace: {
     parameters: {
       query?: {
+        /** @description Calculated package type */
+        type?: "connector" | "skill" | "agent";
         /** @description Only plugins whose latest visible version ships a component of this kind */
         kind?: components["schemas"]["ComponentKind"];
         /** @description Project slug; unknown or invisible answers 404 */
         project?: string;
-        /** @description Case-insensitive substring of the plugin name, description or a component name or description */
+        /** @description Case-insensitive substring of the plugin name, description, keywords or a component name or description */
         q?: string;
         /** @description next_cursor of the previous page; an invalid cursor answers 400 invalid_cursor */
         cursor?: components["parameters"]["Cursor"];

@@ -23,6 +23,10 @@ export function pluginView(entry: PluginEntry) {
   return {
     plugin: { name: entry.pluginName, description: entry.version.description, tenant: entry.tenant },
     version: versionView(entry.pluginName, entry.version),
+    type: entry.components.length > 0 && entry.components.every((item) => item.kind === "mcp")
+      ? "connector"
+      : entry.components.length > 0 && entry.components.every((item) => item.kind === "skill") ? "skill" : "agent",
+    keywords: JSON.parse(entry.version.keywords) as string[],
     components: entry.components,
   };
 }

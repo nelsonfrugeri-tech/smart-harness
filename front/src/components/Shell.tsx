@@ -27,7 +27,11 @@ export function followLink(event: MouseEvent<HTMLAnchorElement>) {
   )
     return;
   event.preventDefault();
-  navigate(event.currentTarget.pathname + event.currentTarget.search);
+  navigate(
+    event.currentTarget.pathname +
+      event.currentTarget.search +
+      event.currentTarget.hash,
+  );
 }
 export function Shell({
   children,
@@ -185,7 +189,7 @@ export function Shell({
         >
           <div className="breadcrumb">
             <BookOpen size={16} />
-            <strong>{isMarketplace ? "Marketplace" : "Workspace"}</strong>
+            <strong>{surfaceTitle(route.kind, isMarketplace)}</strong>
           </div>
           {route.kind !== "marketplace" && (
             <MarketplaceSearch filters={filters} />
@@ -256,4 +260,9 @@ function TokensLink({ active, close }: { active: boolean; close: () => void }) {
       Meus tokens
     </a>
   );
+}
+
+function surfaceTitle(kind: string, marketplace: boolean) {
+  if (marketplace) return "Marketplace";
+  return kind === "tokens" ? "Meus tokens" : "Workspace";
 }

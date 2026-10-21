@@ -87,8 +87,8 @@ export interface DraftBuild {
 }
 
 // Writes the files into a new temporary directory, validates them and, when valid, generates and
-// packs them. The manifest name, version and description come from plugin.json; the components
-// from the validation report. Nothing is stored; the temporary directory is always removed.
+// packs them. Name and version come from plugin.json; description, keywords and components
+// use the validation report, with manifest fallback for older binaries. Nothing is stored.
 export async function buildDraft(harness: HarnessClient, files: readonly DraftFile[]): Promise<DraftBuild> {
   const problems = filesProblems(files).paths;
   if (problems.length > 0) throw new DraftFilesError(problems);
@@ -101,7 +101,7 @@ export async function buildDraft(harness: HarnessClient, files: readonly DraftFi
     const report = await harness.validate(packageDir);
     if (!report.valid) return { report };
 
-    const manifest = withComponents(await readManifest(packageDir), report.components);
+    const manifest = withComponents(await readManifest(packageDir, report), report.components);
     const { archive, digest } = await generateAndPack(harness, packageDir, join(workDir, "package.tar.gz"));
     return { report, prepared: { manifest, archive, digest } };
   } finally {

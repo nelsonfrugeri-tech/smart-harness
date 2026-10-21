@@ -1,9 +1,10 @@
-import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { openDatabase, type Db } from "../../src/db/database.ts";
-import { runMigrations } from "../../src/db/migrate.ts";
+import { seedLocalData } from "../../seed/local-data.ts";
+import { MIGRATIONS_DIR, runMigrations } from "../../src/db/migrate.ts";
 
 describe("runMigrations", () => {
   let dir: string;
@@ -71,6 +72,23 @@ describe("runMigrations", () => {
     expect(() => runMigrations(db, dir)).toThrow(/version 0001 is used by more than one file/);
   });
 
+  it("adds empty keywords to existing versions without changing their immutable content", () => {
+    for (const file of readdirSync(MIGRATIONS_DIR).filter((file) => file < "0008")) {
+      writeFileSync(join(dir, file), readFileSync(join(MIGRATIONS_DIR, file)));
+    }
+    runMigrations(db, dir);
+    seedLocalData(db);
+    db.exec(`INSERT INTO plugins (id, tenant_id, name) SELECT 'legacy', id, 'legacy' FROM tenants LIMIT 1;
+      INSERT INTO plugin_versions (plugin_id, version, description, digest, size_bytes)
+        VALUES ('legacy', '1.0.0', 'Original', 'sha256:${"a".repeat(64)}', 1);`);
+    const before = db.prepare("SELECT description, digest FROM plugin_versions").get();
+    expect(runMigrations(db)).toEqual(["0008_plugin_keywords.sql"]);
+    expect(db.prepare("SELECT description, digest FROM plugin_versions").get()).toEqual(before);
+    expect(db.prepare("SELECT keywords FROM plugin_versions").get()).toEqual({ keywords: "[]" });
+    expect(() => db.prepare("UPDATE plugin_versions SET keywords = ?").run('["new"]')).toThrow("immutable");
+    expect(runMigrations(db)).toEqual([]);
+  });
+
   it("applies the repository migrations to an empty database", () => {
     expect(runMigrations(db)).toEqual([
       "0001_initial.sql",
@@ -80,6 +98,7 @@ describe("runMigrations", () => {
       "0005_model_usage.sql",
       "0006_drafts.sql",
       "0007_contributions.sql",
+      "0008_plugin_keywords.sql",
     ]);
 
     const tables = db

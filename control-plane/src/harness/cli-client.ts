@@ -61,7 +61,11 @@ export function parseReport(output: string): ValidationReport | undefined {
     return undefined;
   }
   if (value === null || typeof value !== "object" || typeof value.valid !== "boolean") return undefined;
+  if (value.description !== undefined && typeof value.description !== "string") return undefined;
+  if (value.keywords !== undefined && (!Array.isArray(value.keywords) || value.keywords.some((tag) => typeof tag !== "string"))) return undefined;
   return {
+    ...(value.description === undefined ? {} : { description: value.description }),
+    ...(value.keywords === undefined ? {} : { keywords: value.keywords }),
     valid: value.valid,
     findings: Array.isArray(value.findings) ? value.findings.map(finding) : [],
     ...(typeof value.plugin === "string" ? { plugin: value.plugin } : {}),

@@ -66,6 +66,19 @@ describe("createCliHarnessClient", () => {
     expect(report.valid).toBe(false);
   });
 
+  it("accepts report v2 metadata and preserves absence for legacy report fallback", async () => {
+    const legacy = await createCliHarnessClient(binary).validate(dir);
+    expect(legacy.description).toBeUndefined();
+    expect(legacy.keywords).toBeUndefined();
+    writeFileSync(binary, '#!/usr/bin/env node\nconsole.log(JSON.stringify({report_version:"2",valid:true,description:"Review",keywords:["Go"],findings:[]}));\n');
+    expect(await createCliHarnessClient(binary).validate(dir)).toMatchObject({ description: "Review", keywords: ["Go"] });
+  });
+
+  it("rejects malformed report metadata instead of storing it", async () => {
+    writeFileSync(binary, '#!/usr/bin/env node\nconsole.log(JSON.stringify({valid:true,keywords:[42],findings:[]}));\n');
+    await expect(createCliHarnessClient(binary).validate(dir)).rejects.toThrow("unexpected report");
+  });
+
   it("runs generate with the target", async () => {
     await createCliHarnessClient(binary).generate(dir, "claude-code");
 
@@ -92,10 +105,12 @@ describe("createCliHarnessClient", () => {
 });
 
 describe("parseReport", () => {
-  it("keeps hint, line, plugin, version and components, and drops the raw-tree digest", () => {
+  it("keeps findings, components and report v2 metadata, and drops the raw-tree digest", () => {
     const report = parseReport(
       JSON.stringify({
-        report_version: "1",
+        report_version: "2",
+        description: "Package description",
+        keywords: ["review"],
         valid: false,
         plugin: "demo",
         version: "1.0.0",
@@ -106,6 +121,8 @@ describe("parseReport", () => {
     );
 
     expect(report).toEqual({
+      description: "Package description",
+      keywords: ["review"],
       valid: false,
       plugin: "demo",
       version: "1.0.0",

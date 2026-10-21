@@ -48,7 +48,7 @@ func TestPackUnpackKeepsTheDigest(t *testing.T) {
 // exampleArchiveDigest is `sha256sum` of the archive of testdata/packages/example, measured on
 // macOS arm64 and Linux arm64 with Go 1.27.3. CI runs this test on Linux amd64. A Go upgrade that
 // changes compress/flate output changes this value and every package digest.
-const exampleArchiveDigest = "sha256:77a54500fb3decbf4acb0cd9c364a621d668b8cd088984d56d8542db6cf41690"
+const exampleArchiveDigest = "sha256:e99a4ed4e6a68719be5c904c11220ec0c4888e2da32c71d0d8ea09180a6dc8d9"
 
 func TestExampleArchiveDigest(t *testing.T) {
 	var archive bytes.Buffer

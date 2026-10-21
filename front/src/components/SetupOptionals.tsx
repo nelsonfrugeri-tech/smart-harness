@@ -33,10 +33,11 @@ export function SetupOptionals({
       className="panel setup-instructions"
       aria-labelledby="optionals-title"
     >
-      <h2 id="optionals-title">Complementos disponíveis</h2>
+      <h2 id="optionals-title">Complementos opcionais</h2>
       <p>
-        Não fazem parte do pacote base. A instalação usa a flag da CLI; não há
-        seleção de instalação no navegador.
+        Seu ambiente pode começar apenas com o pacote base. Para incluir um
+        complemento no setup, use --include-optional
+        nome-do-pacote,outro-pacote. Baixar no navegador não instala o pacote.
       </p>
       {state.status === "loading" ? (
         <Loading label="Carregando complementos…" />

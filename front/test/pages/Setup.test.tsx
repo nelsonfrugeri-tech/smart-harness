@@ -47,8 +47,8 @@ it("shows actual CLI commands with a terminal API URL and never claims local com
     screen.queryByRole("button", { name: "Copiar comando de setup" }),
   ).toBeNull();
   expect(
-    screen.getByRole("link", { name: "Meus tokens" }).getAttribute("target"),
-  ).toBe("_blank");
+    screen.getByRole("link", { name: "Meus tokens" }).getAttribute("href"),
+  ).toBe("/profile/tokens?project=investimentos-api");
   expect(
     screen
       .getByRole("link", { name: "release v0.1.0 da CLI" })

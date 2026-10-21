@@ -201,6 +201,49 @@ func TestPlatformRules(t *testing.T) {
 	}
 }
 
+func TestManifestMetadata(t *testing.T) {
+	cases := []struct {
+		name, manifest, description string
+		keywords                    []string
+		codes                       []string
+	}{
+		{"missing description", `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"example","version":"1.0.0"}`, "", []string{}, []string{"SH-MAN-001"}},
+		{"blank description", `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"example","version":"1.0.0","description":" \t "}`, " \t ", []string{}, []string{"SH-MAN-001"}},
+		{"metadata preserved", `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"example","version":"1.0.0","description":"Summary.","keywords":["review","go"]}`, "Summary.", []string{"review", "go"}, nil},
+		{"keywords optional", manifestWith("example", "1.0.0"), "d", []string{}, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := copyExample(t)
+			write(t, dir, "plugin.json", tc.manifest)
+			report, _, err := Dir(dir, options())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var codes []string
+			for _, f := range report.Findings {
+				codes = append(codes, f.Code)
+			}
+			if !reflect.DeepEqual(codes, tc.codes) {
+				t.Fatalf("codes = %v, want %v", codes, tc.codes)
+			}
+			out, err := json.Marshal(report)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(out, &fields); err != nil {
+				t.Fatal(err)
+			}
+			wantDescription, _ := json.Marshal(tc.description)
+			wantKeywords, _ := json.Marshal(tc.keywords)
+			if string(fields["description"]) != string(wantDescription) || string(fields["keywords"]) != string(wantKeywords) {
+				t.Fatalf("metadata = %s, want description %s and keywords %s", out, wantDescription, wantKeywords)
+			}
+		})
+	}
+}
+
 func TestLimitRule(t *testing.T) {
 	dir := copyExample(t)
 	for i := 0; i < pkg.MaxFiles; i++ { // with the example files, above the limit
@@ -244,10 +287,12 @@ func TestReportJSONIsStable(t *testing.T) {
 	gotAgain, _ := json.MarshalIndent(again, "", "  ")
 
 	want := `{
-  "report_version": "1",
+  "report_version": "2",
   "valid": false,
   "plugin": "claude",
   "version": "1.0",
+  "description": "d",
+  "keywords": [],
   "digest": "` + report.Digest + `",
   "components": [
     {
@@ -303,7 +348,7 @@ func TestValidReportHasEmptyFindingsArray(t *testing.T) {
 		t.Fatalf("findings must be [] not null: %s", out)
 	}
 	// The digest is what `harness pack` prints for the same directory.
-	if want := "sha256:77a54500fb3decbf4acb0cd9c364a621d668b8cd088984d56d8542db6cf41690"; report.Digest != want {
+	if want := "sha256:e99a4ed4e6a68719be5c904c11220ec0c4888e2da32c71d0d8ea09180a6dc8d9"; report.Digest != want {
 		t.Fatalf("digest = %s, want the archive digest %s", report.Digest, want)
 	}
 }

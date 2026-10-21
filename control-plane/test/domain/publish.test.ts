@@ -203,6 +203,7 @@ describe("prepareVersion", () => {
       name: "demo",
       version: "0.1.0",
       description: "Demo package",
+      keywords: [],
       components: [
         { kind: "agent", name: "reviewer", description: "" },
         { kind: "mcp", name: "docs", description: "" },
@@ -210,6 +211,16 @@ describe("prepareVersion", () => {
       ],
     });
     expect(existsSync(join(sourceDir, ".claude-plugin"))).toBe(false);
+  });
+
+  it("uses validated report metadata and preserves keywords during publication preparation", async () => {
+    const { client } = fakeHarness();
+    const result = await prepareVersion({ ...client,
+      async validate(dir) {
+        return { ...await client.validate(dir), description: "Validated description", keywords: ["Go", "review"] };
+      },
+    }, sourceDir);
+    expect(result.manifest).toMatchObject({ description: "Validated description", keywords: ["Go", "review"] });
   });
 
   it("stops after validate when the package is invalid and keeps the findings", async () => {

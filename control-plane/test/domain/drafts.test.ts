@@ -78,6 +78,7 @@ describe("buildDraft", () => {
       name: "demo",
       version: "1.0.0",
       description: "Demo.",
+      keywords: [],
       components: [{ kind: "skill", name: "demo-skill", description: "From the report." }],
     });
     expect(result.prepared?.digest).toMatch(/^sha256:[0-9a-f]{64}$/);

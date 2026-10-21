@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PACKAGES_DIR } from "../../../seed/marketplace.ts";
 import type { Db } from "../../../src/db/database.ts";
+import { savePublishedVersion } from "../../../src/db/repos/marketplace.ts";
 import { upsertUser } from "../../../src/db/repos/seed.ts";
 import { login, marketplaceFixture, testServer, type FakeS3 } from "../../test-support.ts";
 
@@ -46,9 +47,33 @@ describe("Marketplace routes", () => {
     return response.json<{ items: Item[] }>().items.map((item) => item.plugin.name);
   }
 
+  it("classifies packages, persists keywords and combines type with scoped filters", async () => {
+    const tenant = db.prepare("SELECT id FROM tenants WHERE slug = 'investimentos'").get() as { id: string };
+    const user = db.prepare("SELECT id FROM users LIMIT 1").get() as { id: string };
+    for (const [name, kinds] of [
+      ["test-connector", ["mcp"]], ["test-skill", ["skill"]],
+      ["test-agent", ["agent"]], ["test-mixed", ["skill", "mcp"]], ["test-empty", []],
+    ] as const) {
+      savePublishedVersion(db, { userId: user.id, tenantIds: [tenant.id] }, {
+        tenantId: tenant.id, visibility: "squad", digest: `sha256:${"a".repeat(64)}`, sizeBytes: 1,
+        manifest: { name, version: "1.0.0", description: "Test", keywords: ["unique-tag"],
+          components: kinds.map((kind) => ({ kind, name: kind, description: "" })) },
+      });
+    }
+    expect(await names(DEV, "/v1/marketplace?type=connector&q=UNIQUE-TAG&kind=mcp&project=investimentos-api"))
+      .toEqual(["test-connector"]);
+    expect(await names(DEV, "/v1/marketplace?type=skill&q=unique-tag")).toEqual(["test-skill"]);
+    expect(await names(DEV, "/v1/marketplace?type=agent&q=unique-tag")).toEqual(["test-agent", "test-empty", "test-mixed"]);
+    expect((await get(DEV, "/v1/plugins/test-connector")).json())
+      .toMatchObject({ type: "connector", keywords: ["unique-tag"] });
+    expect((await get(DEV, "/v1/plugins/investimentos-base")).json().keywords).toEqual(["investimentos", "onboarding", "go"]);
+    expect((await get(DEV, "/v1/marketplace?type=foo")).statusCode).toBe(400);
+    expect(await names(DEV_CARTOES, "/v1/marketplace?q=unique-tag")).toEqual([]);
+  });
+
   describe("visibility between squads", () => {
     it("a DEV sees the plugins of their squads and the organization ones, never another squad's", async () => {
-      expect(await names(DEV, "/v1/marketplace")).toEqual(["code-review", "conta-base", "investimentos-base"]);
+      expect(await names(DEV, "/v1/marketplace")).toEqual(["code-review", "conta-base", "github-connector", "investimentos-base"]);
       expect(await names(DEV_CARTOES, "/v1/marketplace")).toEqual(["cartoes-base", "code-review"]);
     });
 
@@ -73,7 +98,7 @@ describe("Marketplace routes", () => {
       expect(detail.statusCode).toBe(200);
       expect(detail.json<Item>()).toMatchObject({
         plugin: { name: "code-review", tenant: { slug: "cartoes" } },
-        version: { version: "1.0.0", visibility: "organization" },
+        version: { version: "1.0.1", visibility: "organization" },
       });
       expect((await get(DEV, "/v1/plugins/code-review/versions/1.0.0/archive")).statusCode).toBe(200);
     });
@@ -100,7 +125,7 @@ describe("Marketplace routes", () => {
 
   describe("GET /v1/marketplace filters", () => {
     it("kind keeps plugins whose latest version ships that kind", async () => {
-      expect(await names(DEV, "/v1/marketplace?kind=mcp")).toEqual(["conta-base", "investimentos-base"]);
+      expect(await names(DEV, "/v1/marketplace?kind=mcp")).toEqual(["conta-base", "github-connector", "investimentos-base"]);
       expect(await names(DEV, "/v1/marketplace?kind=skill")).toEqual(["code-review", "conta-base", "investimentos-base"]);
     });
 
@@ -111,7 +136,7 @@ describe("Marketplace routes", () => {
     });
 
     it("project lists the optionals of that project's squad and hides the baseline", async () => {
-      expect(await names(DEV, "/v1/marketplace?project=investimentos-api")).toEqual(["code-review"]);
+      expect(await names(DEV, "/v1/marketplace?project=investimentos-api")).toEqual(["code-review", "github-connector"]);
       expect((await get(DEV, "/v1/marketplace?project=cartoes-app")).statusCode).toBe(404);
     });
 
@@ -142,7 +167,7 @@ describe("Marketplace routes", () => {
         cursor = page.next_cursor;
       } while (cursor !== null);
 
-      expect(seen).toEqual(["code-review", "conta-base", "investimentos-base"]);
+      expect(seen).toEqual(["code-review", "conta-base", "github-connector", "investimentos-base"]);
     });
 
     it("an invalid cursor answers 400 invalid_cursor", async () => {
@@ -155,20 +180,22 @@ describe("Marketplace routes", () => {
 
     it("lists versions newest first, one per page", async () => {
       const first = (await get(DEV, "/v1/plugins/investimentos-base/versions?limit=1")).json();
-      expect(first.items.map((v: { version: string }) => v.version)).toEqual(["1.2.1"]);
+      expect(first.items.map((v: { version: string }) => v.version)).toEqual(["1.2.2"]);
       const second = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${first.next_cursor}`)).json();
-      expect(second.items.map((v: { version: string }) => v.version)).toEqual(["1.2.0"]);
+      expect(second.items.map((v: { version: string }) => v.version)).toEqual(["1.2.1"]);
       const third = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${second.next_cursor}`)).json();
-      expect(third.items.map((v: { version: string }) => v.version)).toEqual(["1.1.0"]);
+      expect(third.items.map((v: { version: string }) => v.version)).toEqual(["1.2.0"]);
       const fourth = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${third.next_cursor}`)).json();
-      expect(fourth).toMatchObject({ items: [{ version: "1.0.0" }], next_cursor: null });
+      expect(fourth.items).toMatchObject([{ version: "1.1.0" }]);
+      const fifth = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${fourth.next_cursor}`)).json();
+      expect(fifth).toMatchObject({ items: [{ version: "1.0.0" }], next_cursor: null });
     });
   });
 
   it("GET /v1/plugins/{name} returns the latest version with its components", async () => {
     const body = (await get(DEV, "/v1/plugins/investimentos-base")).json<Item>();
 
-    expect(body.version.version).toBe("1.2.1");
+    expect(body.version.version).toBe("1.2.2");
     expect(body.components.map((c) => `${c.kind}:${c.name}`)).toEqual([
       "agent:investimentos-guide",
       "agent:reviewer",
@@ -199,7 +226,8 @@ describe("Marketplace routes", () => {
     });
 
     it("fails with 500, not a corrupt file, when the stored object no longer matches its digest", async () => {
-      const { digest } = (await get(DEV, "/v1/plugins/code-review")).json<Item>().version;
+      const versionPage = (await get(DEV, "/v1/plugins/code-review/versions")).json();
+      const { digest } = versionPage.items.find((version: { version: string }) => version.version === "1.0.0");
       s3.objects.set(`packages/packages/sha256-${digest.slice("sha256:".length)}.tar.gz`, new Uint8Array([1, 2, 3]));
 
       const response = await get(DEV, "/v1/plugins/code-review/versions/1.0.0/archive");

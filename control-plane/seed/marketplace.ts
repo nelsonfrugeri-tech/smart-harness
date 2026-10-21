@@ -231,6 +231,25 @@ export const FIXTURES: Fixture[] = [
   },
 ];
 
+// New tagged versions preserve the bytes and empty keywords of all older publications.
+for (const [name, previous, version, keywords] of [
+  ["investimentos-base", "1.2.1", "1.2.2", ["investimentos", "onboarding", "go"]],
+  ["conta-base", "1.0.0", "1.0.1", ["conta", "onboarding"]],
+  ["cartoes-base", "1.0.0", "1.0.1", ["cartoes", "onboarding"]],
+  ["code-review", "1.0.0", "1.0.1", ["review", "quality"]],
+] as const) {
+  const source = FIXTURES.find((fixture) => fixture.manifest.name === name && fixture.manifest.version === previous);
+  if (!source) throw new Error(`missing source fixture ${name}@${previous}`);
+  FIXTURES.push({ ...source, file: `${name}-${version}.tar.gz`,
+    manifest: { ...source.manifest, version, keywords: [...keywords] } });
+}
+FIXTURES.push({
+  file: "github-connector-1.0.0.tar.gz", tenant: "investimentos", visibility: "squad",
+  manifest: { name: "github-connector", version: "1.0.0",
+    description: "GitHub connector through the Investimentos project gateway.",
+    keywords: ["github", "integration"], components: [GITHUB] },
+});
+
 export const BASELINE: { project: string; plugin: string; version: string }[] = [
   { project: "investimentos-api", plugin: "investimentos-base", version: "1.2.1" },
   { project: "conta-digital", plugin: "conta-base", version: "1.0.0" },
