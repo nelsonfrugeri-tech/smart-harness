@@ -39,14 +39,16 @@ O `compose.yaml` entrega os três primeiros à API, e o `make seed` os grava em
 `gateway_permissions` para o projeto `investimentos-api`. As credenciais vão só para o
 container do gateway. Uma credencial vazia desliga o servidor MCP correspondente.
 
-Para achar o short id do board pela API do Trello, carregue o `.env` no shell e liste os
+Para achar o short id do board pela API do Trello, carregue o `.env` em um subshell e liste os
 boards da conta. Na saída, procure o `name` do board e copie o `shortLink`:
 
 ```bash
+(
 set -a
 source .env
 set +a
 curl -s -H "Authorization: OAuth oauth_consumer_key=\"$TRELLO_API_KEY\", oauth_token=\"$TRELLO_TOKEN\"" "https://api.trello.com/1/members/me/boards?fields=name,shortLink"
+)
 ```
 
 ## 3. Subir a stack e o seed
