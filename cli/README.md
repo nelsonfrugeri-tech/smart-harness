@@ -21,10 +21,61 @@ A imagem da API (`control-plane/Dockerfile`) compila este binário e o instala e
 | `harness digest <dir>` | Digest do tar.gz que o `pack` gravaria | `sha256:<hex>` |
 | `harness pack <dir> -o <arquivo.tar.gz>` | tar.gz reproduzível | O digest |
 | `harness unpack <arquivo> <destino> [--expect-digest sha256:<hex>]` | Confere o digest do arquivo e extrai com checagens | O digest |
+| `harness setup <projeto> [--api-url <url>] [--include-optional <a>,<b>]` | Instala o pacote base (e opcionais) no Claude Code e aponta o Claude Code para o gateway | Uma linha por plugin e o comando para abrir o agente |
+| `harness sync` | Aplica o setup-plan atual de todos os projetos configurados | Uma linha por plugin |
+| `harness doctor` | Checa Claude Code, API, token, gateway, `settings.json`, plugins e plano | `ok` ou `FAIL` com `fix:` por checagem |
+| `harness draft pull <id> [--dir <dir>]` | Baixa o rascunho para teste local | O diretório e o comando `claude --plugin-dir` |
 
 Exit codes: `0` sucesso; `1` pacote inválido ou operação recusada; `2` uso incorreto ou erro de I/O.
 
 `--gateway-origin` define a única origem aceita para MCPs. O padrão é `http://127.0.0.1:8081`, o gateway do `compose.yaml`. O pacote grava essa origem canônica; na máquina do dev, `SMART_HARNESS_GATEWAY_URL` a substitui.
+
+## Instalação na máquina do dev
+
+```bash
+harness setup investimentos-api --api-url http://127.0.0.1:8080
+harness doctor
+harness sync
+```
+
+| Arquivo | Dono | Conteúdo |
+|---|---|---|
+| `~/.claude/skills/<plugin>/` | harness | Um diretório por plugin; o Claude Code carrega cada um em toda sessão (spike H1) |
+| `~/.claude/smart-harness-staging/` | harness | Versões em troca; fica fora de `skills/` para o Claude Code nunca carregar uma cópia pela metade |
+| `~/.claude/settings.json` | Claude Code | O `harness` grava só cinco chaves do `env` e preserva o resto |
+| `~/.config/smart-harness/config.json` | harness | API, gateway, projetos, opcionais escolhidos, plugins instalados com digest, rascunhos baixados. Nunca guarda o token |
+| `~/.config/smart-harness/harness.lock` | harness | Existe enquanto `setup`, `sync` ou `draft pull` roda |
+| `~/.config/smart-harness/drafts/.staging/` | harness | Cópias de rascunho em troca, uma pasta por destino |
+
+`HARNESS_CLAUDE_DIR` troca `~/.claude` (sem ela, vale `CLAUDE_CONFIG_DIR`, se existir) e `HARNESS_CONFIG_DIR` troca `~/.config/smart-harness`. Os testes usam as duas e nunca tocam o home real. `HARNESS_CLAUDE_BIN` troca o executável `claude` usado pelo `doctor`.
+
+**Token.** Um segredo só: o token do gateway (`shg_` + 43 caracteres). Ordem de leitura: variável `SMART_HARNESS_TOKEN`; se ela não existir, `env.SMART_HARNESS_TOKEN` do `settings.json` gravado pelo setup. Assim, `sync`, `doctor` e `draft pull` funcionam num shell novo, sem exportar nada. No primeiro `setup`, sem variável nem `settings.json`, o CLI pede o token sem eco no terminal. Nenhum comando imprime o token: as mensagens nunca o incluem e, como última defesa, a saída troca o valor por `shg_***`. O cliente HTTP não segue redirect, e o `archive_url` do plano precisa começar com `/v1/`, então o token só vai para a origem da API configurada. A URL da API e a do gateway precisam ser `https`; `http` só vale em loopback (`localhost`, `127.0.0.1`, `::1`), como no `compose.yaml`. Quando o gateway do plano é novo ou muda, `setup` e `sync` imprimem `gateway <antiga> -> <nova>`, porque os prompts e o token vão para lá.
+
+**`settings.json`.** O setup grava no `env`: `SMART_HARNESS_TOKEN` e `ANTHROPIC_AUTH_TOKEN` (o mesmo token, para MCPs e modelo), `ANTHROPIC_BASE_URL` e `SMART_HARNESS_GATEWAY_URL` (a URL do gateway do plano) e `ANTHROPIC_API_KEY` vazia, para uma chave do shell não desviar do gateway. As outras chaves mantêm o valor, mas o arquivo é regravado com as chaves em ordem alfabética e indentação de dois espaços; números e strings (inclusive `&`, `<` e `>`) saem como estavam. Quando o conteúdo muda, a versão anterior vai antes para `settings.json.harness-backup-<data UTC>`. O arquivo novo é gravado de forma atômica, com modo `0600`. Se `settings.json` é um symlink (por exemplo, para um repositório de dotfiles), a gravação vai para o alvo e o link continua link; um symlink quebrado é recusado. Um `settings.json` que não é objeto JSON é recusado antes de qualquer plugin ou do config mudar. O `sync` grava as mesmas cinco chaves, com o token que acabou de usar, então um `settings.json` apagado volta completo.
+
+**Reconciliação.** `setup` e `sync` leem o setup-plan de todos os projetos do config antes de mudar qualquer coisa. A instalação é global por nome, então o conjunto desejado é a união dos projetos:
+
+- um plugin sai só quando nenhum projeto o usa;
+- dois projetos com digests diferentes do mesmo plugin são erro, antes de qualquer alteração;
+- dois projetos com gateways diferentes também;
+- um diretório em `skills/` que o config não lista não é do harness: erro, sem tocar nele;
+- plugin com o mesmo digest e o mesmo conteúdo não é baixado de novo. Um diretório alterado à mão é reinstalado.
+
+**Troca segura.** Primeiro, todos os pacotes novos são baixados e extraídos em `smart-harness-staging/` (o `unpack` confere o digest do plano). Só depois começa a troca, plugin a plugin. `os.Rename` não substitui um diretório existente, então a troca é: mover a versão atual para `staging/<plugin>.previous`, mover a nova para `skills/<plugin>` e apagar a anterior. Se o segundo passo falhar, a anterior volta. Se o processo morrer entre os dois passos, o próximo comando devolve a anterior. O config é gravado depois de cada troca, então sempre descreve o disco.
+
+**Um comando por vez.** `setup`, `sync` e `draft pull` criam `harness.lock` com `O_EXCL` antes de ler o config e o apagam no fim, também no Ctrl-C. Um segundo comando ao mesmo tempo para com `another harness command is running`. Se o processo morrer sem apagar o lock (`kill -9`), a mensagem diz qual arquivo remover. O `doctor` só lê e não usa o lock. No Ctrl-C durante o pedido do token, o eco do terminal volta antes de sair.
+
+**Digests no config.** `digest` é o do arquivo baixado (o do plano). `content_digest` é o `harness digest` do diretório logo depois da instalação. O `doctor` recalcula o segundo, porque os pacotes do seed não foram empacotados pelo `harness pack` e o digest do arquivo não se reproduz a partir do diretório.
+
+**`draft pull`.** Contrato: `GET /v1/drafts/{id}/archive` responde o tar.gz com o digest no header `x-package-digest` (o mesmo do download de versão). O destino padrão é `~/.config/smart-harness/drafts/<id>`. O comando pode ser repetido: o mesmo digest não muda nada; um digest novo troca a cópia com a mesma troca segura. A área de troca é `drafts/.staging/<hash do destino>`, do harness: nada ao lado do destino é criado ou apagado. Por isso o `--dir` precisa estar no mesmo file system do config (`os.Rename` não cruza file systems). `--dir` aceita um diretório ausente, vazio ou já usado por um pull do mesmo rascunho. A rota é da #16; hoje o comando é testado só contra uma API falsa.
+
+**`doctor`.** Checa: Claude Code ≥ 2.1.305 (a versão do spike H1; anteriores não foram testadas), API (`/healthz`), token (`GET /v1/me`), gateway (`/healthz`), `env` do `settings.json`, conteúdo de cada plugin contra o `content_digest` e mudanças do plano ainda não aplicadas. Cada falha diz o que fazer. Exit `1` se alguma falhar.
+
+Sem retry: cada chamada faz uma tentativa, com timeout de 15 s (JSON), 2 min (arquivo) e 5 s (`/healthz`).
+
+## Release
+
+Um tag `v*` roda `.github/workflows/release.yml`: `make check-go`, binários estáticos (`CGO_ENABLED=0`) para macOS (arm64, amd64) e Linux (amd64, arm64), `SHA256SUMS` e um GitHub Release com os arquivos.
 
 ## Pacote
 

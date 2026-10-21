@@ -20,7 +20,11 @@ const usage = `usage:
   harness generate <dir> --target <name> [--gateway-origin <url>]
   harness digest <dir>
   harness pack <dir> -o <file.tar.gz>
-  harness unpack <file.tar.gz> <dest> [--expect-digest sha256:<hex>]`
+  harness unpack <file.tar.gz> <dest> [--expect-digest sha256:<hex>]
+  harness setup <project> [--api-url <url>] [--include-optional <plugin>[,<plugin>...]]
+  harness sync
+  harness doctor
+  harness draft pull <id> [--dir <dir>]`
 
 // Exit codes: 0 success, 1 invalid package or rejected operation, 2 usage or I/O error.
 const (
@@ -57,6 +61,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runPack(rest, stdout, stderr)
 	case "unpack":
 		return runUnpack(rest, stdout, stderr)
+	case "setup":
+		return runSetup(rest, stdout, stderr)
+	case "sync":
+		return runSync(rest, stdout, stderr)
+	case "doctor":
+		return runDoctor(rest, stdout, stderr)
+	case "draft":
+		return runDraft(rest, stdout, stderr)
 	}
 	return usageError(stderr, "")
 }

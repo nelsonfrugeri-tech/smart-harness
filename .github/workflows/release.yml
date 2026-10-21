@@ -1,0 +1,47 @@
+name: release
+
+# A tag v* builds the harness CLI for macOS and Linux and publishes the binaries in a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release and upload the binaries
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # the tests never see the write token in .git/config
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: cli/go.mod
+          cache: false # a release never builds from a cache another workflow could have written
+      - name: Test
+        run: make check-go
+      - name: Build
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -eu
+          commit="$(git rev-parse --short HEAD)"
+          mkdir -p dist
+          for target in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64; do
+            os="${target%/*}"
+            arch="${target#*/}"
+            out="dist/harness-${VERSION}-${os}-${arch}"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go -C cli build -trimpath \
+              -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${commit}" \
+              -o "../${out}" ./cmd/harness
+          done
+          (cd dist && sha256sum harness-* > SHA256SUMS)
+          ls -l dist
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: gh release create "$VERSION" dist/* --title "$VERSION" --verify-tag --generate-notes
