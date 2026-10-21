@@ -212,7 +212,7 @@ func TestLimitRule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Findings) != 1 || report.Findings[0].Code != "SH-LIM-001" || report.Digest != "" {
+	if len(report.Findings) != 1 || report.Findings[0].Code != "SH-LIM-001" || report.Digest != "" || len(report.Components) != 0 {
 		t.Fatalf("report = %+v, want only SH-LIM-001 and no digest", report)
 	}
 }
@@ -249,6 +249,23 @@ func TestReportJSONIsStable(t *testing.T) {
   "plugin": "claude",
   "version": "1.0",
   "digest": "` + report.Digest + `",
+  "components": [
+    {
+      "kind": "agent",
+      "name": "reviewer",
+      "description": "Reviews code changes and points out risks."
+    },
+    {
+      "kind": "mcp",
+      "name": "docs",
+      "description": ""
+    },
+    {
+      "kind": "skill",
+      "name": "code-review",
+      "description": "Reviews a code change for correctness and risk. Use when asked to review a diff or a pull request."
+    }
+  ],
   "findings": [
     {
       "code": "SH-NAM-001",
@@ -284,6 +301,10 @@ func TestValidReportHasEmptyFindingsArray(t *testing.T) {
 	out, _ := json.Marshal(report)
 	if !strings.Contains(string(out), `"findings":[]`) {
 		t.Fatalf("findings must be [] not null: %s", out)
+	}
+	// The digest is what `harness pack` prints for the same directory.
+	if want := "sha256:77a54500fb3decbf4acb0cd9c364a621d668b8cd088984d56d8542db6cf41690"; report.Digest != want {
+		t.Fatalf("digest = %s, want the archive digest %s", report.Digest, want)
 	}
 }
 

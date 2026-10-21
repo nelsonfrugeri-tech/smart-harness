@@ -1,12 +1,14 @@
 // Package pack writes and reads the reproducible tar.gz of a package.
 //
 // The archive holds only regular files, sorted by path, with mode 0644, uid/gid 0, no owner
-// names and mtime 0; the gzip header has no name and no time. The same directory always gives
-// the same bytes with the same Go version. Pack and Unpack apply the same limits (pkg.Tally).
+// names and mtime 0; the gzip header has no name, no time and a fixed compression level. The
+// digest of a package is the sha256 of these archive bytes (package digest), so the same
+// directory gives the same digest with the same Go version. Pack and Unpack apply the same limits.
 package pack
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"errors"
 	"fmt"
@@ -21,19 +23,58 @@ import (
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/engine/pkg"
 )
 
-// Pack writes the package directory to w and returns its digest.
-func Pack(dir string, w io.Writer) (string, error) {
+// MaxArchiveBytes bounds the archive read by Unpack. It is above the largest archive Pack can
+// write: content limit, plus 1 KiB of tar header and padding per file, plus 1 MiB for gzip.
+const MaxArchiveBytes = pkg.MaxTotalBytes + pkg.MaxFiles*1024 + 1<<20
+
+// Archive reads the package directory and returns its tar.gz bytes.
+// A symlink, a special file, an unsafe path or a broken limit is an error.
+func Archive(dir string) ([]byte, error) {
 	tree, findings, err := pkg.ReadTree(dir)
+	if err != nil {
+		return nil, err
+	}
+	if len(findings) > 0 {
+		return nil, fmt.Errorf("%s: %s", findings[0].Path, findings[0].Message)
+	}
+	var buf bytes.Buffer
+	if err := Write(tree.Files, &buf); err != nil {
+		return nil, err
+	}
+	if buf.Len() > MaxArchiveBytes { // cannot happen within the limits; keeps Pack and Unpack aligned
+		return nil, fmt.Errorf("archive is larger than %d bytes", MaxArchiveBytes)
+	}
+	return buf.Bytes(), nil
+}
+
+// DirDigest returns the digest of the archive that Pack writes for dir.
+func DirDigest(dir string) (string, error) {
+	archive, err := Archive(dir)
 	if err != nil {
 		return "", err
 	}
-	if len(findings) > 0 {
-		return "", fmt.Errorf("%s: %s", findings[0].Path, findings[0].Message)
-	}
-	if err := Write(tree.Files, w); err != nil {
+	return digest.Of(archive), nil
+}
+
+// FilesDigest returns the digest of the archive of files, already sorted by path.
+func FilesDigest(files []pkg.File) (string, error) {
+	var buf bytes.Buffer
+	if err := Write(files, &buf); err != nil {
 		return "", err
 	}
-	return digest.Files(tree.Files), nil
+	return digest.Of(buf.Bytes()), nil
+}
+
+// Pack writes the archive of dir to w and returns its digest.
+func Pack(dir string, w io.Writer) (string, error) {
+	archive, err := Archive(dir)
+	if err != nil {
+		return "", err
+	}
+	if _, err := w.Write(archive); err != nil {
+		return "", err
+	}
+	return digest.Of(archive), nil
 }
 
 // Write writes files, already sorted by path, as a reproducible tar.gz.
@@ -67,12 +108,24 @@ func Write(files []pkg.File, w io.Writer) error {
 	return gz.Close()
 }
 
-// Unpack extracts an archive into dest and returns its digest.
+// Unpack checks and extracts an archive into dest and returns its digest.
 //
-// dest must not exist or must be an empty directory. Files are extracted into a sibling
-// temporary directory that replaces dest only after every check passes, so a rejected archive
-// leaves nothing in dest. When expectDigest is not empty, a different digest is an error.
+// The archive is read whole (at most MaxArchiveBytes) and, when expectDigest is not empty, its
+// sha256 is compared before anything is extracted. dest must not exist or must be an empty
+// directory. Files go to a sibling temporary directory that replaces dest only after every
+// check passes, so a rejected archive leaves nothing behind.
 func Unpack(r io.Reader, dest, expectDigest string) (string, error) {
+	archive, err := io.ReadAll(io.LimitReader(r, MaxArchiveBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if len(archive) > MaxArchiveBytes {
+		return "", fmt.Errorf("archive is larger than %d bytes", MaxArchiveBytes)
+	}
+	got := digest.Of(archive)
+	if expectDigest != "" && got != expectDigest {
+		return "", fmt.Errorf("digest %s does not match the expected %s", got, expectDigest)
+	}
 	if err := checkEmpty(dest); err != nil {
 		return "", err
 	}
@@ -84,10 +137,7 @@ func Unpack(r io.Reader, dest, expectDigest string) (string, error) {
 		_ = os.RemoveAll(tmp)
 		return "", err
 	}
-	got, err := extract(r, tmp)
-	if err == nil && expectDigest != "" && got != expectDigest {
-		err = fmt.Errorf("digest %s does not match the expected %s", got, expectDigest)
-	}
+	err = extract(bytes.NewReader(archive), tmp)
 	if err == nil {
 		err = replace(tmp, dest)
 	}
@@ -98,42 +148,40 @@ func Unpack(r io.Reader, dest, expectDigest string) (string, error) {
 	return got, nil
 }
 
-func extract(r io.Reader, root string) (string, error) {
+func extract(r io.Reader, root string) error {
 	gz, err := gzip.NewReader(r)
 	if err != nil {
-		return "", fmt.Errorf("archive is not gzip: %w", err)
+		return fmt.Errorf("archive is not gzip: %w", err)
 	}
 	tr := tar.NewReader(gz)
 	var tally pkg.Tally
-	var files []pkg.File
 	for {
 		hdr, err := tr.Next()
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
-			return "", fmt.Errorf("archive is not a valid tar: %w", err)
+			return fmt.Errorf("archive is not a valid tar: %w", err)
 		}
 		if hdr.Typeflag != tar.TypeReg {
-			return "", fmt.Errorf("%s: only regular files are allowed (symlinks, links, devices and directories are rejected)", hdr.Name)
+			return fmt.Errorf("%s: only regular files are allowed (symlinks, links, devices and directories are rejected)", hdr.Name)
 		}
 		if err := checkPath(hdr.Name); err != nil {
-			return "", err
+			return err
 		}
 		if err := tally.Add(hdr.Name, hdr.Size); err != nil {
-			return "", err
+			return err
 		}
 		// The tar reader stops at hdr.Size, so a lying header cannot exceed the limit.
 		data, err := io.ReadAll(tr)
 		if err != nil {
-			return "", err
+			return err
 		}
 		if err := writeNew(root, hdr.Name, data); err != nil {
-			return "", err
+			return err
 		}
-		files = append(files, pkg.File{Path: hdr.Name, Data: data})
 	}
-	return digest.Files(files), nil
+	return nil
 }
 
 // checkPath accepts only a clean relative slash path: no absolute path, "..", ".", empty part,

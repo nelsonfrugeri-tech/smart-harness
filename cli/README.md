@@ -18,9 +18,9 @@ A imagem da API (`control-plane/Dockerfile`) compila este binário e o instala e
 | `harness version` | Versão e commit | `harness 0.1.0 (commit abc1234)` |
 | `harness validate <dir> [--json] [--gateway-origin <url>]` | Aplica as regras abaixo | Relatório JSON ou uma linha por achado |
 | `harness generate <dir> --target <nome> [--gateway-origin <url>]` | Valida e grava a camada do target no próprio diretório | Um caminho por arquivo gerado |
-| `harness digest <dir>` | Hash do conteúdo | `sha256:<hex>` |
+| `harness digest <dir>` | Digest do tar.gz que o `pack` gravaria | `sha256:<hex>` |
 | `harness pack <dir> -o <arquivo.tar.gz>` | tar.gz reproduzível | O digest |
-| `harness unpack <arquivo> <destino> [--expect-digest sha256:<hex>]` | Extrai com checagens | O digest |
+| `harness unpack <arquivo> <destino> [--expect-digest sha256:<hex>]` | Confere o digest do arquivo e extrai com checagens | O digest |
 
 Exit codes: `0` sucesso; `1` pacote inválido ou operação recusada; `2` uso incorreto ou erro de I/O.
 
@@ -41,10 +41,11 @@ Depois de `generate --target claude-code`, o mesmo diretório ganha `.claude-plu
 
 ## Regras do `validate --json`
 
-Todo achado tem `severity: "error"`. Os achados saem ordenados por `path`, `line` e `code`. `line` é 1-based; `0` quando o defeito não tem linha. `findings` é `[]` quando o pacote é válido. Nenhuma mensagem repete o texto que parece segredo.
+`digest` é o que `harness pack` imprimiria; `""` quando o `pack` recusaria o diretório. `components` lista só os componentes válidos (`agent`, `mcp`, `skill`), ordenados por tipo e nome. Todo achado tem `severity: "error"`. Os achados saem ordenados por `path`, `line` e `code`. `line` é 1-based; `0` quando o defeito não tem linha. `findings` é `[]` quando o pacote é válido. Nenhuma mensagem repete o texto que parece segredo.
 
 ```json
 {"report_version": "1", "valid": false, "plugin": "example", "version": "1.0.0", "digest": "sha256:…",
+ "components": [{"kind": "agent", "name": "reviewer", "description": "…"}, {"kind": "mcp", "name": "docs", "description": ""}],
  "findings": [{"code": "SH-SEC-002", "severity": "error", "message": "…", "hint": "…", "path": "README.md", "line": 3}]}
 ```
 
@@ -91,9 +92,9 @@ Fase 1: `claude-code` gera `.claude-plugin/plugin.json` (com `author`, exigido p
 
 ## Digest e pacote
 
-- **Digest:** arquivos regulares ordenados por caminho (bytes, separador `/`). Para cada um, `caminho + "\0" + hex(sha256(conteúdo)) + "\n"`. O digest é `sha256:` + o sha256 desse texto. Modo, datas, dono e pastas vazias não entram. O teste em `digest/digest_test.go` fixa um vetor calculado com `shasum` e o digest do pacote de exemplo; o CI roda em Linux e o dev em macOS.
+- **Digest:** `sha256:` + hex do sha256 dos bytes do tar.gz que o `pack` grava (contrato com a API, #7). `harness digest <dir>` e o `digest` do `validate` devolvem o mesmo valor que o `pack` imprimiria. Como o tar.gz é reproduzível, o mesmo conteúdo dá o mesmo digest; modo, datas, dono e pastas vazias não entram. `pack/pack_test.go` fixa o digest do pacote de exemplo, medido em macOS e Linux com Go 1.27.3; o CI roda em Linux. Uma versão do Go que mude a saída de `compress/flate` muda todos os digests: o teste fixado falha e avisa.
 - **Pack:** tar.gz só com arquivos regulares, em ordem, modo `0644`, uid/gid `0`, sem nome de dono e mtime `0`; gzip sem nome nem data.
-- **Unpack:** rejeita caminho absoluto, `..`, `.`, segmento vazio, `\`, `:`, symlink, hardlink, pasta, device, caminho repetido e destino não vazio. Extrai numa pasta temporária irmã e só troca pelo destino depois de todas as checagens e do `--expect-digest`. Um arquivo recusado não deixa nada no destino.
+- **Unpack:** lê o arquivo inteiro (até `MaxArchiveBytes`) e confere o `--expect-digest` antes de extrair. Rejeita caminho absoluto, `..`, `.`, segmento vazio, `\`, `:`, symlink, hardlink, pasta, device, caminho repetido e destino não vazio. Extrai numa pasta temporária irmã e só troca pelo destino depois de todas as checagens. Um arquivo recusado não deixa nada no destino.
 - **Limites:** `pack`, `unpack`, `digest` e `validate` usam as mesmas constantes (`pkg/limits.go`). O `pack` mede o conteúdo final, depois do `generate`.
 
 ## Dependência

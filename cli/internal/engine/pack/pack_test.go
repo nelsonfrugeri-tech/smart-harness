@@ -20,7 +20,7 @@ const exampleDir = "../testdata/packages/example"
 var timeZero = time.Unix(1, 0)
 
 func TestPackUnpackKeepsTheDigest(t *testing.T) {
-	want, err := digest.Dir(exampleDir)
+	want, err := DirDigest(exampleDir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,12 +36,46 @@ func TestPackUnpackKeepsTheDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	onDisk, err := digest.Dir(dest)
+	onDisk, err := DirDigest(dest)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if packed != want || unpacked != want || onDisk != want {
 		t.Fatalf("digests: source %s, pack %s, unpack %s, on disk %s", want, packed, unpacked, onDisk)
+	}
+}
+
+// exampleArchiveDigest is `sha256sum` of the archive of testdata/packages/example, measured on
+// macOS arm64 and Linux arm64 with Go 1.27.3. CI runs this test on Linux amd64. A Go upgrade that
+// changes compress/flate output changes this value and every package digest.
+const exampleArchiveDigest = "sha256:77a54500fb3decbf4acb0cd9c364a621d668b8cd088984d56d8542db6cf41690"
+
+func TestExampleArchiveDigest(t *testing.T) {
+	var archive bytes.Buffer
+	got, err := Pack(exampleDir, &archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != digest.Of(archive.Bytes()) {
+		t.Fatalf("Pack returned %s, but the archive bytes hash to %s", got, digest.Of(archive.Bytes()))
+	}
+	if got != exampleArchiveDigest {
+		t.Fatalf("digest = %s, want %s", got, exampleArchiveDigest)
+	}
+}
+
+func TestUnpackChecksTheDigestBeforeExtracting(t *testing.T) {
+	var archive bytes.Buffer
+	if _, err := Pack(exampleDir, &archive); err != nil {
+		t.Fatal(err)
+	}
+	dest := t.TempDir()
+	write(t, dest, "keep.txt", "mine", 0o644) // a non-empty destination would also be an error
+
+	_, err := Unpack(&archive, dest, "sha256:"+strings.Repeat("0", 64))
+
+	if err == nil || !strings.Contains(err.Error(), "does not match") {
+		t.Fatalf("err = %v, want the digest error first", err)
 	}
 }
 
@@ -98,7 +132,7 @@ func TestLimitsAreTheSameInPackAndUnpack(t *testing.T) {
 				t.Fatalf("pack err = %v, unpack err = %v, want ok = %v", packErr, unpackErr, tc.ok)
 			}
 			if tc.ok {
-				if _, err := Unpack(bytes.NewReader(packed.Bytes()), filepath.Join(t.TempDir(), "again"), digest.Files(tc.files)); err != nil {
+				if _, err := Unpack(bytes.NewReader(packed.Bytes()), filepath.Join(t.TempDir(), "again"), digest.Of(packed.Bytes())); err != nil {
 					t.Fatalf("unpack of the packed archive: %v", err)
 				}
 			}

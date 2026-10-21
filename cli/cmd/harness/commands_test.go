@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io/fs"
 	"os"
@@ -137,6 +139,9 @@ func TestPackUnpackDigestRoundTrip(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("unpack: %d %s", code, errOut)
 	}
+	if data, err := os.ReadFile(archive); err != nil || "sha256:"+sha256Hex(data)+"\n" != packed {
+		t.Fatalf("pack printed %q, not the sha256 of the archive bytes", packed)
+	}
 	_, source, _ := harness("digest", exampleDir)
 	_, result, _ := harness("digest", dest)
 	if packed != source || unpacked != source || result != source {
@@ -145,6 +150,9 @@ func TestPackUnpackDigestRoundTrip(t *testing.T) {
 
 	if code, _, _ := harness("unpack", archive, dest); code != 1 {
 		t.Fatalf("unpack into a non-empty destination: code %d, want 1", code)
+	}
+	if code, _, _ := harness("unpack", archive, filepath.Join(work, "x"), "--expect-digest", "abc"); code != 2 {
+		t.Fatalf("malformed --expect-digest: code %d, want 2", code)
 	}
 	if code, _, _ := harness("pack", exampleDir, "-o", filepath.Join(exampleDir, "x.tar.gz")); code != 2 {
 		t.Fatalf("pack into the package: code %d, want 2", code)
@@ -161,4 +169,9 @@ func TestCommandsRejectBadArguments(t *testing.T) {
 			t.Errorf("args %q: code %d, stderr %q", args, code, errOut)
 		}
 	}
+}
+
+func sha256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }

@@ -127,7 +127,7 @@ func runDigest(args []string, stdout, stderr io.Writer) int {
 	if err != nil || len(a.positional) != 1 {
 		return usageError(stderr, errText(err))
 	}
-	d, err := digest.Dir(a.positional[0])
+	d, err := pack.DirDigest(a.positional[0])
 	if err != nil {
 		return failure(stderr, exitFailure, err)
 	}
@@ -161,6 +161,9 @@ func runUnpack(args []string, stdout, stderr io.Writer) int {
 	a, err := parseArgs(args, []string{"--expect-digest"}, nil)
 	if err != nil || len(a.positional) != 2 {
 		return usageError(stderr, errText(err))
+	}
+	if d := a.values["--expect-digest"]; d != "" && !digest.Valid(d) {
+		return usageError(stderr, fmt.Sprintf("--expect-digest %q must be sha256:<64 lowercase hex>", d))
 	}
 	f, err := os.Open(a.positional[0])
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"net/url"
 
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/engine/converter"
-	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/engine/digest"
+	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/engine/pack"
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/engine/pkg"
 )
 
@@ -33,12 +33,20 @@ type Options struct {
 
 // Report is the stable JSON output of `harness validate --json`. Keys keep this order.
 type Report struct {
-	ReportVersion string    `json:"report_version"`
-	Valid         bool      `json:"valid"`
-	Plugin        string    `json:"plugin"`  // name as written in plugin.json, "" when absent
-	Version       string    `json:"version"` // "" when absent
-	Digest        string    `json:"digest"`  // digest of every file read, "" when a limit stopped the read
-	Findings      []Finding `json:"findings"`
+	ReportVersion string      `json:"report_version"`
+	Valid         bool        `json:"valid"`
+	Plugin        string      `json:"plugin"`     // name as written in plugin.json, "" when absent
+	Version       string      `json:"version"`    // "" when absent
+	Digest        string      `json:"digest"`     // what `harness pack` would print; "" when pack would refuse the directory
+	Components    []Component `json:"components"` // valid components only, sorted by kind and name
+	Findings      []Finding   `json:"findings"`
+}
+
+// Component is one agent, skill or MCP server of the package.
+type Component struct {
+	Kind        string `json:"kind"` // "agent", "mcp" or "skill"
+	Name        string `json:"name"`
+	Description string `json:"description"` // "" for MCP servers, which have none
 }
 
 // Finding is one report entry. Every finding is an error in this version.
@@ -65,14 +73,26 @@ func Dir(dir string, opts Options) (Report, pkg.Package, error) {
 	if err := CheckOrigin(opts.GatewayOrigin); err != nil {
 		return Report{}, pkg.Package{}, err
 	}
-	p, tree, findings, err := pkg.Load(dir)
+	tree, findings, err := pkg.ReadTree(dir)
 	if err != nil {
 		return Report{}, pkg.Package{}, err
 	}
+	// A symlink, a special file or a broken limit makes pack refuse the directory: no digest.
+	packable := len(findings) == 0
+	var p pkg.Package
 	if !limitReached(findings) {
-		findings = append(findings, Policy(p, tree, findings, opts)...)
+		var parsed []pkg.Finding
+		p, parsed = pkg.Parse(tree)
+		findings = append(findings, parsed...)
+		findings = append(findings, Policy(p, tree, parsed, opts)...)
 	}
-	return newReport(p, tree, findings), p, nil
+	r := newReport(p, findings)
+	if packable {
+		if d, err := pack.FilesDigest(tree.Files); err == nil {
+			r.Digest = d
+		}
+	}
+	return r, p, nil
 }
 
 func limitReached(findings []pkg.Finding) bool {
@@ -98,11 +118,18 @@ func Policy(p pkg.Package, tree pkg.Tree, parsed []pkg.Finding, opts Options) []
 	return findings
 }
 
-func newReport(p pkg.Package, tree pkg.Tree, findings []pkg.Finding) Report {
+func newReport(p pkg.Package, findings []pkg.Finding) Report {
 	pkg.SortFindings(findings)
-	r := Report{ReportVersion: ReportVersion, Plugin: p.Manifest.Name, Version: p.Manifest.Version, Findings: []Finding{}}
-	if !limitReached(findings) {
-		r.Digest = digest.Files(tree.Files)
+	r := Report{ReportVersion: ReportVersion, Plugin: p.Manifest.Name, Version: p.Manifest.Version,
+		Components: []Component{}, Findings: []Finding{}}
+	for _, a := range p.Agents {
+		r.Components = append(r.Components, Component{Kind: "agent", Name: a.Name, Description: a.Description})
+	}
+	for _, s := range p.MCPServers {
+		r.Components = append(r.Components, Component{Kind: "mcp", Name: s.Name})
+	}
+	for _, s := range p.Skills {
+		r.Components = append(r.Components, Component{Kind: "skill", Name: s.Name, Description: s.Description})
 	}
 	for _, f := range findings {
 		r.Findings = append(r.Findings, Finding{Code: f.Code, Severity: "error", Message: f.Message, Hint: f.Hint, Path: f.Path, Line: f.Line})
