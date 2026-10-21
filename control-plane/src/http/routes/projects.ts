@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { listBaselines, listMarketplace, type BaselineEntry } from "../../db/repos/marketplace.ts";
 import { findProjectBySlug, listProjects } from "../../db/repos/projects.ts";
 import { COMPONENT_KINDS, type ComponentKind } from "../../domain/marketplace.ts";
-import { authenticate, type AuthDeps } from "../auth.ts";
+import { authenticate, GATEWAY_TOKEN_ALLOWED, type AuthDeps } from "../auth.ts";
 import { pluginView } from "../marketplace-views.ts";
 import { DEFAULT_LIMIT, toPage } from "../pagination.ts";
 import { notFound } from "../problem.ts";
@@ -17,7 +17,7 @@ const MAX_WORKSPACE_PROJECTS = 100;
 export function registerProjectRoutes(app: FastifyInstance, deps: ProjectRoutesDeps): void {
   // The caller's projects, each with its baseline and the component counts of that baseline.
   // Three queries in total, whatever the number of projects.
-  app.get("/v1/workspace", async (request) => {
+  app.get("/v1/workspace", { config: GATEWAY_TOKEN_ALLOWED }, async (request) => {
     const { user, scope } = await authenticate(request, deps);
     const projects = listProjects(deps.db, scope, MAX_WORKSPACE_PROJECTS);
     const baselines = listBaselines(
@@ -48,6 +48,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: ProjectRoutesD
   app.get<{ Params: { slug: string } }>(
     "/v1/projects/:slug/setup-plan",
     {
+      config: GATEWAY_TOKEN_ALLOWED,
       schema: {
         params: {
           type: "object",

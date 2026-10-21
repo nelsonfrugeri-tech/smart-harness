@@ -28,10 +28,13 @@ export function seededDatabase(): Db {
 export const TEST_BUCKET = "packages";
 export const TEST_GATEWAY_URL = "http://127.0.0.1:8081";
 
+export const TEST_GATEWAY_TOKEN_TTL_DAYS = 90;
+
 export function testServer(
   db: Db,
   appEnv: AppEnv = "local",
   storage: PackageStorage = createPackageStorage(new FakeS3([TEST_BUCKET]), TEST_BUCKET),
+  logStream?: { write(line: string): void },
 ): FastifyInstance {
   return buildServer({
     db,
@@ -40,9 +43,11 @@ export function testServer(
       appEnv,
       jwtSecret: TEST_SECRET,
       tokenTtlSeconds: 3600,
-      logLevel: "silent",
+      gatewayTokenTtlDays: TEST_GATEWAY_TOKEN_TTL_DAYS,
+      logLevel: logStream === undefined ? "silent" : "trace",
       gatewayPublicUrl: TEST_GATEWAY_URL,
     },
+    ...(logStream === undefined ? {} : { logger: true, logStream }),
   });
 }
 
@@ -101,6 +106,27 @@ export class FakeS3 implements S3Sender {
     }
     throw new Error(`FakeS3 does not support ${command.constructor.name}`);
   }) as unknown as S3Sender["send"];
+}
+
+export interface RegisteredRoute {
+  method: string;
+  url: string;
+}
+
+// Every method and URL the server registered, read from the printRoutes() tree.
+// Child lines hold only the suffix of their parent's path, so the parent path is carried down.
+export function registeredRoutes(app: FastifyInstance): RegisteredRoute[] {
+  const routes: RegisteredRoute[] = [];
+  const pathAtDepth: string[] = [];
+  for (const line of app.printRoutes({ commonPrefix: false }).split("\n")) {
+    const match = /^((?:│ {3}| {4})*)[├└]── (\S+)(?: \(([^)]+)\))?$/.exec(line);
+    if (!match) continue;
+    const depth = match[1].length / 4;
+    const url = (depth === 0 ? "" : pathAtDepth[depth - 1]) + match[2];
+    pathAtDepth[depth] = url;
+    for (const method of match[3]?.split(", ") ?? []) routes.push({ method, url });
+  }
+  return routes;
 }
 
 export async function login(app: FastifyInstance, email: string): Promise<string> {

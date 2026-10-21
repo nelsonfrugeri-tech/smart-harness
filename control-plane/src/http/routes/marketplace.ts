@@ -8,7 +8,7 @@ import {
 import { findProjectBySlug } from "../../db/repos/projects.ts";
 import { COMPONENT_KINDS, PLUGIN_NAME_PATTERN, VERSION_PATTERN, type ComponentKind } from "../../domain/marketplace.ts";
 import type { PackageStorage } from "../../storage/packages.ts";
-import { authenticate, type AuthDeps } from "../auth.ts";
+import { authenticate, GATEWAY_TOKEN_ALLOWED, type AuthDeps } from "../auth.ts";
 import { pluginView, versionView } from "../marketplace-views.ts";
 import { decodeCursor, pageQuerySchema, toPage, type Page } from "../pagination.ts";
 import { notFound } from "../problem.ts";
@@ -44,6 +44,7 @@ export function registerMarketplaceRoutes(app: FastifyInstance, deps: Marketplac
   app.get<{ Querystring: MarketplaceQuery }>(
     "/v1/marketplace",
     {
+      config: GATEWAY_TOKEN_ALLOWED,
       schema: {
         querystring: {
           type: "object",
@@ -85,7 +86,7 @@ export function registerMarketplaceRoutes(app: FastifyInstance, deps: Marketplac
 
   app.get<{ Params: { name: string } }>(
     "/v1/plugins/:name",
-    { schema: { params: pluginParams } },
+    { config: GATEWAY_TOKEN_ALLOWED, schema: { params: pluginParams } },
     async (request) => {
       const { scope } = await authenticate(request, deps);
       const entry = findVisiblePlugin(deps.db, scope, request.params.name);
@@ -96,7 +97,10 @@ export function registerMarketplaceRoutes(app: FastifyInstance, deps: Marketplac
 
   app.get<{ Params: { name: string }; Querystring: PageQuery }>(
     "/v1/plugins/:name/versions",
-    { schema: { params: pluginParams, querystring: { type: "object", properties: pageQuerySchema } } },
+    {
+      config: GATEWAY_TOKEN_ALLOWED,
+      schema: { params: pluginParams, querystring: { type: "object", properties: pageQuerySchema } },
+    },
     async (request): Promise<Page<ReturnType<typeof versionView>>> => {
       const { scope } = await authenticate(request, deps);
       const { name } = request.params;
@@ -116,6 +120,7 @@ export function registerMarketplaceRoutes(app: FastifyInstance, deps: Marketplac
   app.get<{ Params: { name: string; version: string } }>(
     "/v1/plugins/:name/versions/:version/archive",
     {
+      config: GATEWAY_TOKEN_ALLOWED,
       schema: {
         params: {
           type: "object",
