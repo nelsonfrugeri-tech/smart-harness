@@ -36,9 +36,9 @@ Requer Node 24, Go 1.27, Docker e make.
 
 ```bash
 make check                       # checagens de todos os componentes
-cp .env.example .env && make up  # sobe api (8080) e gateway (8081) em 127.0.0.1
-make seed                        # carrega squads, usuários e projetos de exemplo (só APP_ENV=local)
-make down                        # para os serviços e preserva o volume sqlite-data
+cp .env.example .env && make up  # sobe api (8080), gateway (8081) e minio (9000) em 127.0.0.1
+make seed                        # carrega squads, usuários, projetos e o Marketplace de exemplo (só APP_ENV=local)
+make down                        # para os serviços e preserva os volumes sqlite-data e minio-data
 ```
 
 ## Planejamento e entrega

@@ -9,12 +9,14 @@
   "scripts": {
     "start": "node src/main.ts",
     "seed": "node seed/run.ts",
+    "seed:marketplace": "node seed/run-marketplace.ts",
     "typecheck": "tsc",
     "lint": "eslint .",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1154.0",
     "@prometheus-io/client": "^0.16.1",
     "better-sqlite3": "^13.0.3",
     "fastify": "^5.12.7",
@@ -24,6 +26,7 @@
     "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24.19.2",
+    "ajv": "^8.20.0",
     "eslint": "^10.13.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.0",

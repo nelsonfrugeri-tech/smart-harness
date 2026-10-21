@@ -23,14 +23,15 @@ check-node: $(addsuffix /node_modules,$(NODE_COMPONENTS))
 	cd $* && npm ci --no-audit --no-fund
 	@touch $@
 
-## up: starts api and gateway and waits for the healthchecks.
+## up: starts api, gateway and minio and waits for the healthchecks.
 up:
 	HARNESS_VERSION=$(VERSION) HARNESS_COMMIT=$(COMMIT) docker compose up --build --detach --wait
 
-## down: stops the services and keeps the sqlite-data volume.
+## down: stops the services and keeps the sqlite-data and minio-data volumes.
 down:
 	docker compose down
 
-## seed: loads the local sample data into the running api (APP_ENV=local only; idempotent).
+## seed: loads the local sample data and the sample Marketplace into the running api (APP_ENV=local only; idempotent).
 seed:
 	docker compose exec -T api npm run --silent seed
+	docker compose exec -T api npm run --silent seed:marketplace
