@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { Counter } from "@prometheus-io/client";
-import { findActiveTokenUserId, findProjectForUser, listAllowedResources } from "../../db/access.ts";
+import { findActiveTokenUserId, findProjectForUser, listAllowedResources, listProjectResources } from "../../db/access.ts";
 import type { AuditSink } from "../../db/audit.ts";
 import type { Db } from "../../db/database.ts";
 import { hashGatewayToken, isWellFormedGatewayToken } from "../../domain/gateway-token.ts";
@@ -102,6 +102,7 @@ async function authorize(deps: McpRouteDeps, request: FastifyRequest, reply: Fas
       project: projectRef,
       server,
       correlationId: request.id,
+      ...(server === "project" ? { projectResources: listProjectResources(deps.readDb, projectRef.id) } : {}),
       allowedResources: listAllowedResources(deps.readDb, projectRef.id, server),
     },
   };

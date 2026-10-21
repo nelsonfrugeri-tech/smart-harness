@@ -105,7 +105,7 @@ describe("Marketplace routes", () => {
     });
 
     it("q matches plugin and component names as a plain substring", async () => {
-      expect(await names(DEV, "/v1/marketplace?q=ORDER-review")).toEqual(["investimentos-base"]);
+      expect(await names(DEV, "/v1/marketplace?q=GO-idioms")).toEqual(["investimentos-base"]);
       expect(await names(DEV, "/v1/marketplace?q=%25")).toEqual([]);
       expect(await names(DEV, "/v1/marketplace?q=_")).toEqual([]);
     });
@@ -155,21 +155,30 @@ describe("Marketplace routes", () => {
 
     it("lists versions newest first, one per page", async () => {
       const first = (await get(DEV, "/v1/plugins/investimentos-base/versions?limit=1")).json();
-      expect(first.items.map((v: { version: string }) => v.version)).toEqual(["1.1.0"]);
+      expect(first.items.map((v: { version: string }) => v.version)).toEqual(["1.2.1"]);
       const second = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${first.next_cursor}`)).json();
-      expect(second).toMatchObject({ items: [{ version: "1.0.0" }], next_cursor: null });
+      expect(second.items.map((v: { version: string }) => v.version)).toEqual(["1.2.0"]);
+      const third = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${second.next_cursor}`)).json();
+      expect(third.items.map((v: { version: string }) => v.version)).toEqual(["1.1.0"]);
+      const fourth = (await get(DEV, `/v1/plugins/investimentos-base/versions?limit=1&cursor=${third.next_cursor}`)).json();
+      expect(fourth).toMatchObject({ items: [{ version: "1.0.0" }], next_cursor: null });
     });
   });
 
   it("GET /v1/plugins/{name} returns the latest version with its components", async () => {
     const body = (await get(DEV, "/v1/plugins/investimentos-base")).json<Item>();
 
-    expect(body.version.version).toBe("1.1.0");
+    expect(body.version.version).toBe("1.2.1");
     expect(body.components.map((c) => `${c.kind}:${c.name}`)).toEqual([
-      "agent:investimentos-assistant",
+      "agent:investimentos-guide",
+      "agent:reviewer",
       "mcp:github",
-      "skill:investimentos-conventions",
-      "skill:order-review",
+      "mcp:notion",
+      "mcp:project",
+      "mcp:trello",
+      "skill:dev-workflow",
+      "skill:dynamodb-single-table",
+      "skill:go-idioms",
     ]);
   });
 

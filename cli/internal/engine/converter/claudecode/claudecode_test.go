@@ -128,6 +128,7 @@ func TestToolMapping(t *testing.T) {
 		{"example", pkg.Tool{Kind: pkg.ToolRead}, []string{"Read", "Glob", "Grep"}},
 		{"example", pkg.Tool{Kind: pkg.ToolEdit}, []string{"Edit", "Write"}},
 		{"example", pkg.Tool{Kind: pkg.ToolShell}, []string{"Bash"}},
+		{"example", pkg.Tool{Kind: pkg.ToolSkill}, []string{"Skill"}},
 		{"example", pkg.Tool{Kind: pkg.ToolDelegate}, []string{"Agent"}},
 		{"example", pkg.Tool{Kind: pkg.ToolMCP, Server: "docs"}, []string{"mcp__plugin_example_docs__*"}},
 		{"example", pkg.Tool{Kind: pkg.ToolMCP, Server: "docs", Name: "search"}, []string{"mcp__plugin_example_docs__search"}},

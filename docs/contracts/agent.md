@@ -28,6 +28,7 @@ O frontmatter é YAML simples. São rejeitados com `SH-STR-003`, em qualquer ní
 
 | Lógica | Claude Code |
 |---|---|
+| `skill` | `Skill` |
 | `read` | `Read`, `Glob`, `Grep` |
 | `edit` | `Edit`, `Write` |
 | `shell` | `Bash` |
@@ -82,3 +83,8 @@ Os casos inválidos não têm arquivo. O teste do engine (#9) os cobre em tabela
 ## Compatibilidade verificada
 
 Doc oficial do Claude Code consultada em 2026-10-21 (subagents, MCP); validado com a versão 2.1.305. O nome de tool MCP de plugin segue `mcp__plugin_<plugin>_<servidor>__<tool>`. A doc de subagents documenta o curinga `mcp__<servidor>__*`; a forma com prefixo de plugin não é documentada e não foi exercitada em runtime. O nome de skill de plugin em `skills` também não é documentado.
+
+O campo `skills` não faz preload no modo `claude --agent ... -p` observado em runtime.
+Agentes que precisam das skills nesse modo declaram a tool lógica `skill` e instruem
+a chamada de `Skill` com o nome qualificado `<plugin>:<skill>` antes da resposta.
+Isso permite carregamento sob demanda; não concede shell, escrita ou delegação.
