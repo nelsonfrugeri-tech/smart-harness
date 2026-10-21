@@ -1,6 +1,6 @@
-# Build a partir da raiz do repositório: docker build -f control-plane/Dockerfile .
+# Build from the repository root: docker build -f control-plane/Dockerfile .
 
-# 1. Compila o CLI harness como binário estático.
+# 1. Compiles the harness CLI as a static binary.
 FROM golang:1.27-alpine AS cli
 WORKDIR /src
 COPY cli/ ./
@@ -10,13 +10,13 @@ RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags "-s -w -X main.version=${HARNESS_VERSION} -X main.commit=${HARNESS_COMMIT}" \
     -o /out/harness ./cmd/harness
 
-# 2. Instala só as dependências de produção da API.
+# 2. Installs only the API production dependencies.
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY control-plane/package.json control-plane/package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
-# 3. Imagem final: Node executa o TypeScript direto, sem etapa de build.
+# 3. Final image: Node runs the TypeScript directly, with no build step.
 FROM node:24-alpine
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
 WORKDIR /app

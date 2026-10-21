@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildServer } from "./server.ts";
 
 describe("agent-gateway", () => {
-  it("GET /healthz responde 200 com status ok", async () => {
+  it("GET /healthz responds 200 with status ok", async () => {
     const app = buildServer();
 
     const response = await app.inject({ method: "GET", url: "/healthz" });
@@ -12,10 +12,10 @@ describe("agent-gateway", () => {
     expect(response.json()).toEqual({ status: "ok" });
   });
 
-  it("rota desconhecida responde 404", async () => {
+  it("unknown route responds 404", async () => {
     const app = buildServer();
 
-    const response = await app.inject({ method: "GET", url: "/nao-existe" });
+    const response = await app.inject({ method: "GET", url: "/does-not-exist" });
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ statusCode: 404, error: "Not Found" });

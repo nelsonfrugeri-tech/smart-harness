@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "sonda-h1",
+  "name": "probe-h1",
   "version": "0.0.1",
-  "description": "Sonda da hipotese H1: nucleo Agent Plugins e camada Claude Code no mesmo diretorio.",
+  "description": "H1 hypothesis probe: Agent Plugins core and Claude Code layer in the same directory.",
   "author": {
     "name": "Smart Harness"
   }

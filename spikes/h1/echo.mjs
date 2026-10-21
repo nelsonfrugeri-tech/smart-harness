@@ -1,4 +1,4 @@
-// Servidor MCP de eco minimo. Registra so presenca e tamanho do header Authorization.
+// Minimal echo MCP server. Logs only the presence and length of the Authorization header.
 import { createServer } from "node:http";
 import { appendFileSync } from "node:fs";
 
@@ -32,11 +32,11 @@ createServer((req, res) => {
       reply(res, msg.id, {
         protocolVersion: msg.params.protocolVersion,
         capabilities: { tools: {} },
-        serverInfo: { name: "eco", version: "0.0.1" },
+        serverInfo: { name: "echo", version: "0.0.1" },
       });
     } else if (msg.method === "tools/list") {
       reply(res, msg.id, {
-        tools: [{ name: "eco", description: "eco", inputSchema: { type: "object", properties: {} } }],
+        tools: [{ name: "echo", description: "echo", inputSchema: { type: "object", properties: {} } }],
       });
     } else {
       reply(res, msg.id, {});

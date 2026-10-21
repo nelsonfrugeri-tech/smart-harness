@@ -1,15 +1,15 @@
-// Spike H2: o MCP remoto do GitHub aceita uma credencial injetada pelo servidor?
-// O token vem de `gh auth token` em tempo de execucao e nunca e impresso nem gravado.
+// Spike H2: does the GitHub remote MCP accept a credential injected by the server?
+// The token comes from `gh auth token` at runtime and is never printed or stored.
 import { execFileSync } from "node:child_process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-const URL_MCP = "https://api.githubcopilot.com/mcp/";
+const MCP_URL = "https://api.githubcopilot.com/mcp/";
 const owner = process.env.H2_OWNER ?? "nelsonfrugeri-tech";
 const repo = process.env.H2_REPO ?? "smart-harness";
 
 const token = execFileSync("gh", ["auth", "token"], { encoding: "utf8" }).trim();
-const transport = new StreamableHTTPClientTransport(new URL(URL_MCP), {
+const transport = new StreamableHTTPClientTransport(new URL(MCP_URL), {
   requestInit: { headers: { Authorization: `Bearer ${token}` } },
 });
 const client = new Client({ name: "spike-h2", version: "0.0.1" });

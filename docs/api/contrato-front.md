@@ -16,7 +16,7 @@ Lista do que o front consome do sh-control-plane na Fase 1. A fonte da verdade �
 | Login | `POST /v1/auth/dev-login` `{email}` | `{access_token, token_type, expires_in}` | #6 |
 | Shell | `GET /v1/me` | `{user, memberships[{tenant, role}]}` | #6 |
 | Workspace | `GET /v1/workspace` | `{user, projects[{slug,name,description,tenant,counts,baseline}]}` | #7 |
-| Catálogo | `GET /v1/catalog?kind=&project=&q=&cursor=&limit=` | `Page<CatalogItem>` | #7 |
+| Marketplace | `GET /v1/marketplace?kind=&project=&q=&cursor=&limit=` | `Page<MarketplaceItem>` | #7 |
 | Detalhe | `GET /v1/plugins/{name}` | `PluginDetail` | #7 |
 | Detalhe (versões) | `GET /v1/plugins/{name}/versions` | `Page<PluginVersion>` | #7 |
 | Prepare seu ambiente | `GET /v1/projects/{slug}/setup-plan` | `SetupPlan` (mostrar `harness setup <slug>` e `harness doctor`) | #7 |

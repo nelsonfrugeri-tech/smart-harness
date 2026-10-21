@@ -12,7 +12,7 @@ A experiência contempla dois perfis: desenvolvedor e administrador.
 
 - Workspace com projetos e agentes acessíveis ao desenvolvedor.
 - Pacote base por projeto, com orientação do agente, skills e configurações de MCPs.
-- Catálogo com descrições, exemplos de uso e requisitos de configuração.
+- Marketplace interno com descrições, exemplos de uso e requisitos de configuração.
 - Espaço pessoal para criar agentes e skills.
 - Processo de teste, revisão, aprovação e publicação de contribuições.
 - Administração de squads, acesso e pacotes.
@@ -26,7 +26,7 @@ Memory as a Service fica para uma fase posterior.
 | `control-plane/` | API em Node/TypeScript |
 | `agent-gateway/` | Gateway para MCPs e modelos, em Node/TypeScript |
 | `cli/` | CLI `harness` em Go (único `go.mod`) |
-| `catalog/` | Conteúdo do catálogo |
+| `marketplace/` | Conteúdo do Marketplace interno |
 | `examples/` | Exemplos de pacotes e de uso |
 | `docs/` | ADRs, contratos e diagramas (o SVG é exportado pela interface do Excalidraw a partir de `docs/arch/propose.excalidraw`) |
 
