@@ -77,6 +77,7 @@ describe("runMigrations", () => {
       "0002_marketplace.sql",
       "0003_gateway_tokens.sql",
       "0004_gateway_permissions.sql",
+      "0005_model_usage.sql",
     ]);
 
     const tables = db
@@ -89,6 +90,7 @@ describe("runMigrations", () => {
       "gateway_permissions",
       "gateway_tokens",
       "memberships",
+      "model_usage",
       "plugin_versions",
       "plugins",
       "project_baseline",

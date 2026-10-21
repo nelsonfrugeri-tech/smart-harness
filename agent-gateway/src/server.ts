@@ -7,6 +7,7 @@ import { registerMetrics } from "./http/metrics.ts";
 import { registerMcpRoutes } from "./http/routes/mcp.ts";
 import { registerOpsRoutes } from "./http/routes/ops.ts";
 import type { BackendRegistry } from "./mcp/backend.ts";
+import { registerModelProxyRoute, type ModelProxyDeps } from "./model-proxy/route.ts";
 
 export const CORRELATION_HEADER = "x-correlation-id";
 const VALID_CORRELATION_ID = /^[A-Za-z0-9._-]{1,128}$/;
@@ -17,13 +18,15 @@ export interface ServerOptions {
   audit: AuditSink;
   backends: BackendRegistry;
   config: Pick<Config, "logLevel" | "allowedOrigins">;
+  // POST /v1/messages; the route is registered only when this is given.
+  modelProxy?: Omit<ModelProxyDeps, "readDb">;
   logger?: boolean;
   // Where log lines go when logger is true; stdout by default. Tests pass a collector.
   logStream?: { write(line: string): void };
 }
 
 // Registers the routes without opening a port; tests use app.inject().
-export function buildServer({ readDb, auditDb, audit, backends, config, logger = false, logStream }: ServerOptions): FastifyInstance {
+export function buildServer({ readDb, auditDb, audit, backends, config, modelProxy, logger = false, logStream }: ServerOptions): FastifyInstance {
   const app = Fastify({
     logger: logger ? { level: config.logLevel, ...(logStream === undefined ? {} : { stream: logStream }) } : false,
     // Reuses the caller's correlation id when it is well formed, otherwise creates one.
@@ -41,6 +44,8 @@ export function buildServer({ readDb, auditDb, audit, backends, config, logger =
   const { registry, toolCalls } = registerMetrics(app);
   registerOpsRoutes(app, { readDb, auditDb, metrics: registry });
   registerMcpRoutes(app, { readDb, audit, backends, allowedOrigins: config.allowedOrigins, toolCalls });
+
+  if (modelProxy !== undefined) registerModelProxyRoute(app, { readDb, ...modelProxy });
 
   return app;
 }

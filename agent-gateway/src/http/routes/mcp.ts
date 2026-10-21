@@ -108,7 +108,8 @@ async function authorize(deps: McpRouteDeps, request: FastifyRequest, reply: Fas
   return undefined;
 }
 
-function authenticatedUserId(readDb: Db, request: FastifyRequest): string | undefined {
+// Shared with the model proxy: the same dev token authenticates MCP calls and model requests.
+export function authenticatedUserId(readDb: Db, request: FastifyRequest): string | undefined {
   const token = /^Bearer ([^\s]+)$/i.exec(request.headers.authorization ?? "")?.[1];
   if (token === undefined || !isWellFormedGatewayToken(token)) return undefined;
   return findActiveTokenUserId(readDb, hashGatewayToken(token));

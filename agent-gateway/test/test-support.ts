@@ -15,6 +15,8 @@ import { echoBackend } from "../src/backends/echo.ts";
 import { createAuditSink } from "../src/db/audit.ts";
 import { openAuditDatabase, openReadDatabase, type Db } from "../src/db/database.ts";
 import { createRegistry, type McpBackend } from "../src/mcp/backend.ts";
+import type { ModelUpstream } from "../src/model-proxy/config.ts";
+import { createModelUsageSink } from "../src/model-proxy/usage-sink.ts";
 import { buildServer } from "../src/server.ts";
 
 export interface Fixture {
@@ -28,6 +30,7 @@ export interface Fixture {
   // Creates a gateway token for the seeded user, exactly as the API does.
   token(email: string): string;
   revokeAll(email: string): void;
+  usageRows(): Record<string, string | number | null>[];
   auditRows(): { action: string; actor_user_id: string; tenant_id: string | null; details: string }[];
   close(): Promise<void>;
 }
@@ -35,6 +38,8 @@ export interface Fixture {
 export interface FixtureOptions {
   backends?: McpBackend[];
   allowedOrigins?: string[];
+  // Registers POST /v1/messages; the upstream is undefined when the key is not configured.
+  modelProxy?: { upstream: ModelUpstream | undefined };
   logStream?: { write(line: string): void };
 }
 
@@ -54,6 +59,9 @@ export async function createFixture(options: FixtureOptions = {}): Promise<Fixtu
     audit: createAuditSink(auditDb),
     backends: createRegistry(options.backends ?? [echoBackend]),
     config: { logLevel: "trace", allowedOrigins: options.allowedOrigins ?? [] },
+    ...(options.modelProxy === undefined
+      ? {}
+      : { modelProxy: { usage: createModelUsageSink(auditDb), upstream: options.modelProxy.upstream } }),
     ...(options.logStream === undefined ? {} : { logger: true, logStream: options.logStream }),
   });
   await app.listen({ host: "127.0.0.1", port: 0 });
@@ -79,6 +87,7 @@ export async function createFixture(options: FixtureOptions = {}): Promise<Fixtu
       const ids = apiDb.prepare("SELECT id FROM gateway_tokens WHERE user_id = ?").all(userId(email)) as { id: string }[];
       for (const { id } of ids) revokeGatewayToken(apiDb, userId(email), id);
     },
+    usageRows: () => apiDb.prepare("SELECT * FROM model_usage ORDER BY id").all() as Record<string, string | number | null>[],
     auditRows: () =>
       apiDb.prepare("SELECT action, actor_user_id, tenant_id, details FROM audit_events ORDER BY id").all() as ReturnType<
         Fixture["auditRows"]
