@@ -1,9 +1,9 @@
-// Sample Marketplace for local development: one baseline package per squad, a second version
+// Sample Marketplace for local development: one baseline package per squad, three versions
 // of investimentos-base, and code-review, owned by cartoes and shared with the organization.
 //
 // The archives in seed/packages/ are fixtures already generated and packed (reproducible tar.gz).
-// Until the harness engine (#9) is on master, the seed skips prepareVersion: it hashes each
-// fixture in Node and calls persistVersion, the same second step the approval flow uses.
+// Published fixture bytes are immutable. make package-investimentos builds the current baseline
+// through the real engine; older fixtures remain available for pinned versions.
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import type { Db } from "../src/db/database.ts";
@@ -70,6 +70,63 @@ export const FIXTURES: Fixture[] = [
     },
   },
   {
+    file: "investimentos-base-1.2.0.tar.gz",
+    tenant: "investimentos",
+    visibility: "squad",
+    manifest: {
+      name: "investimentos-base",
+      version: "1.2.0",
+      description: "Investment project guidance, review and engineering workflow.",
+      components: [
+        {
+          kind: "agent",
+          name: "investimentos-guide",
+          description: "Explains the Investimentos API using project decisions, source code and backlog. Use for onboarding and project questions.",
+        },
+        {
+          kind: "agent",
+          name: "reviewer",
+          description: "Reviews an Investimentos API change against its acceptance criteria and ADRs. Use before opening or finalizing a pull request.",
+        },
+        {
+          kind: "mcp",
+          name: "github",
+          description: "GitHub through the Agent Gateway.",
+        },
+        {
+          kind: "mcp",
+          name: "notion",
+          description: "Notion through the Agent Gateway.",
+        },
+        {
+          kind: "mcp",
+          name: "project",
+          description: "Project through the Agent Gateway.",
+        },
+        {
+          kind: "mcp",
+          name: "trello",
+          description: "Trello through the Agent Gateway.",
+        },
+        {
+          kind: "skill",
+          name: "dev-workflow",
+          description: "Follows the squad eight-stage development workflow from discovery to finalization. Use for a feature or bug with acceptance criteria.",
+        },
+        {
+          kind: "skill",
+          name: "dynamodb-single-table",
+          description: "Designs and reviews key-based DynamoDB access for Investimentos. Use for persistence changes and new access patterns.",
+        },
+        {
+          kind: "skill",
+          name: "go-idioms",
+          description: "Applies Go conventions to the Investimentos API. Use when planning, implementing or reviewing Go handlers, services and persistence.",
+        }
+      ],
+    }
+  },
+  {
     file: "conta-base-1.0.0.tar.gz",
     tenant: "conta",
     visibility: "squad",
@@ -118,7 +175,7 @@ export const FIXTURES: Fixture[] = [
 ];
 
 export const BASELINE: { project: string; plugin: string; version: string }[] = [
-  { project: "investimentos-api", plugin: "investimentos-base", version: "1.1.0" },
+  { project: "investimentos-api", plugin: "investimentos-base", version: "1.2.0" },
   { project: "conta-digital", plugin: "conta-base", version: "1.0.0" },
   { project: "cartoes-app", plugin: "cartoes-base", version: "1.0.0" },
   { project: "cartoes-app", plugin: "code-review", version: "1.0.0" },

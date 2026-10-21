@@ -40,3 +40,9 @@ down:
 seed:
 	docker compose exec -T api npm run --silent seed
 	docker compose exec -T api npm run --silent seed:marketplace
+
+## package-investimentos: validates, generates and packs the immutable Investimentos baseline.
+.PHONY: package-investimentos
+package-investimentos:
+	go -C cli build -o bin/harness ./cmd/harness
+	node marketplace/build-investimentos-base.mjs
