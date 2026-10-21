@@ -34,6 +34,11 @@ export function Shell({
   const route = useRoute();
   const routeKey = route.kind === "project" ? route.slug : route.kind;
   useEffect(() => {
+    if (
+      document.activeElement instanceof HTMLSelectElement &&
+      document.activeElement.getAttribute("aria-label") === "Projeto"
+    )
+      return;
     document.getElementById("main")?.focus();
   }, [routeKey]);
   useEffect(() => {
@@ -49,6 +54,7 @@ export function Shell({
   useEffect(() => {
     if (!mobileOpen) return;
     const element = sidebar.current;
+    const trigger = opener.current;
     element?.querySelector<HTMLButtonElement>(".mobile-close")?.focus();
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -72,7 +78,7 @@ export function Shell({
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      opener.current?.focus();
+      trigger?.focus();
     };
   }, [mobileOpen]);
   return (

@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import type { Me } from "../api/client";
 const SESSION_KEY = "smart-harness.access-token";
 function storedToken() {
   try {
@@ -17,8 +18,10 @@ function persist(token: string | null) {
 }
 export function useSession() {
   const [token, setToken] = useState(storedToken);
+  const [me, setMe] = useState<Me>();
   const [expired, setExpired] = useState(false);
-  const login = useCallback((value: string) => {
+  const login = useCallback((value: string, identity: Me) => {
+    setMe(identity);
     persist(value);
     setExpired(false);
     setToken(value);
@@ -26,12 +29,14 @@ export function useSession() {
   const logout = useCallback(() => {
     persist(null);
     setToken(null);
+    setMe(undefined);
     setExpired(false);
   }, []);
   const expire = useCallback(() => {
     persist(null);
     setToken(null);
+    setMe(undefined);
     setExpired(true);
   }, []);
-  return { token, login, logout, expire, expired };
+  return { token, me, login, logout, expire, expired };
 }

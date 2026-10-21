@@ -1,5 +1,6 @@
 import { ApiError } from "../api/client";
-import { Button, EmptyState } from "./Primitives";
+import { Button } from "./Primitives";
+import { navigate } from "../app/navigation";
 export function Loading({
   label = "Carregando seu workspace…",
 }: {
@@ -12,12 +13,21 @@ export function Loading({
     </div>
   );
 }
-export function Unavailable() {
+export function Unavailable({ correlationId }: { correlationId?: string }) {
   return (
-    <EmptyState
-      title="Projeto indisponível"
-      description="Este projeto não está disponível para sua conta."
-    />
+    <div className="panel request-error" role="alert">
+      <h2>Conteúdo indisponível</h2>
+      <p>Este conteúdo não está disponível para sua conta.</p>
+      {correlationId && (
+        <details>
+          <summary>Informações para suporte</summary>
+          <code>{correlationId}</code>
+        </details>
+      )}
+      <Button variant="secondary" onClick={() => navigate("/workspace")}>
+        Voltar ao workspace
+      </Button>
+    </div>
   );
 }
 export function RequestError({
@@ -27,18 +37,15 @@ export function RequestError({
   error: ApiError;
   retry: () => void;
 }) {
-  const unavailable = error.status === 403 || error.status === 404;
+  if (error.status === 403 || error.status === 404)
+    return <Unavailable correlationId={error.correlationId} />;
   return (
     <div className="panel request-error" role="alert">
-      <h2>
-        {unavailable ? "Conteúdo indisponível" : "Não foi possível carregar"}
-      </h2>
+      <h2>Não foi possível carregar</h2>
       <p>
-        {unavailable
-          ? "Este conteúdo não está disponível para sua conta."
-          : error.code === "timeout"
-            ? "A resposta demorou mais que o esperado. Tente novamente."
-            : "Não conseguimos acessar a API. Verifique a conexão e tente novamente."}
+        {error.code === "timeout"
+          ? "A resposta demorou mais que o esperado. Tente novamente."
+          : "Não conseguimos acessar a API. Verifique a conexão e tente novamente."}
       </p>
       {error.correlationId && (
         <details>

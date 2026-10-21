@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight } from "lucide-react";
-import { api, ApiError } from "../api/client";
+import { api, ApiError, type Me } from "../api/client";
 import { Button } from "../components/Primitives";
 export function Login({
   onLogin,
   expired,
 }: {
-  onLogin: (token: string) => void;
+  onLogin: (token: string, identity: Me) => void;
   expired: boolean;
 }) {
   const [email, setEmail] = useState("");
@@ -23,8 +23,8 @@ export function Login({
     setError(undefined);
     try {
       const result = await api.login(email.trim(), controller.signal);
-      await api.me(result.access_token, controller.signal);
-      if (!controller.signal.aborted) onLogin(result.access_token);
+      const identity = await api.me(result.access_token, controller.signal);
+      if (!controller.signal.aborted) onLogin(result.access_token, identity);
     } catch (failure) {
       if (!controller.signal.aborted)
         setError(

@@ -1,13 +1,13 @@
 .PHONY: check check-go check-node check-examples up down seed
 
-NODE_COMPONENTS := control-plane agent-gateway
+NODE_COMPONENTS := control-plane agent-gateway front
 EXAMPLES := examples/investimentos-api
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 
-## check: CLI formatting, vet, tests and build; API and gateway types, lint and tests; example unit tests.
+## check: CLI formatting, vet, tests and build; API/gateway checks; frontend contract, format, lint, tests and build; example unit tests.
 check: check-go check-node check-examples
 
 check-go:
