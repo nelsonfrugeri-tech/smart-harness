@@ -58,10 +58,10 @@ não inclui esse usuário. Não altere o seed apenas para demonstrar essa tela.
 ## Demonstrar o Marketplace
 
 1. Entre como `dev@smart-harness.local` e abra **Marketplace**. Os cards mostram
-   pacote, descrição, contagem por componente, squad dona e versão visível. Não aparecem pacotes de Cartões.
-2. Pesquise `golang` no campo principal do catálogo e pressione Enter. Ative **Com
+   pacote, descrição, contagem por componente, squad dona e versão visível. O pacote privado `cartoes-base` não aparece.
+2. Pesquise `github` no campo principal do catálogo e pressione Enter. Ative **Com
    MCPs**: o resultado continua sendo o pacote completo, com seus outros componentes.
-3. Em **Pacotes disponíveis**, selecione **Complementos de Investimentos** (ou use **Explorar
+3. Use **Limpar filtros** e, em **Pacotes disponíveis**, selecione **Complementos de Investimentos API** (ou use **Explorar
    complementos** na página do projeto). `code-review` aparece; o pacote base
    `investimentos-base` não aparece entre os complementos. **Todos os pacotes disponíveis**
    remove o contexto de projeto; **Limpar filtros** também remove busca e tipo.

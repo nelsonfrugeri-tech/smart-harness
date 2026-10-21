@@ -1,6 +1,11 @@
 import { ArrowRight, Package } from "lucide-react";
 import type { Me, PluginItem, WorkspaceData } from "../api/client";
-import { packagePath, type MarketplaceFilters } from "../app/marketplaceQuery";
+import {
+  marketplaceSearch,
+  packagePath,
+  type MarketplaceFilters,
+} from "../app/marketplaceQuery";
+import { usePaginationFocus } from "../app/usePaginationFocus";
 import { useMarketplace } from "../app/useMarketplace";
 import { Button, EmptyState, PageHeading } from "../components/Primitives";
 import { Loading, RequestError } from "../components/RequestState";
@@ -17,10 +22,16 @@ interface Props {
 }
 export function Marketplace({ filters, token, expire, me, projects }: Props) {
   const { state, more, restart } = useMarketplace(filters, token, expire);
+  const pagination = usePaginationFocus(
+    state.items,
+    state.loading,
+    marketplaceSearch(filters),
+    more,
+  );
   const project = projects.find((item) => item.slug === filters.project);
   const filtered = Boolean(filters.kind || filters.q);
   return (
-    <div className="page marketplace-page">
+    <div className="page marketplace-page" ref={pagination.results}>
       <PageHeading
         title="Marketplace"
         description={
@@ -106,7 +117,7 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
               ) : (
                 <RequestError
                   error={state.error}
-                  retry={state.items.length ? more : restart}
+                  retry={state.items.length ? pagination.loadMore : restart}
                 />
               )}
             </div>
@@ -115,15 +126,16 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
             <div className="load-more">
               <Button
                 variant="secondary"
-                onClick={more}
-                disabled={state.loading}
+                onClick={pagination.loadMore}
+                onBlur={pagination.cancelFocus}
+                aria-disabled={state.loading}
               >
                 {state.loading ? "Carregando mais…" : "Carregar mais"}
               </Button>
             </div>
           )}
           {!state.cursor && !state.error && state.items.length > 0 && (
-            <p className="result-end">
+            <p className="result-end" tabIndex={-1}>
               Todos os resultados desta consulta foram carregados.
             </p>
           )}
@@ -146,7 +158,11 @@ function PackageCard({
           <Package size={22} aria-hidden="true" />
         </span>
         <h2>
-          <a href={packagePath(item.plugin.name, filters)} onClick={followLink}>
+          <a
+            href={packagePath(item.plugin.name, filters)}
+            onClick={followLink}
+            data-package-name={item.plugin.name}
+          >
             {item.plugin.name}
             <ArrowRight size={17} aria-hidden="true" />
           </a>

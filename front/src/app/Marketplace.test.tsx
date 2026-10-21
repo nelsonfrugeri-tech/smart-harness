@@ -1,7 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { App } from "./App";
-import { json, plan, respond } from "../test/fixtures";
+import { deferred, json, me, plan, respond } from "../test/fixtures";
 beforeEach(() => {
   sessionStorage.setItem("smart-harness.access-token", "token-one");
   history.replaceState(null, "", "/marketplace?kind=skill&q=go&limit=1");
@@ -35,9 +36,6 @@ it("discovers whole packages using API filters from a reloadable URL", async () 
   );
 });
 
-import { act, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { deferred, me } from "../test/fixtures";
 const first = plan.baseline[0];
 const second = { ...first, plugin: { ...first.plugin, name: "review-tools" } };
 function mockMarketplace(
@@ -144,6 +142,9 @@ it("resets pages on filter changes, ignores delayed pages and preserves filter f
     pending.resolve(json({ items: [first], next_cursor: "more" })),
   );
   expect(oldSignal?.aborted).toBe(true);
+  expect(screen.getByRole("heading", { name: "review-tools" })).toBeTruthy();
+  expect(screen.queryByText("Carregando pacotes…")).toBeNull();
+  expect(screen.queryByText("Carregando mais…")).toBeNull();
   expect(screen.queryByRole("heading", { name: "investment-base" })).toBeNull();
   expect(location.search).toContain("kind=mcp");
 });
@@ -303,7 +304,7 @@ it("prevents duplicate incremental requests while loading", async () => {
   render(<App />);
   const button = await screen.findByRole("button", { name: "Carregar mais" });
   await userEvent.dblClick(button);
-  expect(button).toHaveProperty("disabled", true);
+  expect(button.getAttribute("aria-disabled")).toBe("true");
   expect(count).toBe(1);
   await act(async () =>
     pending.resolve(json({ items: [second], next_cursor: null })),
@@ -418,4 +419,95 @@ it("keeps a single catalog search and operates component filters with the keyboa
   );
   expect(agentFilter.getAttribute("aria-pressed")).toBe("true");
   expect(document.activeElement).toBe(agentFilter);
+});
+
+it.each([true, false])(
+  "transfers pagination focus only when the user stays on its trigger (%s)",
+  async (keepFocus) => {
+    const pending = deferred<Response>();
+    mockMarketplace((url) =>
+      url.searchParams.has("cursor")
+        ? pending.promise
+        : json({ items: [first], next_cursor: "next-page" }),
+    );
+    render(<App />);
+    const button = await screen.findByRole("button", { name: "Carregar mais" });
+    const user = userEvent.setup();
+    button.focus();
+    await user.keyboard("{Enter}");
+    expect(document.activeElement).toBe(button);
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    const search = screen.getByRole("searchbox");
+    if (!keepFocus) await user.click(search);
+    await act(async () =>
+      pending.resolve(json({ items: [second], next_cursor: null })),
+    );
+    expect(document.activeElement).toBe(
+      keepFocus ? screen.getByRole("link", { name: "review-tools" }) : search,
+    );
+    expect(screen.queryByRole("button", { name: "Carregar mais" })).toBeNull();
+  },
+);
+it.each(["unknown-package", "private-package"])(
+  "shows the same unavailable response for package %s",
+  async (name) => {
+    history.replaceState(null, "", `/marketplace/packages/${name}`);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).startsWith("/v1/plugins/")
+          ? json({ code: "not_found" }, 404)
+          : respond(input),
+      ),
+    );
+    render(<App />);
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      expect.stringContaining(
+        "Este conteúdo não está disponível para sua conta.",
+      ),
+    );
+    expect(screen.queryByText("Componentes do pacote")).toBeNull();
+    expect(screen.queryByText(name)).toBeNull();
+  },
+);
+it.each([
+  ["investimentos-api", "Investimentos"],
+  ["other-project", "other-project"],
+])(
+  "describes project complements using the accessible name or slug (%s)",
+  async (slug, label) => {
+    history.replaceState(null, "", `/marketplace?project=${slug}`);
+    mockMarketplace(() => json({ items: [], next_cursor: null }));
+    render(<App />);
+    expect(
+      await screen.findByText(
+        `Pacotes adicionais para ${label}, além do pacote base.`,
+      ),
+    ).toBeTruthy();
+  },
+);
+
+it("keeps pagination recovery focused on failure and on a duplicate-only final page", async () => {
+  let attempts = 0;
+  mockMarketplace((url) => {
+    if (!url.searchParams.has("cursor"))
+      return json({ items: [first], next_cursor: "next-page" });
+    attempts++;
+    return attempts === 1
+      ? json({ code: "unavailable" }, 503)
+      : json({ items: [first], next_cursor: null });
+  });
+  render(<App />);
+  const user = userEvent.setup();
+  const button = await screen.findByRole("button", { name: "Carregar mais" });
+  button.focus();
+  await user.keyboard("{Enter}");
+  const retry = await screen.findByRole("button", { name: "Tentar novamente" });
+  expect(document.activeElement).toBe(retry);
+  await user.keyboard("{Enter}");
+  const end = await screen.findByText(
+    "Todos os resultados desta consulta foram carregados.",
+  );
+  expect(document.activeElement).toBe(end);
 });

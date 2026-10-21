@@ -326,18 +326,12 @@
   }
 }
 @media (max-width: 1000px) {
-  .topbar .breadcrumb {
-    display: none;
-  }
   .marketplace-search {
     margin-left: 0;
     width: min(440px, 80%);
   }
   .catalog-search {
     width: 100%;
-  }
-  .catalog-topbar .breadcrumb {
-    display: flex;
   }
 }
 @media (max-width: 720px) {
@@ -382,12 +376,6 @@
   .catalog-search > svg {
     display: none;
   }
-  .topbar {
-    gap: 8px;
-  }
-  .topbar > .button {
-    padding: 10px 6px;
-  }
   .package-detail-meta .package-composition {
     width: 100%;
     margin: 3px 0 0;
@@ -400,4 +388,9 @@
   .marketplace-card {
     transition: none;
   }
+}
+
+.load-more .button[aria-disabled="true"] {
+  cursor: wait;
+  opacity: 0.65;
 }

@@ -13,6 +13,7 @@ export function MarketplaceSearch({
   prominent?: boolean;
 }) {
   const [query, setQuery] = useState(filters.q ?? "");
+  // Keep the input mounted: changing its key would discard keyboard focus on submit.
   useEffect(() => {
     setQuery(filters.q ?? "");
   }, [filters.q, filters.kind, filters.project, filters.limit]);

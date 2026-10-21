@@ -45,9 +45,9 @@ export function Shell({
   const filters = isMarketplace ? route.filters : {};
   const routeKey =
     route.kind === "project"
-      ? route.slug
+      ? `project:${route.slug}`
       : route.kind === "package"
-        ? route.name
+        ? `package:${route.name}`
         : route.kind;
   useEffect(() => {
     if (
