@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import {
   marketplacePath,
@@ -11,6 +11,9 @@ export function MarketplaceSearch({
   filters: MarketplaceFilters;
 }) {
   const [query, setQuery] = useState(filters.q ?? "");
+  useEffect(() => {
+    setQuery(filters.q ?? "");
+  }, [filters.q, filters.kind, filters.project, filters.limit]);
   return (
     <form
       className="marketplace-search"

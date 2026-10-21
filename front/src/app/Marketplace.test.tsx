@@ -159,6 +159,7 @@ it("submits shell search by keyboard and reloads filters on browser navigation",
   await user.type(search, "review{Enter}");
   await screen.findByRole("heading", { name: "review-tools" });
   expect(location.search).toContain("q=review");
+  expect(document.activeElement).toBe(search);
   await act(async () => {
     history.replaceState(
       null,
@@ -176,6 +177,7 @@ it("submits shell search by keyboard and reloads filters on browser navigation",
     "investimentos-api",
   );
   expect(screen.getByRole("searchbox")).toHaveProperty("value", "");
+  expect(document.activeElement).toBe(search);
 });
 it("opens the selected package and keeps query context on return", async () => {
   vi.stubGlobal(

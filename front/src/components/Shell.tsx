@@ -15,7 +15,6 @@ import {
 } from "react";
 import type { Me } from "../api/client";
 import { navigate, useRoute } from "../app/navigation";
-import { marketplaceSearch } from "../app/marketplaceQuery";
 import { MarketplaceSearch } from "./MarketplaceSearch";
 import { Button } from "./Primitives";
 export function followLink(event: MouseEvent<HTMLAnchorElement>) {
@@ -199,10 +198,7 @@ export function Shell({
             <BookOpen size={16} />
             <strong>{isMarketplace ? "Marketplace" : "Workspace"}</strong>
           </div>
-          <MarketplaceSearch
-            key={marketplaceSearch(filters)}
-            filters={filters}
-          />
+          <MarketplaceSearch filters={filters} />
           <Button variant="ghost" onClick={logout}>
             <LogOut size={16} />
             Sair
