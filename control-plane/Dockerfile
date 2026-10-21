@@ -14,16 +14,19 @@ RUN CGO_ENABLED=0 go build -trimpath \
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY control-plane/package.json control-plane/package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+# better-sqlite3 ships prebuilt binaries (musl included), so no install script or compiler is needed.
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
 # 3. Final image: Node runs the TypeScript directly, with no build step.
 FROM node:24-alpine
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080 DATABASE_PATH=/data/control-plane.sqlite
 WORKDIR /app
 COPY --from=cli /out/harness /usr/local/bin/harness
 COPY --from=deps /app/node_modules ./node_modules
 COPY control-plane/package.json ./
 COPY control-plane/src ./src
+COPY control-plane/migrations ./migrations
+COPY control-plane/seed ./seed
 RUN mkdir /data && chown node:node /data
 USER node
 EXPOSE 8080
