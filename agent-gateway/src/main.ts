@@ -1,8 +1,8 @@
-import { echoBackend } from "./backends/echo.ts";
+import { configuredBackends } from "./backends/index.ts";
 import { loadConfig } from "./config.ts";
 import { createAuditSink } from "./db/audit.ts";
 import { openAuditDatabase, openReadDatabase, type Db } from "./db/database.ts";
-import { createRegistry, type McpBackend } from "./mcp/backend.ts";
+import { createRegistry } from "./mcp/backend.ts";
 import { loadModelUpstream } from "./model-proxy/config.ts";
 import { createModelUsageSink } from "./model-proxy/usage-sink.ts";
 import { buildServer } from "./server.ts";
@@ -19,8 +19,7 @@ try {
 
   const modelUpstream = loadModelUpstream();
 
-  // Real backends (github, trello, notion, project) arrive with #14.
-  const backends: McpBackend[] = config.appEnv === "local" ? [echoBackend] : [];
+  const backends = configuredBackends(config);
   const app = buildServer({
     readDb,
     auditDb,

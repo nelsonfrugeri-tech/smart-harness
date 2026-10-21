@@ -1,6 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { Outcome } from "../db/audit.ts";
 import type { McpBackend, ToolAccess, ToolContext, ToolDefinition } from "./backend.ts";
+import { errorResult } from "./result.ts";
 
 // Decides whether a tools/call may reach the backend, and runs it when it may.
 // The result carries only what the audit trail may store: no argument values besides the resource id.
@@ -38,18 +39,15 @@ export async function executeToolCall(
     return denied("tool_not_declared", null, null);
   }
   const { access } = tool;
-  const allowed = ctx.allowedResources[access.resourceType] ?? [];
 
+  if (access.kind === "project") {
+    return run(backend, ctx, name, args, { resourceType: "project", resourceId: ctx.project.slug, resourceCount: null });
+  }
+
+  const allowed = ctx.allowedResources[access.resourceType] ?? [];
   if (access.kind === "search") {
     if (allowed.length === 0) {
-      return {
-        result: { content: [] },
-        outcome: "ok",
-        reason: "empty_allowed_list",
-        resourceType: access.resourceType,
-        resourceId: null,
-        resourceCount: 0,
-      };
+      return denied("no_allowed_resources", access.resourceType, null);
     }
     return run(backend, ctx, name, args, { resourceType: access.resourceType, resourceId: null, resourceCount: allowed.length });
   }
@@ -115,8 +113,4 @@ function denied(reason: string, resourceType: string | null, resourceId: string 
     resourceId: resourceId === null ? null : resourceId.slice(0, MAX_RESOURCE_ID_LENGTH),
     resourceCount: null,
   };
-}
-
-function errorResult(text: string): CallToolResult {
-  return { isError: true, content: [{ type: "text", text }] };
 }
