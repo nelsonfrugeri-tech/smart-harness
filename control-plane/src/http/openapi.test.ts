@@ -5,7 +5,7 @@ import { Ajv2020 } from "ajv/dist/2020.js";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "../db/database.ts";
-import { login, marketplaceFixture, testServer } from "../test-support.ts";
+import { login, marketplaceFixture, registeredRoutes, testServer } from "../test-support.ts";
 
 interface ResponseObject {
   $ref?: string;
@@ -65,16 +65,16 @@ describe("openapi.json", () => {
     }
   });
 
-  it("documents every /v1 route the server has", () => {
-    const documented = new Set(Object.keys(spec.paths).map(toFastifyPath));
-    const routes = app
-      .printRoutes({ commonPrefix: false })
-      .split("\n")
-      .map((line) => /(\/v1\/\S*)/.exec(line)?.[1])
-      .filter((route): route is string => route !== undefined);
+  it("documents every /v1 route and method the server has", () => {
+    const documented = new Set(
+      Object.entries(spec.paths).flatMap(([path, methods]) =>
+        Object.keys(methods).map((method) => `${method.toUpperCase()} ${toFastifyPath(path)}`),
+      ),
+    );
+    const routes = registeredRoutes(app).filter((route) => route.url.startsWith("/v1/") && route.method !== "HEAD");
     expect(routes.length).toBeGreaterThan(0);
-    for (const route of routes) {
-      expect(documented.has(route), route).toBe(true);
+    for (const { method, url } of routes) {
+      expect(documented.has(`${method} ${url}`), `${method} ${url}`).toBe(true);
     }
   });
 
@@ -90,6 +90,25 @@ describe("openapi.json", () => {
 
     expect(response.statusCode).toBe(200);
     expect(validate(path, "get", 200, response.json())).toEqual([]);
+  });
+
+  it("gateway token creation and listing answer the documented shapes", async () => {
+    const headers = { authorization: `Bearer ${token}` };
+    const created = await app.inject({ method: "POST", url: "/v1/me/gateway-tokens", headers, payload: { name: "contract" } });
+    expect(created.statusCode).toBe(201);
+    expect(validate("/v1/me/gateway-tokens", "post", 201, created.json())).toEqual([]);
+
+    const list = await app.inject({ method: "GET", url: "/v1/me/gateway-tokens", headers });
+    expect(list.statusCode).toBe(200);
+    expect(validate("/v1/me/gateway-tokens", "get", 200, list.json())).toEqual([]);
+
+    const denied = await app.inject({
+      method: "GET",
+      url: "/v1/me/gateway-tokens",
+      headers: { authorization: `Bearer ${created.json().token}` },
+    });
+    expect(denied.statusCode).toBe(401);
+    expect(validate("/v1/me/gateway-tokens", "get", 401, denied.json())).toEqual([]);
   });
 
   it("a 404 problem has the documented shape", async () => {

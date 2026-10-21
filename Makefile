@@ -1,13 +1,14 @@
-.PHONY: check check-go check-node up down seed
+.PHONY: check check-go check-node check-examples up down seed
 
 NODE_COMPONENTS := control-plane agent-gateway
+EXAMPLES := examples/investimentos-api
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 
-## check: CLI formatting, vet, tests and build; API and gateway types, lint and tests.
-check: check-go check-node
+## check: CLI formatting, vet, tests and build; API and gateway types, lint and tests; example unit tests.
+check: check-go check-node check-examples
 
 check-go:
 	@files="$$(gofmt -l cli)"; if [ -n "$$files" ]; then echo "gofmt: unformatted files:"; echo "$$files"; exit 1; fi
@@ -17,6 +18,10 @@ check-go:
 
 check-node: $(addsuffix /node_modules,$(NODE_COMPONENTS))
 	@for c in $(NODE_COMPONENTS); do echo "== $$c"; (cd $$c && npm run --silent check) || exit 1; done
+
+## check-examples: unit tests of each example (no Docker; DynamoDB Local integration tests stay out).
+check-examples:
+	@for e in $(EXAMPLES); do echo "== $$e"; $(MAKE) -C $$e test || exit 1; done
 
 # Reinstalls dependencies when the lockfile changes.
 %/node_modules: %/package-lock.json

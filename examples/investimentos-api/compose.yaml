@@ -1,0 +1,16 @@
+name: investimentos-api
+
+services:
+  dynamodb:
+    # amazon/dynamodb-local 3.3.2, pinned by digest.
+    image: amazon/dynamodb-local:3.3.2@sha256:6ada631ec7aa5fc83446855eb17233e3dad184fec47477e8140c6c569cfe0c86
+    # In memory: data lives only while the container runs. -sharedDb ignores region and credentials.
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
+    ports:
+      # 8100 on the host, so the default DynamoDB Local port 8000 stays free.
+      - "127.0.0.1:${DYNAMODB_PORT:-8100}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "--silent", "--output", "/dev/null", "http://127.0.0.1:8000"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
