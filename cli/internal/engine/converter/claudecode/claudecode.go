@@ -148,7 +148,7 @@ func AgentMarkdown(plugin string, a pkg.Agent) []byte {
 	if skills := unique(a.Skills); len(skills) > 0 {
 		b.WriteString("skills:\n")
 		for _, s := range skills {
-			b.WriteString("  - " + s + "\n")
+			b.WriteString("  - " + quote(s) + "\n") // quoted: "123" or "true" must stay strings
 		}
 	}
 	if a.Model != "" {
@@ -159,7 +159,8 @@ func AgentMarkdown(plugin string, a pkg.Agent) []byte {
 	return []byte(b.String())
 }
 
-// quote writes a YAML double-quoted string, escaping only '\' and '"' (the description is one line).
+// quote writes a YAML double-quoted string, escaping only '\' and '"'. Callers pass one-line
+// values without control characters (the description and the skill names).
 func quote(s string) string {
 	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(s) + `"`
 }

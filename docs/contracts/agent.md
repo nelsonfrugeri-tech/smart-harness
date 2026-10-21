@@ -13,7 +13,7 @@ Arquivo `dev.smartharness/agents/<nome>.agent.md`: frontmatter YAML e corpo Mark
 | `name` | sim | Nome do agente. Define o arquivo de saída `agents/<name>.md`. |
 | `description` | sim | Texto de uma linha. Diz quando delegar ao agente. |
 | `tools` | sim | Lista não vazia de tools lógicas (tabela abaixo). |
-| `skills` | não | Lista de nomes de skills. Sai como está. |
+| `skills` | não | Lista de nomes de skills. Sai entre aspas duplas. |
 | `model` | não | Sai como está. Valores aceitos pelo Claude Code: `sonnet`, `opus`, `haiku`, `fable`, `inherit` ou ID completo `claude-...`. |
 
 `tools` e `skills` aceitam lista YAML em bloco ou em linha. Outros campos não são validados e não saem na conversão.
@@ -41,7 +41,7 @@ Arquivo `dev.smartharness/agents/<nome>.agent.md`: frontmatter YAML e corpo Mark
 2. Emite o frontmatter nesta ordem: `name`, `description`, `tools`, `skills`, `model`. Omite o campo ausente.
 3. `name` sai sem aspas. `description` sai entre aspas duplas, com escape de `"` e `\`.
 4. `tools` sai em uma linha, separado por `, `. Expande cada tool na ordem escrita e remove duplicatas, mantendo a primeira ocorrência.
-5. `skills` sai como lista em bloco, na ordem escrita, sem duplicatas.
+5. `skills` sai como lista em bloco, na ordem escrita, sem duplicatas. Cada nome sai entre aspas duplas, com escape de `"` e `\`, para continuar string (`123`, `true` e `null` não viram número, booleano ou null).
 6. O corpo vem depois de uma linha em branco, com fim de linha LF e sem linhas em branco no fim. O arquivo termina com um único `\n`.
 
 A saída depende só da entrada: o mesmo pacote gera sempre os mesmos bytes.
@@ -56,7 +56,7 @@ A saída depende só da entrada: o mesmo pacote gera sempre os mesmos bytes.
 | `SH-AGT-004` | servidor MCP não declarado em `mcp.json` do pacote |
 | `SH-AGT-005` | arquivo malformado: sem frontmatter; `name` ou `description` ausente ou inválido; `name` diferente do nome do arquivo; `tools`, `skills` ou `model` fora do formato; corpo vazio |
 
-`SH-AGT-005` protege a saída: `name` vira nome de arquivo e sai sem aspas, então só aceita `a-z 0-9 -`, começando por letra; `description` deve ter uma linha; `skills` e `model` saem sem aspas e só aceitam `A-Z a-z 0-9 . _ : [ ] -`.
+`SH-AGT-005` protege a saída: `name` vira nome de arquivo e sai sem aspas, então só aceita `a-z 0-9 -`, começando por letra; `description` deve ter uma linha; `skills` e `model` só aceitam `A-Z a-z 0-9 . _ : [ ] -`; `model` sai sem aspas.
 
 ## Exemplos
 

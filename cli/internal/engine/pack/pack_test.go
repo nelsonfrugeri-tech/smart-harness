@@ -293,6 +293,33 @@ func readEntries(t *testing.T, archive []byte) []string {
 	return out
 }
 
+func TestUnpackRejectsABrokenGzipTrailer(t *testing.T) {
+	var archive bytes.Buffer
+	if _, err := Pack(exampleDir, &archive); err != nil {
+		t.Fatal(err)
+	}
+	good := archive.Bytes()
+	// The gzip trailer is CRC-32 (4 bytes) then the uncompressed size (4 bytes), RFC 1952 section 2.3.
+	badCRC := bytes.Clone(good)
+	badCRC[len(badCRC)-8] ^= 1
+	cases := map[string][]byte{
+		"inverted CRC bit":  badCRC,
+		"truncated trailer": good[:len(good)-4],
+	}
+	for name, data := range cases {
+		t.Run(name, func(t *testing.T) {
+			parent := t.TempDir()
+
+			_, err := Unpack(bytes.NewReader(data), filepath.Join(parent, "out"), "")
+
+			if err == nil {
+				t.Fatal("archive was accepted")
+			}
+			assertNothingLeft(t, parent)
+		})
+	}
+}
+
 // assertNothingLeft checks that a rejected unpack left no destination and no temporary directory.
 func assertNothingLeft(t *testing.T, parent string) {
 	t.Helper()

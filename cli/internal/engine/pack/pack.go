@@ -181,6 +181,22 @@ func extract(r io.Reader, root string) error {
 			return err
 		}
 	}
+	return checkGzipEnd(gz)
+}
+
+// maxTrailingBytes bounds what may follow the end of the tar inside the gzip stream. Pack writes
+// none; other tar writers pad the last record to 10 KiB.
+const maxTrailingBytes = 1 << 20
+
+// checkGzipEnd reads the gzip stream to its end, so the reader checks the CRC-32 and size trailer.
+func checkGzipEnd(gz *gzip.Reader) error {
+	n, err := io.Copy(io.Discard, io.LimitReader(gz, maxTrailingBytes+1))
+	if err != nil {
+		return fmt.Errorf("archive is not a valid gzip: %w", err)
+	}
+	if n > maxTrailingBytes {
+		return fmt.Errorf("archive has more than %d bytes after the end of the tar", maxTrailingBytes)
+	}
 	return nil
 }
 

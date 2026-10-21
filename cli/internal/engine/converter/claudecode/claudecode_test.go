@@ -4,12 +4,39 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
+
+	"go.yaml.in/yaml/v3"
 
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/engine/pkg"
 )
 
 const testdata = "../../testdata"
+
+// Skill names that a YAML parser would read as a number, a boolean or null must stay strings.
+func TestSkillNamesStayStrings(t *testing.T) {
+	skills := []string{"123", "true", "null", "1.5", "a:b", "code-review"}
+	agent := pkg.Agent{Name: "reviewer", Description: "Reviews.", Tools: []pkg.Tool{{Kind: pkg.ToolRead}}, Skills: skills, Prompt: "Review."}
+	out := string(AgentMarkdown("example", agent))
+	fm, _, _ := strings.Cut(strings.TrimPrefix(out, "---\n"), "\n---\n")
+
+	var doc struct {
+		Skills []any `yaml:"skills"`
+	}
+	if err := yaml.Unmarshal([]byte(fm), &doc); err != nil {
+		t.Fatalf("frontmatter is not YAML: %v\n%s", err, fm)
+	}
+
+	if len(doc.Skills) != len(skills) {
+		t.Fatalf("skills = %#v, want %q", doc.Skills, skills)
+	}
+	for i, v := range doc.Skills {
+		if s, ok := v.(string); !ok || s != skills[i] {
+			t.Errorf("skills[%d] = %#v (%T), want the string %q", i, v, v, skills[i])
+		}
+	}
+}
 
 // Acceptance test of docs/contracts/agent.md: reviewer.agent.md converts to reviewer.md byte for byte.
 func TestReviewerExampleConvertsByteForByte(t *testing.T) {
@@ -124,7 +151,7 @@ func TestAgentMarkdownDeduplicatesAndEscapes(t *testing.T) {
 
 	got := string(AgentMarkdown("example", a))
 
-	want := "---\nname: helper\ndescription: \"Says \\\"hi\\\" \\\\ waves\"\ntools: Edit, Write, Read, Glob, Grep\nskills:\n  - b\n  - a\n---\n\nHelp.\n"
+	want := "---\nname: helper\ndescription: \"Says \\\"hi\\\" \\\\ waves\"\ntools: Edit, Write, Read, Glob, Grep\nskills:\n  - \"b\"\n  - \"a\"\n---\n\nHelp.\n"
 	if got != want {
 		t.Fatalf("got\n%q\nwant\n%q", got, want)
 	}

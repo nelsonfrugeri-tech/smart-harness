@@ -61,8 +61,8 @@ Depois de `generate --target claude-code`, o mesmo diretório ganha `.claude-plu
 | `SH-SEC-001` | Plataforma | Sem `headers` nem `env` em `mcp.json`: o núcleo não tem credencial nem referência a ela |
 | `SH-SEC-002` | Plataforma | Nenhum arquivo com forma de credencial (GitHub, Anthropic, OpenAI, Slack, AWS, chave privada, JWT, `Bearer <20+>`) |
 | `SH-MCP-001` | Plataforma | Servidor `streamable-http` com URL `<gateway-origin>/mcp/projects/<projeto>/<servidor>` |
-| `SH-MCP-002` | Plataforma | Sem `stdio` nem `command` |
-| `SH-EXE-001` | Plataforma | Sem hooks: pasta `hooks/`, arquivo `hooks.json` ou campo `hooks` |
+| `SH-MCP-002` | Plataforma | Sem `stdio`, `command`, `args` nem `cwd` |
+| `SH-EXE-001` | Plataforma | Sem hooks: pasta `hooks/`, arquivo `hooks.json` ou campo `hooks` no `plugin.json` ou no frontmatter do `SKILL.md` |
 | `SH-EXE-002` | Plataforma | Sem executáveis: `bin/`, `skills/<n>/scripts/`, bit de execução, `#!` ou cabeçalho ELF, Mach-O, PE ou WebAssembly |
 | `SH-STR-001` | Plataforma | Só os arquivos do layout acima; sem symlink, arquivo especial, `\` ou `:` no caminho |
 | `SH-STR-002` | Plataforma | Arquivo gerado idêntico à saída do gerador |

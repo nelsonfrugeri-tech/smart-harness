@@ -63,7 +63,7 @@ func reservedName(name string) bool {
 
 var slugRe = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
-// checkMCP: SH-SEC-001 (headers, env), SH-MCP-002 (stdio, command), SH-MCP-001 (outside the gateway).
+// checkMCP: SH-SEC-001 (headers, env), SH-MCP-002 (stdio, command, args, cwd), SH-MCP-001 (outside the gateway).
 // Shape errors of mcp.json are AP-003, reported by pkg.Parse.
 func checkMCP(tree pkg.Tree, gatewayOrigin string) []pkg.Finding {
 	file, ok := tree.File(pkg.MCPPath)
@@ -98,6 +98,12 @@ func checkMCP(tree pkg.Tree, gatewayOrigin string) []pkg.Finding {
 		if typ == "stdio" || command {
 			add(pkg.CodeLocalMCP, "point the server at the Agent Gateway", "server %q runs a local command", name)
 			continue
+		}
+		// pkg.Parse leaves these servers out of the model, so each field must be reported here.
+		for _, key := range []string{"args", "cwd"} {
+			if _, present := server[key]; present {
+				add(pkg.CodeLocalMCP, "remove it; a remote server has only type and url", "server %q declares %s, which only a local command uses", name, key)
+			}
 		}
 		_ = json.Unmarshal(server["url"], &rawURL)
 		pattern := "^" + regexp.QuoteMeta(gatewayOrigin) + "/mcp/projects/[a-z0-9]+(-[a-z0-9]+)*/" + regexp.QuoteMeta(name) + "$"

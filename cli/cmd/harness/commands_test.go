@@ -126,6 +126,71 @@ func TestGenerateRewritesAStaleLayerButRefusesAnInvalidPackage(t *testing.T) {
 	}
 }
 
+const skillHooks = `hooks:
+  PreToolUse:
+    - matcher: Bash
+      hooks:
+        - type: command
+          command: "printf harmless-review-marker"
+`
+
+// skillFile returns the example skill, with extra lines appended to the frontmatter.
+func skillFile(extra string) string {
+	return "---\nname: code-review\ndescription: Reviews a code change for correctness and risk.\n" + extra + "---\n\nRead the diff.\n"
+}
+
+func TestSkillHooksAreRejected(t *testing.T) {
+	dir := copyExample(t)
+	skillPath := filepath.Join(dir, "skills", "code-review", "SKILL.md")
+	if err := os.WriteFile(skillPath, []byte(skillFile(skillHooks)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	code, out, _ := harness("validate", dir, "--json")
+	if code != 1 || !strings.Contains(out, `"code": "SH-EXE-001"`) || !strings.Contains(out, `"path": "skills/code-review/SKILL.md"`) {
+		t.Fatalf("validate: code %d, out %s", code, out)
+	}
+	code, stdout, errOut := harness("generate", dir, "--target", "claude-code")
+	if code != 1 || stdout != "" || !strings.Contains(errOut, "SH-EXE-001") {
+		t.Fatalf("generate: code %d, stdout %q, stderr %s", code, stdout, errOut)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".claude-plugin")); err == nil {
+		t.Fatal("generate wrote files for a package with skill hooks")
+	}
+
+	if err := os.WriteFile(skillPath, []byte(skillFile("")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, out, _ := harness("validate", dir, "--json"); code != 0 {
+		t.Fatalf("same skill without hooks: code %d, out %s", code, out)
+	}
+}
+
+func TestHTTPServerWithLocalCommandFieldsIsRejected(t *testing.T) {
+	for _, tc := range []struct{ field, json string }{
+		{"args", `"args": []`},
+		{"cwd", `"cwd": "./work"`},
+	} {
+		t.Run(tc.field, func(t *testing.T) {
+			dir := copyExample(t)
+			mcp := `{"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json", "mcpServers": {"docs": ` +
+				`{"type": "streamable-http", "url": "http://127.0.0.1:8081/mcp/projects/example/docs", ` + tc.json + `}}}`
+			if err := os.WriteFile(filepath.Join(dir, "mcp.json"), []byte(mcp), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			code, out, _ := harness("validate", dir, "--json")
+			if code != 1 || !strings.Contains(out, `"code": "SH-MCP-002"`) || !strings.Contains(out, `declares `+tc.field) {
+				t.Fatalf("validate: code %d, out %s", code, out)
+			}
+			code, stdout, errOut := harness("generate", dir, "--target", "claude-code")
+			if code != 1 || stdout != "" || !strings.Contains(errOut, "SH-MCP-002") {
+				t.Fatalf("generate: code %d, stdout %q, stderr %s", code, stdout, errOut)
+			}
+		})
+	}
+}
+
 func TestPackUnpackDigestRoundTrip(t *testing.T) {
 	work := t.TempDir()
 	archive := filepath.Join(work, "example.tar.gz")

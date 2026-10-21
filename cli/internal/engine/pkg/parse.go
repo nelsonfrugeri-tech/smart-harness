@@ -202,7 +202,8 @@ func parseMCP(t Tree) ([]MCPServer, map[string]bool, []Finding) {
 }
 
 // parseServer returns nil, nil for a stdio server or for fields that validate reports with a
-// more specific code (headers, env, command): those servers never enter the model.
+// more specific code (headers, env, command, args, cwd): those servers never enter the model,
+// and validate.checkMCP must report each of them, so the package is never valid without them.
 func parseServer(name string, v json.RawMessage) (*MCPServer, error) {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(v, &raw); err != nil || raw == nil {
@@ -311,6 +312,11 @@ func parseSkill(dir, path string, data []byte) (Skill, []Finding) {
 		return s, []Finding{finding(CodeSkillFile, 1, "frontmatter is not a YAML mapping: %v", err)}
 	}
 	var findings []Finding
+	// Claude Code runs the hooks of a skill frontmatter while the skill is active.
+	if f, present := fields["hooks"]; present {
+		findings = append(findings, Finding{Code: CodeHooks, Path: path, Line: f.line,
+			Message: "skill frontmatter must not declare hooks", Hint: "remove the hooks field; packages cannot run commands"})
+	}
 	name, nameField := fields.str("name")
 	desc, descField := fields.str("description")
 	if !nameField.ok || !descField.ok {
