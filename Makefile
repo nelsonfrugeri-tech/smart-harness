@@ -31,5 +31,6 @@ up:
 down:
 	docker compose down
 
+## seed: loads the local sample data into the running api (APP_ENV=local only; idempotent).
 seed:
-	@echo "seed: defined in #6"
+	docker compose exec -T api npm run --silent seed

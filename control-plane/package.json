@@ -8,16 +8,21 @@
   },
   "scripts": {
     "start": "node src/main.ts",
+    "seed": "node seed/run.ts",
     "typecheck": "tsc",
     "lint": "eslint .",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
-    "fastify": "^5.12.7"
+    "@prometheus-io/client": "^0.16.1",
+    "better-sqlite3": "^13.0.3",
+    "fastify": "^5.12.7",
+    "jose": "^6.2.13"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^24.19.2",
     "eslint": "^10.13.0",
     "typescript": "~6.0.3",

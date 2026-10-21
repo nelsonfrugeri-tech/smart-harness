@@ -4,3 +4,4 @@
 cli/bin
 .git
 .env
+**/test-support.ts
