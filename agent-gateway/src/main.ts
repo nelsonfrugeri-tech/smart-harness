@@ -3,6 +3,8 @@ import { loadConfig } from "./config.ts";
 import { createAuditSink } from "./db/audit.ts";
 import { openAuditDatabase, openReadDatabase, type Db } from "./db/database.ts";
 import { createRegistry } from "./mcp/backend.ts";
+import { loadModelUpstream } from "./model-proxy/config.ts";
+import { createModelUsageSink } from "./model-proxy/usage-sink.ts";
 import { buildServer } from "./server.ts";
 
 // Startup order: config, databases, HTTP. The control plane must have created and migrated the
@@ -15,6 +17,8 @@ try {
   const auditDb = openAuditDatabase(config.databasePath);
   databases.push(auditDb);
 
+  const modelUpstream = loadModelUpstream();
+
   const backends = configuredBackends(config);
   const app = buildServer({
     readDb,
@@ -22,9 +26,10 @@ try {
     audit: createAuditSink(auditDb),
     backends: createRegistry(backends),
     config,
+    modelProxy: { usage: createModelUsageSink(auditDb), upstream: modelUpstream },
     logger: true,
   });
-  app.log.info({ app_env: config.appEnv, servers: backends.map((backend) => backend.server) }, "gateway ready");
+  app.log.info({ app_env: config.appEnv, model_proxy: modelUpstream === undefined ? "disabled" : new URL(modelUpstream.url).host, servers: backends.map((backend) => backend.server) }, "gateway ready");
   app.addHook("onClose", async () => databases.forEach((db) => db.close()));
 
   // Closes the server when the container stops, without waiting for SIGKILL.

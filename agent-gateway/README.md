@@ -72,6 +72,8 @@ confere 1.000 linhas e `PRAGMA integrity_check` = `ok`. O arquivo é criado e mi
 | `HOST`, `PORT` | `127.0.0.1`, `8081` | Endereço de escuta. |
 | `DATABASE_PATH` | `data/control-plane.sqlite` | Arquivo SQLite da API (`/data/control-plane.sqlite` no compose). |
 | `ALLOWED_ORIGINS` | vazio | Origens permitidas, separadas por vírgula. Vazio: toda requisição com `Origin` leva 403. Agentes de linha de comando não enviam `Origin`. |
+| `MODEL_UPSTREAM_KEY` | vazio | Chave da organização no provedor de modelos (OpenRouter). Nunca chega ao dev nem aparece em log. Vazio: `POST /v1/messages` responde 503. |
+| `MODEL_UPSTREAM_URL` | `https://openrouter.ai/api` | URL base do provedor, no formato da API Anthropic. Trocar de provedor não muda nada na máquina do dev. |
 | `LOG_LEVEL` | `info` | Nível do log JSON (pino), com `correlation_id`. |
 | `GITHUB_TOKEN` | vazio | Token fine-grained somente leitura. Vazio: o servidor `github` não é registrado (404). |
 | `TRELLO_API_KEY`, `TRELLO_TOKEN` | vazio | Devem vir juntos. Vazios: o servidor `trello` não é registrado. |
@@ -138,6 +140,40 @@ docker compose up -d --build
 make seed
 ```
 
+## Proxy de modelos
+
+`POST /v1/messages` recebe a chamada do Claude Code (`ANTHROPIC_BASE_URL` = gateway, `ANTHROPIC_AUTH_TOKEN` = token
+`shg_...`, `ANTHROPIC_API_KEY` vazia), troca o token do dev por `Authorization: Bearer <MODEL_UPSTREAM_KEY>` e repassa
+a requisição a `MODEL_UPSTREAM_URL`. O corpo da resposta, inclusive o stream SSE, volta byte a byte; uma cópia de cada
+chunk alimenta o contador de uso (`src/model-proxy/usage-tracker.ts`).
+
+- Só `content-type`, `accept`, `anthropic-version`, `anthropic-beta` e `user-agent` seguem ao provedor. `x-api-key`, cookies e o token do dev ficam no gateway.
+- Token inválido, revogado ou ausente: 401 antes de ler o corpo. Nada é gravado (não há usuário a atribuir).
+- O provedor responde 401, 403 ou redireciona (a chave do gateway foi recusada): o dev recebe 502, para não confundir com token de dev inválido.
+- Provedor inalcançável: 502 e registro `unreachable`. Sem retry nem fallback.
+- Prioridade do provedor Anthropic é configuração da conta/preset no OpenRouter; o gateway não altera o corpo da requisição.
+
+Cada requisição encaminhada grava uma linha em `model_usage` (migration `0005_model_usage.sql`): usuário, tenant e projeto
+(se o header `x-smart-harness-project` nomear um projeto do squad do dev), harness (do `user-agent`; `claude-cli` vira
+`claude-code`), modelo, tokens de entrada, saída e cache, status HTTP, resultado e duração. O texto do prompt nunca é
+gravado nem logado: do corpo da requisição só se lê o campo `model`.
+
+Os tokens do stream são cumulativos: cada campo presente em `message_start` ou `message_delta` substitui o anterior e o campo
+ausente preserva o valor (nada é somado). Resultado (`outcome`):
+
+| Resultado | Quando |
+| --- | --- |
+| `ok` | Stream com `message_stop`, ou resposta JSON completa. |
+| `stream_error` | Evento SSE `error`, mesmo após HTTP 200. |
+| `incomplete` | Stream terminou sem `message_stop`, a conexão caiu ou o cliente saiu antes do fim. |
+| `upstream_error` | O provedor respondeu status diferente de 2xx. O status e o corpo seguem ao dev (exceto 401/403/3xx, ver acima). |
+| `unreachable` | Sem resposta do provedor. |
+
+```bash
+ANTHROPIC_BASE_URL=http://127.0.0.1:8081 ANTHROPIC_AUTH_TOKEN=$SHG ANTHROPIC_API_KEY= claude -p "responda só OK"
+sqlite3 data/smart-harness.db "select harness, model, input_tokens, output_tokens, outcome from model_usage order by id desc limit 1"
+```
+
 ## Chamada manual
 
 ```bash
@@ -160,4 +196,4 @@ curl -sS -X POST 127.0.0.1:8081/mcp/projects/investimentos-api/echo \
 
 ## Fora do escopo desta etapa
 
-Proxy de modelos (#15), sessões e SSE, rate limit, retry, escrita nas ferramentas.
+Sessões MCP, roteamento entre provedores, cache, limite de uso, rate limit, retry, `count_tokens`, métricas Prometheus do proxy, escrita nas ferramentas.

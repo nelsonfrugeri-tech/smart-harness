@@ -59,6 +59,9 @@ services:
       NOTION_TOKEN: ${NOTION_TOKEN:-}
       # The project server reads <root>/<project slug>/ (examples/investimentos-api).
       PROJECT_CONTEXT_ROOT: /project-context
+      # Model proxy (POST /v1/messages). Without a key the route answers 503. The key never reaches the developer.
+      MODEL_UPSTREAM_URL: ${MODEL_UPSTREAM_URL:-https://openrouter.ai/api}
+      MODEL_UPSTREAM_KEY: ${MODEL_UPSTREAM_KEY:-}
     volumes:
       # Same file as the API: the gateway reads tokens and permissions and appends audit events.
       - sqlite-data:/data
