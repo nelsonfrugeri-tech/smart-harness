@@ -46,6 +46,8 @@ export const plan: SetupPlan = {
         size_bytes: 100,
         archive_url: "/v1/archive",
       },
+      type: "agent",
+      keywords: [],
       components: [
         {
           kind: "agent",

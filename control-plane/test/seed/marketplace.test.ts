@@ -17,6 +17,7 @@ describe("marketplace fixtures", () => {
     const paths = execFileSync("tar", ["-tzf", file], { encoding: "utf8" }).trim().split("\n");
     const plugin = JSON.parse(execFileSync("tar", ["-xzOf", file, "plugin.json"], { encoding: "utf8" }));
 
+    if (fixture.manifest.keywords !== undefined) expect(plugin.keywords).toEqual(fixture.manifest.keywords);
     expect(plugin).toMatchObject({ name: fixture.manifest.name, version: fixture.manifest.version });
     expect(paths).toContain(".claude-plugin/plugin.json");
     for (const component of fixture.manifest.components) {
@@ -36,10 +37,10 @@ describe("seedMarketplace", () => {
     const first = await seedMarketplace({ db, storage });
     const second = await seedMarketplace({ db, storage });
 
-    expect(first).toEqual({ created: 7, unchanged: 0, storedArchives: 7, baseline: 4 });
-    expect(second).toEqual({ created: 0, unchanged: 7, storedArchives: 0, baseline: 4 });
-    expect(s3.keys(TEST_BUCKET)).toHaveLength(7);
-    expect(db.prepare("SELECT count(*) AS n FROM plugin_versions").get()).toEqual({ n: 7 });
+    expect(first).toEqual({ created: 12, unchanged: 0, storedArchives: 12, baseline: 4 });
+    expect(second).toEqual({ created: 0, unchanged: 12, storedArchives: 0, baseline: 4 });
+    expect(s3.keys(TEST_BUCKET)).toHaveLength(12);
+    expect(db.prepare("SELECT count(*) AS n FROM plugin_versions").get()).toEqual({ n: 12 });
     expect(db.prepare("SELECT count(*) AS n FROM project_baseline").get()).toEqual({ n: 4 });
     db.close();
   });

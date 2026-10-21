@@ -6,7 +6,7 @@ import {
   listVisibleVersions,
 } from "../../db/repos/marketplace.ts";
 import { findProjectBySlug } from "../../db/repos/projects.ts";
-import { COMPONENT_KINDS, PLUGIN_NAME_PATTERN, VERSION_PATTERN, type ComponentKind } from "../../domain/marketplace.ts";
+import { PLUGIN_TYPES, type PluginType, COMPONENT_KINDS, PLUGIN_NAME_PATTERN, VERSION_PATTERN, type ComponentKind } from "../../domain/marketplace.ts";
 import type { PackageStorage } from "../../storage/packages.ts";
 import { authenticate, GATEWAY_TOKEN_ALLOWED, type AuthDeps } from "../auth.ts";
 import { pluginView, versionView } from "../marketplace-views.ts";
@@ -27,6 +27,7 @@ const pluginParams = {
 
 interface MarketplaceQuery {
   kind?: ComponentKind;
+  type?: PluginType;
   project?: string;
   q?: string;
   cursor?: string;
@@ -49,6 +50,7 @@ export function registerMarketplaceRoutes(app: FastifyInstance, deps: Marketplac
         querystring: {
           type: "object",
           properties: {
+            type: { type: "string", enum: PLUGIN_TYPES },
             kind: { type: "string", enum: COMPONENT_KINDS },
             project: { type: "string", minLength: 1, maxLength: 100 },
             q: { type: "string", minLength: 1, maxLength: 100 },
@@ -59,7 +61,7 @@ export function registerMarketplaceRoutes(app: FastifyInstance, deps: Marketplac
     },
     async (request): Promise<Page<ReturnType<typeof pluginView>>> => {
       const { scope } = await authenticate(request, deps);
-      const { kind, project: projectSlug, q, cursor, limit } = request.query;
+      const { kind, type, project: projectSlug, q, cursor, limit } = request.query;
 
       // With ?project=, the list is the project's optionals: what its squad can see,
       // minus the plugins already in its baseline.
@@ -74,6 +76,7 @@ export function registerMarketplaceRoutes(app: FastifyInstance, deps: Marketplac
 
       const rows = listMarketplace(deps.db, viewerScope, {
         kind,
+        type,
         q,
         excludeBaselineOf,
         afterName: decodeCursor(cursor, "string"),
