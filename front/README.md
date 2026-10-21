@@ -204,3 +204,22 @@ Referências de download consultadas em 21/10/2026:
 
 - [Web Crypto: digest SHA-256](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest)
 - [Liberação de object URLs](https://developer.mozilla.org/en-US/docs/Web/API/URL/revokeObjectURL_static)
+
+## Tokens pessoais (#28)
+
+Abra **Meus tokens** no perfil. A listagem usa JWT e paginação por cursor da API.
+Crie um nome de até 100 caracteres: o segredo aparece uma única vez. O botão de
+cópia confirma somente quando o clipboard aceita; em falha, seleciona o texto
+para cópia manual. **Fechar segredo**, navegar ou sair remove a exibição; o segredo
+não é colocado no storage, URL ou logs. A área de transferência pertence ao sistema;
+apague seu conteúdo depois de usá-lo no prompt seguro do terminal.
+
+**Revogar** mostra nome e identificador antes da confirmação. A lista só é relida
+após a API confirmar; erro preserva o item. Uma criação cuja resposta se perde pode
+ter sido processada: confira a lista e revogue o item antes de tentar outra vez.
+
+Roteiro integrado: criar um token, usar `Authorization: Bearer` em
+`GET /v1/projects/investimentos-api/setup-plan` sem colocar o segredo na URL nem
+registrar o header; revogar pelo frontend e repetir a mesma leitura, esperando 401.
+Saia e entre com outra conta: os itens anteriores não devem aparecer. Em viewport
+estreito, use Tab/Enter para criar, fechar e cancelar/confirmar revogação.

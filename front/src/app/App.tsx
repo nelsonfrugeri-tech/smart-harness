@@ -7,6 +7,7 @@ import { Marketplace } from "../pages/Marketplace";
 import { Package } from "../pages/Package";
 import { Button, EmptyState } from "../components/Primitives";
 import { Workspace } from "../pages/Workspace";
+import { GatewayTokens } from "../pages/GatewayTokens";
 import { Project } from "../pages/Project";
 import { useResource } from "./useResource";
 import { useSession } from "./session";
@@ -101,6 +102,8 @@ function ConnectedWorkspace({
         <div className="page">
           <Unavailable />
         </div>
+      ) : route.kind === "tokens" ? (
+        <GatewayTokens token={token} expire={expire} />
       ) : state.status === "loading" ? (
         <Loading />
       ) : state.status === "error" ? (
