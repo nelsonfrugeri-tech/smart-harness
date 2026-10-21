@@ -145,6 +145,20 @@ export function submitDraft(db: Db, scope: Scope, draftId: string): SubmitResult
     .immediate();
 }
 
+// True when the draft has a submitted contribution of exactly this revision, in a tenant of the
+// scope. This is what opens a draft to its reviewers: only the revision under review, never an
+// earlier draft or a later edit.
+export function hasSubmittedRevision(db: Db, scope: Scope, draftId: string, revision: number): boolean {
+  const row = db
+    .prepare(
+      `SELECT 1 FROM contributions
+        WHERE draft_id = ? AND revision = ? AND state = 'submitted'
+          AND tenant_id IN (SELECT value FROM json_each(?))`,
+    )
+    .get(draftId, revision, scopeTenantIdsJson(scope));
+  return row !== undefined;
+}
+
 // undefined when the contribution does not exist or belongs to a tenant outside the scope.
 export function findContribution(db: Db, scope: Scope, id: string): ContributionRecord | undefined {
   const row = db

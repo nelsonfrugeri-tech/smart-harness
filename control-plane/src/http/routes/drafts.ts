@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { recordAuditEvent } from "../../db/repos/audit.ts";
-import { submitDraft } from "../../db/repos/contributions.ts";
+import { hasSubmittedRevision, submitDraft } from "../../db/repos/contributions.ts";
 import { findDraft, insertDraft, listOwnDrafts, markDraftValidated, updateDraft, type DraftRecord } from "../../db/repos/drafts.ts";
 import { isAdminOf, type Principal } from "../../domain/access.ts";
 import {
@@ -59,8 +59,10 @@ interface PageQuery {
   limit: number;
 }
 
-// Drafts are private to their author; an ADMIN of the draft's squad may also read one (to review
-// it). Anyone else gets 404, as for a missing draft. Only the author writes, validates or submits.
+// Drafts are private to their author until submitted. An ADMIN of the draft's squad reads the
+// detail and the archive only while the current revision has a submitted contribution (see
+// readableDraft). Anyone else gets 404, as for a missing draft. Only the author writes, validates
+// or submits; a reviewer who can read the draft gets 403 on those.
 // Writes accept only the login JWT; the archive also accepts the gateway token, like the
 // Marketplace archive, because `harness draft pull` uses it.
 export function registerDraftRoutes(app: FastifyInstance, deps: DraftDeps): void {
@@ -238,11 +240,16 @@ export function registerDraftRoutes(app: FastifyInstance, deps: DraftDeps): void
   );
 }
 
+// The author always reads. An ADMIN of the squad reads only while the current revision is under
+// review (a submitted contribution of that revision); before submit and after an edit the draft
+// is private again and answers 404, like a missing one.
 function readableDraft(deps: DraftDeps, principal: Principal, id: string): DraftRecord {
   const draft = findDraft(deps.db, principal.scope, id);
-  if (!draft || (draft.author.id !== principal.user.id && !isAdminOf(principal, draft.tenantId))) {
-    throw notFound("draft not found");
-  }
+  if (!draft) throw notFound("draft not found");
+  if (draft.author.id === principal.user.id) return draft;
+  const underReview =
+    isAdminOf(principal, draft.tenantId) && hasSubmittedRevision(deps.db, principal.scope, draft.id, draft.revision);
+  if (!underReview) throw notFound("draft not found");
   return draft;
 }
 

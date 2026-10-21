@@ -285,7 +285,10 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** One draft with its files; for the author and the ADMINs of its squad */
+    /**
+     * One draft with its files; private to the author until submitted
+     * @description The author always reads. An ADMIN of the draft's squad reads only while the current revision has a submitted contribution; before submit and after an edit (new revision) the draft answers 404, like a missing one.
+     */
     get: operations["getDraft"];
     put?: never;
     post?: never;
@@ -328,7 +331,7 @@ export interface paths {
     };
     /**
      * The archive of the last validation, for `harness draft pull`
-     * @description For the author and the ADMINs of the draft's squad. The sha256 of the body equals the `x-package-digest` header, which is the digest a submit pins and an approval publishes. 409 draft_not_validated while the current revision has no validation.
+     * @description Same access as GET /v1/drafts/{id}: the author always; an ADMIN of the draft's squad only while the current revision has a submitted contribution, otherwise 404. The sha256 of the body equals the `x-package-digest` header, which is the digest a submit pins and an approval publishes. 409 draft_not_validated while the current revision has no validation.
      */
     get: operations["downloadDraftArchive"];
     put?: never;
