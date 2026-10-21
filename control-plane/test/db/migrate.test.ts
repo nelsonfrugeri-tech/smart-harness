@@ -2,8 +2,8 @@ import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { openDatabase, type Db } from "./database.ts";
-import { runMigrations } from "./migrate.ts";
+import { openDatabase, type Db } from "../../src/db/database.ts";
+import { runMigrations } from "../../src/db/migrate.ts";
 
 describe("runMigrations", () => {
   let dir: string;
@@ -72,7 +72,12 @@ describe("runMigrations", () => {
   });
 
   it("applies the repository migrations to an empty database", () => {
-    expect(runMigrations(db)).toEqual(["0001_initial.sql", "0002_marketplace.sql", "0003_gateway_tokens.sql"]);
+    expect(runMigrations(db)).toEqual([
+      "0001_initial.sql",
+      "0002_marketplace.sql",
+      "0003_gateway_tokens.sql",
+      "0004_gateway_permissions.sql",
+    ]);
 
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
@@ -81,6 +86,7 @@ describe("runMigrations", () => {
     expect(tables).toEqual([
       "audit_events",
       "components",
+      "gateway_permissions",
       "gateway_tokens",
       "memberships",
       "plugin_versions",

@@ -5,8 +5,8 @@ import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { seedLocalData } from "../../../seed/local-data.ts";
-import { openDatabase, type Db } from "../../db/database.ts";
-import { runMigrations } from "../../db/migrate.ts";
+import { openDatabase, type Db } from "../../../src/db/database.ts";
+import { runMigrations } from "../../../src/db/migrate.ts";
 import {
   login,
   marketplaceFixture,

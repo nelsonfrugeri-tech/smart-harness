@@ -140,7 +140,7 @@ Teste do storage contra um S3 real (opcional; cria e remove um bucket próprio):
 
 ```bash
 TEST_S3_ENDPOINT=http://127.0.0.1:9000 TEST_S3_ACCESS_KEY_ID=<S3_ACCESS_KEY_ID> \
-  TEST_S3_SECRET_ACCESS_KEY=<S3_SECRET_ACCESS_KEY> npx vitest run src/storage
+  TEST_S3_SECRET_ACCESS_KEY=<S3_SECRET_ACCESS_KEY> npx vitest run test/storage
 ```
 
 ## Dependências

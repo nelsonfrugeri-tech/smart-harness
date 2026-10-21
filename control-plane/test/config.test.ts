@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadConfig } from "./config.ts";
+import { loadConfig } from "../src/config.ts";
 
 const BASE = { JWT_SECRET: "x".repeat(32) };
 

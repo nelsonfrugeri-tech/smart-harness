@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { DeleteBucketCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { afterEach, describe, expect, it } from "vitest";
 import { FakeS3 } from "../test-support.ts";
-import { createPackageStorage, createS3Client, packageKey } from "./packages.ts";
+import { createPackageStorage, createS3Client, packageKey } from "../../src/storage/packages.ts";
 
 const BYTES = new TextEncoder().encode("package bytes");
 const DIGEST = `sha256:${createHash("sha256").update(BYTES).digest("hex")}`;

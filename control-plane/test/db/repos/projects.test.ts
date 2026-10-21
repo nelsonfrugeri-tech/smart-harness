@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { Scope } from "../../domain/access.ts";
+import type { Scope } from "../../../src/domain/access.ts";
 import { seededDatabase, tenantId } from "../../test-support.ts";
-import type { Db } from "../database.ts";
-import { findProjectBySlug } from "./projects.ts";
+import type { Db } from "../../../src/db/database.ts";
+import { findProjectBySlug } from "../../../src/db/repos/projects.ts";
 
 describe("findProjectBySlug", () => {
   let db: Db;

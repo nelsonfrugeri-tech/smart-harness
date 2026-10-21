@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createCliHarnessClient } from "./cli-client.ts";
+import { createCliHarnessClient } from "../../src/harness/cli-client.ts";
 
 // A stand-in `harness` binary: echoes its argv so the test sees exactly what was executed.
 const FAKE_HARNESS = `#!/usr/bin/env node
