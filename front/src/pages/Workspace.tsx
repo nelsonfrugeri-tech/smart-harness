@@ -13,8 +13,8 @@ export function Workspace({ data }: { data: WorkspaceData }) {
     <div className="page workspace-page">
       <PageHeading
         eyebrow="SEU WORKSPACE"
-        title="Bom trabalho começa com contexto."
-        description="Explore os pacotes e componentes disponíveis para seus projetos."
+        title="Escolha seu projeto"
+        description="Abra um projeto para conhecer o pacote base da squad e preparar seu ambiente de desenvolvimento."
       />
       <SectionTitle
         title="Seus projetos"

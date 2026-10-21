@@ -6,6 +6,7 @@ import { marketplacePath } from "../app/marketplaceQuery";
 import { baselinePackagePath, navigate, projectPath } from "../app/navigation";
 import { SetupInstructions } from "../components/SetupInstructions";
 import { SetupOptionals } from "../components/SetupOptionals";
+import { PackageSummary } from "../components/PackageSummary";
 import { PackageContents } from "../components/PackageContents";
 import { followLink } from "../components/Shell";
 import {
@@ -88,12 +89,16 @@ function ProjectContent({
       <section className="baseline-intro focus-project">
         <div>
           <Badge tone="white">Pacote base do projeto</Badge>
-          <h2>O contexto que acompanha seu trabalho.</h2>
+          <h2>Prepare seu ambiente de desenvolvimento.</h2>
           <p>
-            Agentes, skills e integrações definidos pela squad, nas versões
-            selecionadas para este projeto.
+            Instale o contexto definido pela squad com as versões fixadas
+            abaixo. Siga os passos para configurar o Claude Code com seu token
+            pessoal.
           </p>
         </div>
+        <a className="button button-primary" href="#setup">
+          Preparar ambiente
+        </a>
       </section>
       <SectionTitle
         title="Composição do pacote base"
@@ -159,7 +164,11 @@ function Package({
         </div>
         <Badge tone="blue">v{item.version.version} · fixada</Badge>
       </div>
-      <PackageContents item={item} />
+      <PackageSummary item={item} />
+      <details className="baseline-components">
+        <summary>Ver componentes do pacote</summary>
+        <PackageContents item={item} />
+      </details>
     </section>
   );
 }

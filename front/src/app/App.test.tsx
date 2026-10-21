@@ -355,3 +355,74 @@ it("reuses the confirmed login identity and fetches it again on reload", async (
   await screen.findByRole("heading", { name: "Seus projetos" });
   expect(calls).toBe(2);
 });
+
+it("keeps the project through token creation and returns to the focused setup without the secret", async () => {
+  authenticated("/workspace/projects/investimentos-api");
+  const secret = "shg_" + "s".repeat(43);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("gateway-tokens")) {
+        return init?.method === "POST"
+          ? json(
+              {
+                id: "token-demo",
+                name: "Laptop",
+                token: secret,
+                created_at: "2026-10-01T12:00:00Z",
+                expires_at: "2027-10-01T12:00:00Z",
+                revoked_at: null,
+              },
+              201,
+            )
+          : json({ items: [], next_cursor: null });
+      }
+      return respond(input);
+    }),
+  );
+  render(<App />);
+  await screen.findByRole("heading", { name: "Crie seu token pessoal" });
+  await userEvent.click(
+    within(
+      screen.getByRole("region", {
+        name: "Prepare o ambiente para Investimentos",
+      }),
+    ).getByRole("link", { name: "Meus tokens" }),
+  );
+  expect(location.search).toBe("?project=investimentos-api");
+  expect(await screen.findByText("Preparando Investimentos")).toBeTruthy();
+  await userEvent.type(
+    screen.getByRole("textbox", { name: "Nome do token" }),
+    "Laptop",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Criar token" }));
+  expect(await screen.findByDisplayValue(secret)).toBeTruthy();
+  await userEvent.click(
+    screen.getByRole("link", { name: "Voltar à preparação de Investimentos" }),
+  );
+  expect(location.pathname).toBe("/workspace/projects/investimentos-api");
+  expect(location.hash).toBe("#setup");
+  const setup = await screen.findByRole("region", {
+    name: "Prepare o ambiente para Investimentos",
+  });
+  expect(document.activeElement).toBe(setup);
+  expect(screen.queryByDisplayValue(secret)).toBeNull();
+  expect(screen.getByDisplayValue("harness doctor")).toBeTruthy();
+});
+
+it("does not turn an unknown token project query into a return link", async () => {
+  authenticated("/profile/tokens?project=unavailable");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) =>
+      String(input).includes("gateway-tokens")
+        ? json({ items: [], next_cursor: null })
+        : respond(input),
+    ),
+  );
+  render(<App />);
+  await screen.findByText("Nenhum token nesta página");
+  expect(
+    screen.queryByRole("link", { name: /Voltar à preparação/ }),
+  ).toBeNull();
+});
