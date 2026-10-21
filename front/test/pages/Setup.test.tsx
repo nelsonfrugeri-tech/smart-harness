@@ -49,6 +49,13 @@ it("shows actual CLI commands with a terminal API URL and never claims local com
   expect(
     screen.getByRole("link", { name: "Meus tokens" }).getAttribute("target"),
   ).toBe("_blank");
+  expect(
+    screen
+      .getByRole("link", { name: "release v0.1.0 da CLI" })
+      .getAttribute("href"),
+  ).toBe(
+    "https://github.com/nelsonfrugeri-tech/smart-harness/releases/tag/v0.1.0",
+  );
 });
 it("continues optionals using the setup-plan cursor and drops old instructions on a failed project switch", async () => {
   const fetcher = vi.fn(async (input: RequestInfo | URL) =>
