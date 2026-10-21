@@ -274,11 +274,7 @@
   height: 24px;
   border-left: 1px solid var(--line);
 }
-.role-switch {
-  font-size: 12px;
-  padding: 7px 5px;
-  min-height: 32px;
-}
+
 .page {
   max-width: 1480px;
   margin: 0 auto;
@@ -1024,9 +1020,7 @@
   .topbar-divider {
     display: none;
   }
-  .role-switch {
-    font-size: 11px;
-  }
+
   .topbar-actions > .avatar {
     display: none;
   }

@@ -94,6 +94,7 @@ npm run check
 no lockfile. Não editar o arquivo gerado. `contract:check` regenera em memória e
 falha se o resultado versionado estiver desatualizado.
 
+`make check`, na raiz, inclui o frontend no mesmo gate executado pelo CI.
 `check` executa contrato → Prettier → ESLint → Vitest → TypeScript estrito e build.
 `npm test` exercita o HTTP client e o fluxo público renderizado: login, erros,
 retry, vazio, versões fixadas, troca de identidade, cancelamento, timeout e
@@ -114,6 +115,9 @@ bloquear storage, a sessão funciona só em memória. Logout/401 removem sessão
 seleção e dados; requests anteriores são cancelados e resultados tardios são
 ignorados. Papéis vêm de `/me`; o cliente não interpreta claims como autorização.
 Nenhum token é registrado em logs ou telemetria.
+
+O lint cobre TypeScript e TSX, incluindo regras de hooks/dependências. Funções
+de lógica têm limite de 50 linhas; views declarativas TSX, 180 linhas.
 
 As operações HTTP têm timeout de 10 segundos e cancelamento. Seguindo a
 convenção da Fase 1 em `CLAUDE.md`, não há retry automático, backoff nem circuit

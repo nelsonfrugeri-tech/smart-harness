@@ -50,6 +50,11 @@ export function Shell({
         ? route.name
         : route.kind;
   useEffect(() => {
+    if (
+      document.activeElement instanceof HTMLSelectElement &&
+      document.activeElement.getAttribute("aria-label") === "Projeto"
+    )
+      return;
     document.getElementById("main")?.focus();
   }, [routeKey]);
   useEffect(() => {
@@ -65,6 +70,7 @@ export function Shell({
   useEffect(() => {
     if (!mobileOpen) return;
     const element = sidebar.current;
+    const trigger = opener.current;
     element?.querySelector<HTMLButtonElement>(".mobile-close")?.focus();
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -88,7 +94,7 @@ export function Shell({
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      opener.current?.focus();
+      trigger?.focus();
     };
   }, [mobileOpen]);
   return (
@@ -163,34 +169,7 @@ export function Shell({
             Marketplace
           </a>
         </nav>
-        <div className="membership-list">
-          <h2>Seus acessos</h2>
-          {me.memberships.length === 0 ? (
-            <p>Sem vínculo com uma squad.</p>
-          ) : (
-            me.memberships.map((membership) => (
-              <div key={membership.tenant.id}>
-                <strong>{membership.tenant.name}</strong>
-                <small>
-                  {membership.role === "ADMIN"
-                    ? "Administrador"
-                    : "Desenvolvedor"}
-                </small>
-              </div>
-            ))
-          )}
-        </div>
-        <div className="sidebar-bottom">
-          <div className="sidebar-profile">
-            <span className="avatar" aria-hidden="true">
-              {me.user.name.slice(0, 2).toUpperCase()}
-            </span>
-            <div>
-              <strong>{me.user.name}</strong>
-              <small>{me.user.email}</small>
-            </div>
-          </div>
-        </div>
+        <SidebarIdentity me={me} />
       </aside>
       <div className="main-shell" inert={mobileOpen}>
         <header className="topbar">
@@ -213,5 +192,40 @@ export function Shell({
         </footer>
       </div>
     </div>
+  );
+}
+
+function SidebarIdentity({ me }: { me: Me }) {
+  return (
+    <>
+      <div className="membership-list">
+        <h2>Seus acessos</h2>
+        {me.memberships.length === 0 ? (
+          <p>Sem vínculo com uma squad.</p>
+        ) : (
+          me.memberships.map((membership) => (
+            <div key={membership.tenant.id}>
+              <strong>{membership.tenant.name}</strong>
+              <small>
+                {membership.role === "ADMIN"
+                  ? "Administrador"
+                  : "Desenvolvedor"}
+              </small>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="sidebar-bottom">
+        <div className="sidebar-profile">
+          <span className="avatar" aria-hidden="true">
+            {me.user.name.slice(0, 2).toUpperCase()}
+          </span>
+          <div>
+            <strong>{me.user.name}</strong>
+            <small>{me.user.email}</small>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

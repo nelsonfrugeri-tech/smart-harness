@@ -11,6 +11,8 @@ export interface Config {
   databasePath: string;
   jwtSecret: Uint8Array;
   tokenTtlSeconds: number;
+  // Validity of a new gateway token, in days.
+  gatewayTokenTtlDays: number;
   // Public URL of the Agent Gateway, sent in the setup-plan.
   gatewayPublicUrl: string;
   storage: StorageConfig;
@@ -38,6 +40,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     databasePath: env.DATABASE_PATH ?? "data/control-plane.sqlite",
     jwtSecret: new TextEncoder().encode(secret),
     tokenTtlSeconds: positiveInteger(env.TOKEN_TTL_SECONDS ?? "3600", "TOKEN_TTL_SECONDS"),
+    gatewayTokenTtlDays: positiveInteger(env.GATEWAY_TOKEN_TTL_DAYS ?? "90", "GATEWAY_TOKEN_TTL_DAYS"),
     gatewayPublicUrl: httpUrl(env.GATEWAY_PUBLIC_URL ?? "http://127.0.0.1:8081", "GATEWAY_PUBLIC_URL"),
     storage: storageConfig(env),
   };

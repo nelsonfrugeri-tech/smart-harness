@@ -193,6 +193,50 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/me/gateway-tokens": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The caller's gateway tokens, newest first, revoked and expired ones included, never with value or hash
+     * @description JWT only: a gateway token answers 401.
+     */
+    get: operations["listGatewayTokens"];
+    put?: never;
+    /**
+     * Creates a gateway token for the caller; the value appears only in this response
+     * @description JWT only: a gateway token answers 401. The token expires after GATEWAY_TOKEN_TTL_DAYS (default 90). Records the audit event gateway_token.created, without the value or its hash.
+     */
+    post: operations["createGatewayToken"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/me/gateway-tokens/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Revokes one of the caller's gateway tokens
+     * @description JWT only: a gateway token answers 401. Revoking an already revoked token answers 204 again. A token of another user answers 404, like a missing one. Records the audit event gateway_token.revoked once.
+     */
+    delete: operations["revokeGatewayToken"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -301,6 +345,31 @@ export interface components {
       baseline: components["schemas"]["PluginItem"][];
       /** @description First page of optionals; continue with GET /v1/marketplace?project=<slug>&cursor=<next_cursor> */
       optional: components["schemas"]["PluginPage"];
+    };
+    /** @description A gateway token without its value or hash. revoked_at is null while the token is not revoked. */
+    GatewayToken: {
+      id: string;
+      name: string;
+      /** Format: date-time */
+      created_at: string;
+      /** Format: date-time */
+      expires_at: string;
+      /** Format: date-time */
+      revoked_at: string | null;
+    };
+    /** @description Returned once, at creation. The API stores only the sha256 of `token` and never shows it again. */
+    GatewayTokenCreated: {
+      id: string;
+      name: string;
+      token: string;
+      /** Format: date-time */
+      created_at: string;
+      /** Format: date-time */
+      expires_at: string;
+    };
+    GatewayTokenPage: {
+      items: components["schemas"]["GatewayToken"][];
+      next_cursor: string | null;
     };
   };
   responses: {
@@ -607,6 +676,83 @@ export interface operations {
         content: {
           "application/gzip": string;
         };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+    };
+  };
+  listGatewayTokens: {
+    parameters: {
+      query?: {
+        /** @description next_cursor of the previous page; an invalid cursor answers 400 invalid_cursor */
+        cursor?: components["parameters"]["Cursor"];
+        limit?: components["parameters"]["Limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Page of tokens */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GatewayTokenPage"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+    };
+  };
+  createGatewayToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Token created. Sent with Cache-Control: no-store. */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["GatewayTokenCreated"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+    };
+  };
+  revokeGatewayToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Revoked */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       400: components["responses"]["Problem"];
       401: components["responses"]["Problem"];

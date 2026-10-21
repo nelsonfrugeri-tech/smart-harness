@@ -315,3 +315,43 @@ it("shows the empty workspace for an account without memberships", async () => {
   expect(screen.getByText("Sem vínculo com uma squad.")).toBeTruthy();
   expect(screen.queryByRole("heading", { name: "Investimentos" })).toBeNull();
 });
+it("preserves the project selector node and keyboard focus while changing projects", async () => {
+  authenticated("/workspace/projects/investimentos-api");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => respond(input)),
+  );
+  render(<App />);
+  await screen.findByText("investment-guide");
+  const selector = screen.getByRole("combobox", { name: "Projeto" });
+  selector.focus();
+  await userEvent.selectOptions(selector, "conta-digital");
+  expect(selector.isConnected).toBe(true);
+  expect(document.activeElement).toBe(selector);
+  expect(
+    await screen.findByText("Pacote base ainda não definido"),
+  ).toBeTruthy();
+  expect(document.activeElement).toBe(selector);
+});
+it("reuses the confirmed login identity and fetches it again on reload", async () => {
+  let calls = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/me")) calls++;
+      return respond(input);
+    }),
+  );
+  const view = render(<App />);
+  await userEvent.type(
+    screen.getByRole("textbox", { name: "Email" }),
+    "dev@example.com",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+  await screen.findByRole("heading", { name: "Seus projetos" });
+  expect(calls).toBe(1);
+  view.unmount();
+  render(<App />);
+  await screen.findByRole("heading", { name: "Seus projetos" });
+  expect(calls).toBe(2);
+});

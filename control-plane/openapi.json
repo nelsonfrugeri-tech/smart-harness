@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Smart Harness control plane",
-    "version": "0.2.0",
-    "description": "Local login, memberships, Marketplace, setup-plan and package download. A resource the caller cannot see answers 404, the same as one that does not exist. Errors are application/problem+json (RFC 9457); clients branch on `code`."
+    "version": "0.3.0",
+    "description": "Local login, memberships, Marketplace, setup-plan, package download and gateway tokens. A resource the caller cannot see answers 404, the same as one that does not exist. Errors are application/problem+json (RFC 9457); clients branch on `code`. The gateway token (GatewayToken) works only on the operations that list it in `security`; every other route, unknown ones included, answers 401 `gateway_token_not_allowed` to it."
   },
   "servers": [{ "url": "http://127.0.0.1:8080", "description": "Local (make up)" }],
   "security": [{ "BearerAuth": [] }],
@@ -11,7 +11,8 @@
     { "name": "ops" },
     { "name": "auth" },
     { "name": "workspace" },
-    { "name": "marketplace" }
+    { "name": "marketplace" },
+    { "name": "gateway-tokens" }
   ],
   "paths": {
     "/healthz": {
@@ -93,6 +94,7 @@
       "get": {
         "operationId": "getMe",
         "tags": ["auth"],
+        "security": [{ "BearerAuth": [] }, { "GatewayToken": [] }],
         "summary": "The caller and their memberships",
         "responses": {
           "200": {
@@ -132,6 +134,7 @@
       "get": {
         "operationId": "getWorkspace",
         "tags": ["workspace"],
+        "security": [{ "BearerAuth": [] }, { "GatewayToken": [] }],
         "summary": "The caller's projects (up to 100), each with its baseline",
         "responses": {
           "200": { "description": "Workspace", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Workspace" } } } },
@@ -143,6 +146,7 @@
       "get": {
         "operationId": "getSetupPlan",
         "tags": ["workspace"],
+        "security": [{ "BearerAuth": [] }, { "GatewayToken": [] }],
         "summary": "What `harness setup <slug>` installs. Never contains a token or other secret.",
         "parameters": [{ "name": "slug", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 100 } }],
         "responses": {
@@ -156,6 +160,7 @@
       "get": {
         "operationId": "listMarketplace",
         "tags": ["marketplace"],
+        "security": [{ "BearerAuth": [] }, { "GatewayToken": [] }],
         "summary": "Visible plugins ordered by name, each with its latest visible version",
         "description": "Visible means: owned by a squad of the caller, or published with visibility organization. A user without memberships sees nothing. With `project`, the list is the project's optionals: what the project's squad sees, minus the project's baseline.",
         "parameters": [
@@ -177,6 +182,7 @@
       "get": {
         "operationId": "getPlugin",
         "tags": ["marketplace"],
+        "security": [{ "BearerAuth": [] }, { "GatewayToken": [] }],
         "summary": "A plugin with its latest visible version",
         "parameters": [{ "$ref": "#/components/parameters/PluginName" }],
         "responses": {
@@ -190,6 +196,7 @@
       "get": {
         "operationId": "listPluginVersions",
         "tags": ["marketplace"],
+        "security": [{ "BearerAuth": [] }, { "GatewayToken": [] }],
         "summary": "Visible versions of a plugin, newest first",
         "parameters": [
           { "$ref": "#/components/parameters/PluginName" },
@@ -208,6 +215,7 @@
       "get": {
         "operationId": "downloadPluginArchive",
         "tags": ["marketplace"],
+        "security": [{ "BearerAuth": [] }, { "GatewayToken": [] }],
         "summary": "The package tar.gz, read from object storage by digest",
         "description": "The sha256 of the body equals the `x-package-digest` header.",
         "parameters": [
@@ -228,11 +236,76 @@
           "404": { "$ref": "#/components/responses/Problem" }
         }
       }
+    },
+    "/v1/me/gateway-tokens": {
+      "post": {
+        "operationId": "createGatewayToken",
+        "tags": ["gateway-tokens"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Creates a gateway token for the caller; the value appears only in this response",
+        "description": "JWT only: a gateway token answers 401. The token expires after GATEWAY_TOKEN_TTL_DAYS (default 90). Records the audit event gateway_token.created, without the value or its hash.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "additionalProperties": false,
+                "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 100, "pattern": "\\S" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token created. Sent with Cache-Control: no-store.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GatewayTokenCreated" } } }
+          },
+          "400": { "$ref": "#/components/responses/Problem" },
+          "401": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "get": {
+        "operationId": "listGatewayTokens",
+        "tags": ["gateway-tokens"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "The caller's gateway tokens, newest first, revoked and expired ones included, never with value or hash",
+        "description": "JWT only: a gateway token answers 401.",
+        "parameters": [{ "$ref": "#/components/parameters/Cursor" }, { "$ref": "#/components/parameters/Limit" }],
+        "responses": {
+          "200": { "description": "Page of tokens", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GatewayTokenPage" } } } },
+          "400": { "$ref": "#/components/responses/Problem" },
+          "401": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/v1/me/gateway-tokens/{id}": {
+      "delete": {
+        "operationId": "revokeGatewayToken",
+        "tags": ["gateway-tokens"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "Revokes one of the caller's gateway tokens",
+        "description": "JWT only: a gateway token answers 401. Revoking an already revoked token answers 204 again. A token of another user answers 404, like a missing one. Records the audit event gateway_token.revoked once.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 100 } }],
+        "responses": {
+          "204": { "description": "Revoked" },
+          "400": { "$ref": "#/components/responses/Problem" },
+          "401": { "$ref": "#/components/responses/Problem" },
+          "404": { "$ref": "#/components/responses/Problem" }
+        }
+      }
     }
   },
   "components": {
     "securitySchemes": {
-      "BearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+      "BearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" },
+      "GatewayToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "shg_ followed by 43 base64url characters",
+        "description": "The developer's opaque token from POST /v1/me/gateway-tokens. Valid while it is not revoked and not expired."
+      }
     },
     "parameters": {
       "PluginName": { "name": "name", "in": "path", "required": true, "schema": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" } },
@@ -414,6 +487,41 @@
             "description": "First page of optionals; continue with GET /v1/marketplace?project=<slug>&cursor=<next_cursor>",
             "$ref": "#/components/schemas/PluginPage"
           }
+        }
+      },
+      "GatewayToken": {
+        "type": "object",
+        "description": "A gateway token without its value or hash. revoked_at is null while the token is not revoked.",
+        "required": ["id", "name", "created_at", "expires_at", "revoked_at"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "revoked_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "GatewayTokenCreated": {
+        "type": "object",
+        "description": "Returned once, at creation. The API stores only the sha256 of `token` and never shows it again.",
+        "required": ["id", "name", "token", "created_at", "expires_at"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "token": { "type": "string", "pattern": "^shg_[A-Za-z0-9_-]{43}$" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "GatewayTokenPage": {
+        "type": "object",
+        "required": ["items", "next_cursor"],
+        "additionalProperties": false,
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/GatewayToken" } },
+          "next_cursor": { "type": ["string", "null"] }
         }
       }
     }

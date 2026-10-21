@@ -13,20 +13,22 @@ import { useSession } from "./session";
 import { navigate, useRoute } from "./navigation";
 export function App() {
   const session = useSession();
+  const { logout: clearSession, expire: expireSession } = session;
   const logout = useCallback(() => {
-    session.logout();
+    clearSession();
     navigate("/workspace", true);
-  }, [session.logout]);
+  }, [clearSession]);
   const expire = useCallback(() => {
-    session.expire();
+    expireSession();
     navigate("/workspace", true);
-  }, [session.expire]);
+  }, [expireSession]);
   if (!session.token)
     return <Login onLogin={session.login} expired={session.expired} />;
   return (
     <Authenticated
       key={session.token}
       token={session.token}
+      initialMe={session.me}
       expire={expire}
       logout={logout}
     />
@@ -37,10 +39,16 @@ interface AuthProps {
   expire: () => void;
   logout: () => void;
 }
-function Authenticated({ token, expire, logout }: AuthProps) {
+function Authenticated({
+  token,
+  expire,
+  logout,
+  initialMe,
+}: AuthProps & { initialMe?: Me }) {
   const load = useCallback(
-    (signal: AbortSignal) => api.me(token, signal),
-    [token],
+    (signal: AbortSignal) =>
+      initialMe ? Promise.resolve(initialMe) : api.me(token, signal),
+    [token, initialMe],
   );
   const { state, retry } = useResource("identity", load, expire);
   if (state.status !== "success")
@@ -117,7 +125,6 @@ function ConnectedWorkspace({
         />
       ) : route.kind === "project" ? (
         <Project
-          key={route.slug}
           slug={route.slug}
           token={token}
           expire={expire}
