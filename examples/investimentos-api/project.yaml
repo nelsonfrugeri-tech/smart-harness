@@ -1,0 +1,25 @@
+id: investimentos
+name: Investimentos API
+summary: API de exemplo em Go para consultar posições de carteiras e criar e consultar ordens de compra e venda, com DynamoDB Local.
+stack:
+  - Go 1.27
+  - net/http (http.ServeMux)
+  - AWS SDK for Go v2
+  - DynamoDB Local
+  - Docker Compose
+components:
+  - name: api
+    path: cmd/api
+    summary: Servidor HTTP com as rotas de posições e ordens.
+  - name: migrate
+    path: cmd/migrate
+    summary: Cria a tabela investimentos e semeia a carteira p-1, de forma idempotente.
+  - name: investments
+    path: internal/investments
+    summary: Tipos e regras do domínio, como validação de ordem.
+  - name: dynamo
+    path: internal/dynamo
+    summary: Persistência em tabela única do DynamoDB, sem Scan.
+  - name: httpapi
+    path: internal/httpapi
+    summary: Handlers HTTP e erros em application/problem+json.

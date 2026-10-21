@@ -25,9 +25,9 @@ Memory as a Service fica para uma fase posterior.
 | --- | --- |
 | `control-plane/` | API em Node/TypeScript |
 | `agent-gateway/` | Gateway para MCPs e modelos, em Node/TypeScript |
-| `cli/` | CLI `harness` em Go (único `go.mod`) |
+| `cli/` | CLI `harness` em Go |
 | `marketplace/` | Conteúdo do Marketplace interno |
-| `examples/` | Exemplos de pacotes e de uso |
+| `examples/` | Exemplos de pacotes e de uso; `examples/investimentos-api/` é o projeto de referência do agente, com `go.mod` e `Makefile` próprios |
 | `docs/` | ADRs, contratos e diagramas (o SVG é exportado pela interface do Excalidraw a partir de `docs/arch/propose.excalidraw`) |
 
 ## Comandos
