@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -171,7 +171,7 @@ describe("prepareVersion", () => {
     const calls: string[] = [];
     const client: HarnessClient = {
       async validate(dir) {
-        calls.push(`validate ${dir}`);
+        calls.push(dir === sourceDir ? "validate source" : "validate copy");
         return options.valid === false
           ? { valid: false, findings: [{ code: "SH-AGT-001", message: "tools is missing" }] }
           : { valid: true, findings: [] };
@@ -196,7 +196,7 @@ describe("prepareVersion", () => {
 
     const result = await prepareVersion(client, sourceDir);
 
-    expect(calls).toEqual([`validate ${sourceDir}`, "generate claude-code", "pack"]);
+    expect(calls).toEqual(["validate copy", "generate claude-code", "pack"]);
     expect(result.digest).toBe(sha256(result.archive));
     expect(Buffer.from(result.archive).toString()).toContain(".claude-plugin");
     expect(result.manifest).toEqual({
@@ -219,7 +219,29 @@ describe("prepareVersion", () => {
 
     expect(error).toBeInstanceOf(PublishError);
     expect(error).toMatchObject({ code: "invalid_package", details: [{ code: "SH-AGT-001" }] });
-    expect(calls).toEqual([`validate ${sourceDir}`]);
+    expect(calls).toEqual(["validate copy"]);
+  });
+
+  it("packs the copy that was validated, not a source changed after validation", async () => {
+    const { client } = fakeHarness();
+    const packed: string[] = [];
+    const harness: HarnessClient = {
+      async validate(dir) {
+        const report = await client.validate(dir);
+        // The author edits the source right after the validator read it.
+        writeFileSync(join(sourceDir, "skills", "write-tests", "SKILL.md"), "changed after validation");
+        return report;
+      },
+      generate: client.generate,
+      async pack(dir, outFile) {
+        packed.push(readFileSync(join(dir, "skills", "write-tests", "SKILL.md"), "utf8"));
+        return client.pack(dir, outFile);
+      },
+    };
+
+    await prepareVersion(harness, sourceDir);
+
+    expect(packed).toEqual(["---\nname: write-tests\n---\n"]);
   });
 
   it("refuses an archive whose hash differs from the digest printed by pack", async () => {

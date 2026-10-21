@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { DeleteBucketCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { FakeS3 } from "../test-support.ts";
 import { createPackageStorage, createS3Client, packageKey } from "./packages.ts";
 
@@ -62,6 +64,36 @@ describe("package storage", () => {
     await storage.ping();
     expect(s3.sent.filter((name) => name === "CreateBucketCommand")).toHaveLength(1);
   });
+});
+
+describe("S3 client timeouts", () => {
+  let server: Server | undefined;
+
+  afterEach(async () => {
+    server?.closeAllConnections();
+    await new Promise((resolve) => server?.close(resolve));
+    server = undefined;
+  });
+
+  it("rejects a call when the server accepts the connection and never responds", async () => {
+    // Accepts every request and never writes a response.
+    server = createServer(() => undefined);
+    await new Promise<void>((resolve) => server?.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as AddressInfo;
+    const client = createS3Client(
+      { endpoint: `http://127.0.0.1:${port}`, region: "us-east-1", bucket: "packages", accessKeyId: "test", secretAccessKey: "test" },
+      100,
+    );
+    const storage = createPackageStorage(client, "packages");
+
+    const started = Date.now();
+    try {
+      await expect(storage.ping()).rejects.toMatchObject({ name: "TimeoutError" });
+    } finally {
+      client.destroy();
+    }
+    expect(Date.now() - started).toBeLessThan(1_000);
+  }, 5_000);
 });
 
 // Runs against a real MinIO/S3 only when TEST_S3_ENDPOINT is set, for example:

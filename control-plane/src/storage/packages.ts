@@ -35,10 +35,12 @@ export interface PackageStorage {
 export type S3Sender = Pick<S3Client, "send">;
 
 // One attempt per call and explicit timeouts: Phase 1 has no retry policy.
+// Without throwOnRequestTimeout the SDK only logs a warning and the call keeps waiting.
 const CONNECTION_TIMEOUT_MS = 2_000;
 const REQUEST_TIMEOUT_MS = 30_000;
 
-export function createS3Client(config: StorageConfig): S3Client {
+// requestTimeoutMs is a parameter only so tests can use a short value.
+export function createS3Client(config: StorageConfig, requestTimeoutMs = REQUEST_TIMEOUT_MS): S3Client {
   return new S3Client({
     region: config.region,
     ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint, forcePathStyle: true }),
@@ -46,7 +48,11 @@ export function createS3Client(config: StorageConfig): S3Client {
       ? {}
       : { credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey } }),
     maxAttempts: 1,
-    requestHandler: { connectionTimeout: CONNECTION_TIMEOUT_MS, requestTimeout: REQUEST_TIMEOUT_MS },
+    requestHandler: {
+      connectionTimeout: CONNECTION_TIMEOUT_MS,
+      requestTimeout: requestTimeoutMs,
+      throwOnRequestTimeout: true,
+    },
   });
 }
 

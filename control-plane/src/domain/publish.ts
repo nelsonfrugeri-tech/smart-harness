@@ -1,6 +1,6 @@
 // Publication in two steps:
-//   1. prepareVersion (async): the harness binary validates the author's package, generates
-//      the Claude Code layer and packs a tar.gz. Nothing is stored.
+//   1. prepareVersion (async): on one copy of the author's package, the harness binary
+//      validates it, generates the Claude Code layer and packs a tar.gz. Nothing is stored.
 //   2. persistVersion: stores the archive in object storage under its digest, then records
 //      the version in the database in one synchronous transaction.
 // The approval flow (#16) only runs step 2, with the package prepared and reviewed before.
@@ -48,16 +48,17 @@ export interface HarnessClient {
 }
 
 export async function prepareVersion(harness: HarnessClient, sourceDir: string): Promise<PreparedPackage> {
-  const report = await harness.validate(sourceDir);
-  if (!report.valid) {
-    throw new PublishError("invalid_package", "package failed validation", report.findings);
-  }
-
-  // generate writes into the directory, so it runs on a copy and never touches the author's files.
+  // Copy first: validate, generate and pack all run on the same copy, so a later edit of the
+  // author's files cannot reach the archive, and generate never touches them.
   const workDir = await mkdtemp(join(tmpdir(), "harness-publish-"));
   try {
     const packageDir = join(workDir, "package");
     await cp(sourceDir, packageDir, { recursive: true });
+
+    const report = await harness.validate(packageDir);
+    if (!report.valid) {
+      throw new PublishError("invalid_package", "package failed validation", report.findings);
+    }
     await harness.generate(packageDir, "claude-code");
 
     const archivePath = join(workDir, "package.tar.gz");
