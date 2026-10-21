@@ -7,7 +7,11 @@ import {
   HeadObjectCommand,
   PutObjectCommand,
 } from "@aws-sdk/client-s3";
+import { createHash } from "node:crypto";
+import { readdir, readFile, writeFile } from "node:fs/promises";
+import { join, relative } from "node:path";
 import type { FastifyInstance } from "fastify";
+import type { HarnessClient, ValidationReport } from "../src/domain/publish.ts";
 import { seedLocalData } from "../seed/local-data.ts";
 import { seedMarketplace } from "../seed/marketplace.ts";
 import type { AppEnv } from "../src/config.ts";
@@ -30,15 +34,66 @@ export const TEST_GATEWAY_URL = "http://127.0.0.1:8081";
 
 export const TEST_GATEWAY_TOKEN_TTL_DAYS = 90;
 
+// A stand-in for the harness binary. validate reads plugin.json and reports invalid when a file
+// contains INVALID; pack writes a deterministic archive made of the sorted files. Every call is
+// recorded, so a test can assert that a route did not run the binary.
+export class FakeHarness implements HarnessClient {
+  readonly calls: string[] = [];
+  // Runs inside validate, before it answers; lets a test change the draft meanwhile.
+  onValidate: (() => Promise<void>) | undefined;
+
+  async validate(dir: string): Promise<ValidationReport> {
+    this.calls.push("validate");
+    await this.onValidate?.();
+    const files = await readTree(dir);
+    const plugin = JSON.parse(files.get("plugin.json") ?? "{}") as { name?: string; version?: string };
+    const invalid = [...files.entries()].find(([, content]) => content.includes("INVALID"));
+    return {
+      valid: invalid === undefined,
+      findings: invalid
+        ? [{ code: "SH-TEST-001", severity: "error", message: "file is invalid", hint: "remove INVALID", path: invalid[0], line: 1 }]
+        : [],
+      plugin: plugin.name ?? "",
+      version: plugin.version ?? "",
+      components: [{ kind: "skill", name: "demo-skill", description: "From the report." }],
+    };
+  }
+
+  async generate(dir: string): Promise<void> {
+    this.calls.push("generate");
+    await writeFile(join(dir, "GENERATED.md"), "generated layer\n");
+  }
+
+  async pack(dir: string, outFile: string): Promise<{ digest: string }> {
+    this.calls.push("pack");
+    const files = await readTree(dir);
+    const bytes = Buffer.from(JSON.stringify([...files.entries()].sort(([a], [b]) => a.localeCompare(b))));
+    await writeFile(outFile, bytes);
+    return { digest: `sha256:${createHash("sha256").update(bytes).digest("hex")}` };
+  }
+}
+
+async function readTree(root: string): Promise<Map<string, string>> {
+  const files = new Map<string, string>();
+  for (const entry of await readdir(root, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const path = join(entry.parentPath, entry.name);
+    files.set(relative(root, path), await readFile(path, "utf8"));
+  }
+  return files;
+}
+
 export function testServer(
   db: Db,
   appEnv: AppEnv = "local",
   storage: PackageStorage = createPackageStorage(new FakeS3([TEST_BUCKET]), TEST_BUCKET),
   logStream?: { write(line: string): void },
+  harness: HarnessClient = new FakeHarness(),
 ): FastifyInstance {
   return buildServer({
     db,
     storage,
+    harness,
     config: {
       appEnv,
       jwtSecret: TEST_SECRET,

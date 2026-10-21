@@ -96,6 +96,8 @@ describe("runMigrations", () => {
       "0003_gateway_tokens.sql",
       "0004_gateway_permissions.sql",
       "0005_model_usage.sql",
+      "0006_drafts.sql",
+      "0007_contributions.sql",
       "0008_plugin_keywords.sql",
     ]);
 
@@ -106,6 +108,8 @@ describe("runMigrations", () => {
     expect(tables).toEqual([
       "audit_events",
       "components",
+      "contributions",
+      "drafts",
       "gateway_permissions",
       "gateway_tokens",
       "memberships",

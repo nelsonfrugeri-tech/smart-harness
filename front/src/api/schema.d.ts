@@ -237,6 +237,188 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/projects/{slug}/baseline/{plugin}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Pins a plugin version in the project's baseline; pinning an older version is the rollback
+     * @description ADMIN of the project's squad only (403 forbidden otherwise), JWT only. The next setup-plan carries the pinned version and `harness sync` installs it. The version must be visible to the project's squad. Records the audit event baseline.pinned.
+     */
+    put: operations["pinBaselineVersion"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/drafts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The caller's own drafts, newest first, without file contents */
+    get: operations["listDrafts"];
+    put?: never;
+    /**
+     * Creates a draft in one of the caller's squads, at revision 1
+     * @description JWT only. Every path and size is checked before anything is stored: an unsafe path answers 400 invalid_path with one entry per file in `errors` (path is the JSON pointer /files/<index>/path); a file or set above the limits answers 413 draft_too_large. A squad the caller does not belong to answers 404. Body limit: 6 MiB.
+     */
+    post: operations["createDraft"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/drafts/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * One draft with its files; private to the author until submitted
+     * @description The author always reads. An ADMIN of the draft's squad reads only while the current revision has a submitted contribution; before submit and after an edit (new revision) the draft answers 404, like a missing one.
+     */
+    get: operations["getDraft"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Replaces the files and/or the visibility of the caller's draft
+     * @description Author only (403 forbidden otherwise). Send If-Match with the ETag you read: without it 428 if_match_required, with another revision 412 revision_mismatch. `files` replaces the whole set, with the same checks as POST. In one transaction: the revision goes up by one, the validation is cleared and a submitted contribution of the draft becomes invalidated. Body limit: 6 MiB.
+     */
+    patch: operations["updateDraft"];
+    trace?: never;
+  };
+  "/v1/drafts/{id}/validate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Validates, generates and packs the current revision with the harness binary
+     * @description Author only. Checks every path before writing the files into a new temporary directory, then runs `harness validate`, and, when valid, `harness generate --target claude-code` and `harness pack`. The archive is stored in object storage under the pack digest and the validation is recorded for the revision that was packed. If the draft changed meanwhile, answers 409 draft_changed and records nothing. An invalid draft answers 200 with valid false and stores nothing.
+     */
+    post: operations["validateDraft"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/drafts/{id}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The archive of the last validation, for `harness draft pull`
+     * @description Same access as GET /v1/drafts/{id}: the author always; an ADMIN of the draft's squad only while the current revision has a submitted contribution, otherwise 404. The sha256 of the body equals the `x-package-digest` header, which is the digest a submit pins and an approval publishes. 409 draft_not_validated while the current revision has no validation.
+     */
+    get: operations["downloadDraftArchive"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/drafts/{id}/submit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Submits the validated current revision for review
+     * @description Author only. Pins the digest, size and manifest of the validation. 409 draft_not_validated when the current revision has no validation; 409 contribution_open when the draft already has a submitted contribution. Records the audit event contribution.submitted.
+     */
+    post: operations["submitDraft"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/contributions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The caller's contributions, or the review queue
+     * @description view=mine (default): the caller's own contributions in every state. view=review: submitted contributions of other authors in the squads where the caller is ADMIN. Newest first.
+     */
+    get: operations["listContributions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/contributions/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** One contribution; for its author and the ADMINs of its squad */
+    get: operations["getContribution"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/contributions/{id}/approve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Approves and publishes the submitted digest
+     * @description An ADMIN of the contribution's squad who is not its author: 403 self_approval for the author, 403 forbidden for anyone else in the squad. `digest` must be the submitted one (409 digest_mismatch). One database transaction re-reads the contribution, records the plugin version and its components, publishes the contribution and records the audit event contribution.approved; any failure leaves nothing published. It calls neither the harness binary nor object storage: the archive was stored at validation. Also 409 contribution_not_submitted (invalidated or already published), version_exists (same version, other digest) and plugin_owned_by_other_squad.
+     */
+    post: operations["approveContribution"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -377,6 +559,97 @@ export interface components {
       items: components["schemas"]["GatewayToken"][];
       next_cursor: string | null;
     };
+    Person: {
+      email: string;
+      name: string;
+    };
+    /** @description A text file of the package. path is relative POSIX: no leading /, no drive letter, no backslash or NUL, and no empty, . or .. segment. At most 512 characters. */
+    DraftFile: {
+      path: string;
+      content: string;
+    };
+    /** @description The whole file set. At most 500 files, 1 MiB per file and 4 MiB in total (UTF-8 bytes); the request body limit is 6 MiB. */
+    DraftFiles: components["schemas"]["DraftFile"][];
+    /** @description name, version and description read from plugin.json */
+    PackageRef: {
+      name: string;
+      version: string;
+      description: string;
+    };
+    /** @description The last successful validation, always of the current revision. digest is the sha256 of the archive `harness pack` wrote after `harness generate`; that archive is in object storage and is what an approval publishes. */
+    DraftValidation: {
+      revision: number;
+      digest: components["schemas"]["Digest"];
+      size_bytes: number;
+      plugin: components["schemas"]["PackageRef"];
+      components: components["schemas"]["Component"][];
+      archive_url: string;
+    };
+    /** @description A draft without its file contents (list items) */
+    DraftSummary: components["schemas"]["DraftFields"];
+    DraftFields: {
+      id: string;
+      tenant: components["schemas"]["TenantRef"];
+      author: components["schemas"]["Person"];
+      visibility: components["schemas"]["Visibility"];
+      /** @description Also sent as the ETag, quoted */
+      revision: number;
+      file_count: number;
+      validation: components["schemas"]["DraftValidation"] | null;
+      /** Format: date-time */
+      created_at: string;
+      /** Format: date-time */
+      updated_at: string;
+    };
+    Draft: {
+      files: components["schemas"]["DraftFile"][];
+    } & components["schemas"]["DraftFields"];
+    DraftPage: {
+      items: components["schemas"]["DraftSummary"][];
+      next_cursor: string | null;
+    };
+    Finding: {
+      code: string;
+      severity: string;
+      message: string;
+      hint: string;
+      path: string;
+      /** @description 1-based, 0 when the defect has no line */
+      line: number;
+    };
+    ValidationResult: {
+      valid: boolean;
+      /** @description null when valid is false */
+      digest: components["schemas"]["Digest"] | null;
+      findings: components["schemas"]["Finding"][];
+    };
+    /** @description A submitted draft revision. digest, size_bytes, plugin and components are fixed at submit. state: submitted (waiting for review), invalidated (the draft changed after submit) or published. */
+    Contribution: {
+      id: string;
+      draft_id: string;
+      tenant: components["schemas"]["TenantRef"];
+      author: components["schemas"]["Person"];
+      revision: number;
+      digest: components["schemas"]["Digest"];
+      size_bytes: number;
+      plugin: components["schemas"]["PackageRef"];
+      components: components["schemas"]["Component"][];
+      visibility: components["schemas"]["Visibility"];
+      /** @enum {unknown} */
+      state: "submitted" | "invalidated" | "published";
+      reviewer: components["schemas"]["Person"] | null;
+      review_comment: string | null;
+      /** Format: date-time */
+      reviewed_at: string | null;
+      /** Format: date-time */
+      created_at: string;
+      /** Format: date-time */
+      updated_at: string;
+    };
+    ContributionPage: {
+      items: components["schemas"]["Contribution"][];
+      next_cursor: string | null;
+    };
   };
   responses: {
     /** @description Error (RFC 9457) */
@@ -394,6 +667,7 @@ export interface components {
     /** @description next_cursor of the previous page; an invalid cursor answers 400 invalid_cursor */
     Cursor: string;
     Limit: number;
+    DraftId: string;
   };
   requestBodies: never;
   headers: never;
@@ -765,6 +1039,341 @@ export interface operations {
       400: components["responses"]["Problem"];
       401: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
+    };
+  };
+  pinBaselineVersion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+        plugin: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Pinned */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            plugin: string;
+            version: string;
+          };
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+    };
+  };
+  listDrafts: {
+    parameters: {
+      query?: {
+        /** @description next_cursor of the previous page; an invalid cursor answers 400 invalid_cursor */
+        cursor?: components["parameters"]["Cursor"];
+        limit?: components["parameters"]["Limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description One page */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DraftPage"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+    };
+  };
+  createDraft: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @description Squad slug */
+          tenant: string;
+          /** @default squad */
+          visibility?: components["schemas"]["Visibility"];
+          files: components["schemas"]["DraftFiles"];
+        };
+      };
+    };
+    responses: {
+      /** @description Draft created */
+      201: {
+        headers: {
+          /** @description The revision, quoted */
+          etag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Draft"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      413: components["responses"]["Problem"];
+    };
+  };
+  getDraft: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: components["parameters"]["DraftId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The draft */
+      200: {
+        headers: {
+          /** @description The revision, quoted */
+          etag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Draft"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+    };
+  };
+  updateDraft: {
+    parameters: {
+      query?: never;
+      header: {
+        "if-match": string;
+      };
+      path: {
+        id: components["parameters"]["DraftId"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          visibility?: components["schemas"]["Visibility"];
+          files?: components["schemas"]["DraftFiles"];
+        };
+      };
+    };
+    responses: {
+      /** @description Updated draft */
+      200: {
+        headers: {
+          /** @description The new revision, quoted */
+          etag?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Draft"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      412: components["responses"]["Problem"];
+      413: components["responses"]["Problem"];
+      428: components["responses"]["Problem"];
+    };
+  };
+  validateDraft: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: components["parameters"]["DraftId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Validation result */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ValidationResult"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+      422: components["responses"]["Problem"];
+    };
+  };
+  downloadDraftArchive: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: components["parameters"]["DraftId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Package archive */
+      200: {
+        headers: {
+          /** @description sha256 of the body */
+          "x-package-digest"?: components["schemas"]["Digest"];
+          "content-disposition"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/gzip": string;
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+    };
+  };
+  submitDraft: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: components["parameters"]["DraftId"];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Contribution created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Contribution"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
+    };
+  };
+  listContributions: {
+    parameters: {
+      query?: {
+        view?: "mine" | "review";
+        /** @description next_cursor of the previous page; an invalid cursor answers 400 invalid_cursor */
+        cursor?: components["parameters"]["Cursor"];
+        limit?: components["parameters"]["Limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description One page */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ContributionPage"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+    };
+  };
+  getContribution: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The contribution */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Contribution"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+    };
+  };
+  approveContribution: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          digest: components["schemas"]["Digest"];
+          comment?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Published */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Contribution"];
+        };
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
+      403: components["responses"]["Problem"];
+      404: components["responses"]["Problem"];
+      409: components["responses"]["Problem"];
     };
   };
 }

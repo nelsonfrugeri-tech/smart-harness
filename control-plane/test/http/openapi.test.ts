@@ -111,6 +111,72 @@ describe("openapi.json", () => {
     expect(validate("/v1/me/gateway-tokens", "get", 401, denied.json())).toEqual([]);
   });
 
+  it("the contribution flow answers the documented shapes", async () => {
+    const headers = { authorization: `Bearer ${token}` };
+    const files = [
+      { path: "plugin.json", content: JSON.stringify({ name: "contract-demo", version: "1.0.0", description: "Contract." }) },
+      { path: "skills/demo-skill/SKILL.md", content: "body" },
+    ];
+    const created = await app.inject({ method: "POST", url: "/v1/drafts", headers, payload: { tenant: "investimentos", files } });
+    expect(created.statusCode).toBe(201);
+    expect(validate("/v1/drafts", "post", 201, created.json())).toEqual([]);
+    const id = created.json().id;
+
+    const badPath = await app.inject({
+      method: "POST",
+      url: "/v1/drafts",
+      headers,
+      payload: { tenant: "investimentos", files: [{ path: "../x", content: "x" }] },
+    });
+    expect(validate("/v1/drafts", "post", 400, badPath.json())).toEqual([]);
+
+    const list = await app.inject({ method: "GET", url: "/v1/drafts", headers });
+    expect(validate("/v1/drafts", "get", 200, list.json())).toEqual([]);
+
+    const noIfMatch = await app.inject({ method: "PATCH", url: `/v1/drafts/${id}`, headers, payload: { visibility: "squad" } });
+    expect(validate("/v1/drafts/{id}", "patch", 428, noIfMatch.json())).toEqual([]);
+    const patched = await app.inject({
+      method: "PATCH",
+      url: `/v1/drafts/${id}`,
+      headers: { ...headers, "if-match": '"1"' },
+      payload: { visibility: "squad" },
+    });
+    expect(validate("/v1/drafts/{id}", "patch", 200, patched.json())).toEqual([]);
+
+    const validated = await app.inject({ method: "POST", url: `/v1/drafts/${id}/validate`, headers });
+    expect(validate("/v1/drafts/{id}/validate", "post", 200, validated.json())).toEqual([]);
+    const read = await app.inject({ method: "GET", url: `/v1/drafts/${id}`, headers });
+    expect(validate("/v1/drafts/{id}", "get", 200, read.json())).toEqual([]);
+
+    const submitted = await app.inject({ method: "POST", url: `/v1/drafts/${id}/submit`, headers });
+    expect(validate("/v1/drafts/{id}/submit", "post", 201, submitted.json())).toEqual([]);
+    const open = await app.inject({ method: "POST", url: `/v1/drafts/${id}/submit`, headers });
+    expect(validate("/v1/drafts/{id}/submit", "post", 409, open.json())).toEqual([]);
+
+    const admin = { authorization: `Bearer ${await login(app, "admin@smart-harness.local")}` };
+    const queue = await app.inject({ method: "GET", url: "/v1/contributions?view=review", headers: admin });
+    expect(validate("/v1/contributions", "get", 200, queue.json())).toEqual([]);
+    const contributionId = submitted.json().id;
+    const approved = await app.inject({
+      method: "POST",
+      url: `/v1/contributions/${contributionId}/approve`,
+      headers: admin,
+      payload: { digest: validated.json().digest },
+    });
+    expect(approved.statusCode).toBe(200);
+    expect(validate("/v1/contributions/{id}/approve", "post", 200, approved.json())).toEqual([]);
+    const contribution = await app.inject({ method: "GET", url: `/v1/contributions/${contributionId}`, headers });
+    expect(validate("/v1/contributions/{id}", "get", 200, contribution.json())).toEqual([]);
+
+    const pinned = await app.inject({
+      method: "PUT",
+      url: "/v1/projects/investimentos-api/baseline/investimentos-base",
+      headers: admin,
+      payload: { version: "1.1.0" },
+    });
+    expect(validate("/v1/projects/{slug}/baseline/{plugin}", "put", 200, pinned.json())).toEqual([]);
+  });
+
   it("a 404 problem has the documented shape", async () => {
     const response = await app.inject({
       method: "GET",

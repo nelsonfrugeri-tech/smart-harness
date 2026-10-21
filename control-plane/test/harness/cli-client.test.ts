@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createCliHarnessClient } from "../../src/harness/cli-client.ts";
+import { createCliHarnessClient, parseReport } from "../../src/harness/cli-client.ts";
 
 // A stand-in `harness` binary: echoes its argv so the test sees exactly what was executed.
 const FAKE_HARNESS = `#!/usr/bin/env node
@@ -101,5 +101,37 @@ describe("createCliHarnessClient", () => {
 
   it("fails on an unknown binary or command error", async () => {
     await expect(createCliHarnessClient(join(dir, "missing")).generate(dir, "claude-code")).rejects.toThrow();
+  });
+});
+
+describe("parseReport", () => {
+  it("keeps findings, components and report v2 metadata, and drops the raw-tree digest", () => {
+    const report = parseReport(
+      JSON.stringify({
+        report_version: "2",
+        description: "Package description",
+        keywords: ["review"],
+        valid: false,
+        plugin: "demo",
+        version: "1.0.0",
+        digest: `sha256:${"a".repeat(64)}`,
+        components: [{ kind: "skill", name: "s", description: "Skill." }],
+        findings: [{ code: "SH-1", severity: "error", message: "bad", hint: "fix it", path: "a.md", line: 3 }],
+      }),
+    );
+
+    expect(report).toEqual({
+      description: "Package description",
+      keywords: ["review"],
+      valid: false,
+      plugin: "demo",
+      version: "1.0.0",
+      components: [{ kind: "skill", name: "s", description: "Skill." }],
+      findings: [{ code: "SH-1", severity: "error", message: "bad", hint: "fix it", path: "a.md", line: 3 }],
+    });
+  });
+
+  it.each(["not json", "null", "[]", '{"findings":[]}'])("returns undefined for %s", (output) => {
+    expect(parseReport(output)).toBeUndefined();
   });
 });
