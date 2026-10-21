@@ -1,0 +1,8 @@
+{
+  "name": "probe-h1",
+  "version": "0.0.1",
+  "description": "Claude Code layer of the H1 probe.",
+  "author": {
+    "name": "Smart Harness"
+  }
+}

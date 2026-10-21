@@ -1,5 +1,5 @@
-// Spike H3: proxy de POST /v1/messages (porta 8787) que repassa a https://api.anthropic.com sem buffer.
-// Repassa os headers recebidos do cliente. Registra so nomes de headers e o tamanho de credenciais, nunca valores.
+// Spike H3: POST /v1/messages proxy (port 8787) that forwards to https://api.anthropic.com without buffering.
+// Forwards the headers received from the client. Logs only header names and credential lengths, never values.
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
 
