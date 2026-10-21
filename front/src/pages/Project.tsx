@@ -1,8 +1,10 @@
 import { useCallback } from "react";
-import { ArrowLeft, Bot, Braces, Plug } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { api, type SetupPlan, type WorkspaceData } from "../api/client";
 import { useResource } from "../app/useResource";
+import { marketplacePath } from "../app/marketplaceQuery";
 import { navigate, projectPath } from "../app/navigation";
+import { PackageContents } from "../components/PackageContents";
 import { followLink } from "../components/Shell";
 import {
   Badge,
@@ -78,7 +80,18 @@ function ProjectContent({ plan }: { plan: SetupPlan }) {
           </p>
         </div>
       </section>
-      <SectionTitle title="Composição do pacote base" />
+      <SectionTitle
+        title="Composição do pacote base"
+        action={
+          <a
+            className="text-link"
+            href={marketplacePath({ project: plan.project.slug })}
+            onClick={followLink}
+          >
+            Explorar complementos
+          </a>
+        }
+      />
       {plan.baseline.length === 0 ? (
         <EmptyState
           title="Pacote base ainda não definido"
@@ -97,12 +110,6 @@ function ProjectContent({ plan }: { plan: SetupPlan }) {
     </>
   );
 }
-const componentLabels = {
-  agent: "Agente",
-  skill: "Skill",
-  mcp: "MCP",
-} as const;
-const componentIcons = { agent: Bot, skill: Braces, mcp: Plug } as const;
 function Package({ item }: { item: SetupPlan["baseline"][number] }) {
   return (
     <section className="panel package-panel">
@@ -117,29 +124,7 @@ function Package({ item }: { item: SetupPlan["baseline"][number] }) {
         </div>
         <Badge tone="blue">v{item.version.version} · fixada</Badge>
       </div>
-      {item.components.length === 0 ? (
-        <p>Este pacote não possui componentes cadastrados.</p>
-      ) : (
-        <ul className="component-list">
-          {item.components.map((component) => {
-            const Icon = componentIcons[component.kind];
-            return (
-              <li key={`${component.kind}:${component.name}`}>
-                <span className="capability-icon">
-                  <Icon size={21} />
-                </span>
-                <div>
-                  <span className="component-kind">
-                    {componentLabels[component.kind]}
-                  </span>
-                  <h4>{component.name}</h4>
-                  <p>{component.description || "Sem descrição cadastrada."}</p>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <PackageContents item={item} />
     </section>
   );
 }

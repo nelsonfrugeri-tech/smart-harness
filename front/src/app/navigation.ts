@@ -1,15 +1,38 @@
 import { useSyncExternalStore } from "react";
+import { readMarketplaceFilters } from "./marketplaceQuery";
 function subscribe(callback: () => void) {
   window.addEventListener("popstate", callback);
   return () => window.removeEventListener("popstate", callback);
 }
 export function navigate(path: string, replace = false) {
   if (replace) history.replaceState(null, "", path);
-  else if (location.pathname !== path) history.pushState(null, "", path);
+  else if (location.pathname + location.search !== path)
+    history.pushState(null, "", path);
   window.dispatchEvent(new PopStateEvent("popstate"));
 }
 export function useRoute() {
-  const path = useSyncExternalStore(subscribe, () => location.pathname);
+  const url = useSyncExternalStore(
+    subscribe,
+    () => location.pathname + location.search,
+  );
+  const { pathname: path, search } = new URL(url, location.origin);
+  if (path === "/marketplace" || path.startsWith("/marketplace/packages/")) {
+    const filters = readMarketplaceFilters(search);
+    if (!filters) return { kind: "invalid-marketplace" } as const;
+    if (path === "/marketplace")
+      return { kind: "marketplace", filters } as const;
+    const packageMatch = /^\/marketplace\/packages\/([^/]+)\/?$/.exec(path);
+    try {
+      if (packageMatch)
+        return {
+          kind: "package",
+          name: decodeURIComponent(packageMatch[1]),
+          filters,
+        } as const;
+    } catch {
+      /* Malformed paths remain unavailable. */
+    }
+  }
   if (path === "/" || path === "/workspace")
     return { kind: "workspace" } as const;
   const match = /^\/workspace\/projects\/([^/]+)\/?$/.exec(path);

@@ -3,6 +3,9 @@ import { api, type Me } from "../api/client";
 import { Shell } from "../components/Shell";
 import { Loading, RequestError, Unavailable } from "../components/RequestState";
 import { Login } from "../pages/Login";
+import { Marketplace } from "../pages/Marketplace";
+import { Package } from "../pages/Package";
+import { Button, EmptyState } from "../components/Primitives";
 import { Workspace } from "../pages/Workspace";
 import { Project } from "../pages/Project";
 import { useResource } from "./useResource";
@@ -84,7 +87,17 @@ function ConnectedWorkspace({
   const { state, retry } = useResource("workspace", load, expire);
   return (
     <Shell me={me} logout={logout}>
-      {route.kind === "missing" ? (
+      {route.kind === "invalid-marketplace" ? (
+        <div className="page">
+          <EmptyState
+            title="Filtros inválidos"
+            description="Confira a busca e os filtros desta URL."
+          />
+          <Button onClick={() => navigate("/marketplace", true)}>
+            Abrir Marketplace
+          </Button>
+        </div>
+      ) : route.kind === "missing" ? (
         <div className="page">
           <Unavailable />
         </div>
@@ -94,6 +107,22 @@ function ConnectedWorkspace({
         <div className="page">
           <RequestError error={state.error} retry={retry} />
         </div>
+      ) : route.kind === "marketplace" ? (
+        <Marketplace
+          filters={route.filters}
+          token={token}
+          expire={expire}
+          me={me}
+          projects={state.data.projects}
+        />
+      ) : route.kind === "package" ? (
+        <Package
+          key={route.name}
+          name={route.name}
+          filters={route.filters}
+          token={token}
+          expire={expire}
+        />
       ) : route.kind === "project" ? (
         <Project
           slug={route.slug}

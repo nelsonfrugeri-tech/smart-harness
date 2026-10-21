@@ -1417,3 +1417,20 @@
     bottom: 10px;
   }
 }
+
+@media (max-width: 1000px) {
+  .topbar .breadcrumb {
+    display: none;
+  }
+  .catalog-topbar .breadcrumb {
+    display: flex;
+  }
+}
+@media (max-width: 720px) {
+  .topbar {
+    gap: 8px;
+  }
+  .topbar > .button {
+    padding: 10px 6px;
+  }
+}

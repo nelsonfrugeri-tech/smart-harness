@@ -1,4 +1,11 @@
-import { BookOpen, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import {
+  BookOpen,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  X,
+  PackageSearch,
+} from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -8,6 +15,7 @@ import {
 } from "react";
 import type { Me } from "../api/client";
 import { navigate, useRoute } from "../app/navigation";
+import { MarketplaceSearch } from "./MarketplaceSearch";
 import { Button } from "./Primitives";
 export function followLink(event: MouseEvent<HTMLAnchorElement>) {
   if (
@@ -19,7 +27,7 @@ export function followLink(event: MouseEvent<HTMLAnchorElement>) {
   )
     return;
   event.preventDefault();
-  navigate(event.currentTarget.pathname);
+  navigate(event.currentTarget.pathname + event.currentTarget.search);
 }
 export function Shell({
   children,
@@ -32,7 +40,15 @@ export function Shell({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const route = useRoute();
-  const routeKey = route.kind === "project" ? route.slug : route.kind;
+  const isMarketplace =
+    route.kind === "marketplace" || route.kind === "package";
+  const filters = isMarketplace ? route.filters : {};
+  const routeKey =
+    route.kind === "project"
+      ? `project:${route.slug}`
+      : route.kind === "package"
+        ? `package:${route.name}`
+        : route.kind;
   useEffect(() => {
     if (
       document.activeElement instanceof HTMLSelectElement &&
@@ -129,7 +145,8 @@ export function Shell({
         <div className="nav-label">DESENVOLVER</div>
         <nav aria-label="Navegação principal">
           <a
-            className="nav-item active"
+            className={`nav-item ${!isMarketplace ? "active" : ""}`}
+            aria-current={!isMarketplace ? "page" : undefined}
             href="/workspace"
             onClick={(event) => {
               followLink(event);
@@ -139,42 +156,32 @@ export function Shell({
             <LayoutDashboard size={19} />
             Meu workspace
           </a>
+          <a
+            className={`nav-item ${isMarketplace ? "active" : ""}`}
+            aria-current={isMarketplace ? "page" : undefined}
+            href="/marketplace"
+            onClick={(event) => {
+              followLink(event);
+              setMobileOpen(false);
+            }}
+          >
+            <PackageSearch size={19} />
+            Marketplace
+          </a>
         </nav>
-        <div className="membership-list">
-          <h2>Seus acessos</h2>
-          {me.memberships.length === 0 ? (
-            <p>Sem vínculo com uma squad.</p>
-          ) : (
-            me.memberships.map((membership) => (
-              <div key={membership.tenant.id}>
-                <strong>{membership.tenant.name}</strong>
-                <small>
-                  {membership.role === "ADMIN"
-                    ? "Administrador"
-                    : "Desenvolvedor"}
-                </small>
-              </div>
-            ))
-          )}
-        </div>
-        <div className="sidebar-bottom">
-          <div className="sidebar-profile">
-            <span className="avatar" aria-hidden="true">
-              {me.user.name.slice(0, 2).toUpperCase()}
-            </span>
-            <div>
-              <strong>{me.user.name}</strong>
-              <small>{me.user.email}</small>
-            </div>
-          </div>
-        </div>
+        <SidebarIdentity me={me} />
       </aside>
       <div className="main-shell" inert={mobileOpen}>
-        <header className="topbar">
+        <header
+          className={`topbar ${route.kind === "marketplace" ? "catalog-topbar" : ""}`}
+        >
           <div className="breadcrumb">
             <BookOpen size={16} />
-            <strong>Workspace</strong>
+            <strong>{isMarketplace ? "Marketplace" : "Workspace"}</strong>
           </div>
+          {route.kind !== "marketplace" && (
+            <MarketplaceSearch filters={filters} />
+          )}
           <Button variant="ghost" onClick={logout}>
             <LogOut size={16} />
             Sair
@@ -189,5 +196,40 @@ export function Shell({
         </footer>
       </div>
     </div>
+  );
+}
+
+function SidebarIdentity({ me }: { me: Me }) {
+  return (
+    <>
+      <div className="membership-list">
+        <h2>Seus acessos</h2>
+        {me.memberships.length === 0 ? (
+          <p>Sem vínculo com uma squad.</p>
+        ) : (
+          me.memberships.map((membership) => (
+            <div key={membership.tenant.id}>
+              <strong>{membership.tenant.name}</strong>
+              <small>
+                {membership.role === "ADMIN"
+                  ? "Administrador"
+                  : "Desenvolvedor"}
+              </small>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="sidebar-bottom">
+        <div className="sidebar-profile">
+          <span className="avatar" aria-hidden="true">
+            {me.user.name.slice(0, 2).toUpperCase()}
+          </span>
+          <div>
+            <strong>{me.user.name}</strong>
+            <small>{me.user.email}</small>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

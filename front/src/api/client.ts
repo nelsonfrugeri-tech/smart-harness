@@ -4,6 +4,11 @@ export type Me =
 export type Login =
   operations["devLogin"]["responses"][200]["content"]["application/json"];
 export type WorkspaceData = components["schemas"]["Workspace"];
+export type PluginItem = components["schemas"]["PluginItem"];
+export type PluginPage = components["schemas"]["PluginPage"];
+export type MarketplaceQuery = NonNullable<
+  operations["listMarketplace"]["parameters"]["query"]
+>;
 export type SetupPlan = components["schemas"]["SetupPlan"];
 export class ApiError extends Error {
   constructor(
@@ -59,6 +64,22 @@ async function readProblem(response: Response): Promise<ApiError> {
   );
 }
 export const api = {
+  marketplace: (
+    query: MarketplaceQuery,
+    token: string,
+    signal: AbortSignal,
+  ) => {
+    const params = new URLSearchParams();
+    for (const [name, value] of Object.entries(query)) {
+      if (value !== undefined && value !== "") params.set(name, String(value));
+    }
+    return request<PluginPage>(`/marketplace?${params}`, { token, signal });
+  },
+  plugin: (name: string, token: string, signal: AbortSignal) =>
+    request<PluginItem>(`/plugins/${encodeURIComponent(name)}`, {
+      token,
+      signal,
+    }),
   login: (email: string, signal: AbortSignal) =>
     request<Login>("/auth/dev-login", { email, signal }),
   me: (token: string, signal: AbortSignal) =>
