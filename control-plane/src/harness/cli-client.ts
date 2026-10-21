@@ -1,7 +1,8 @@
 // Runs the `harness` binary with execFile: arguments go straight to the process, never through a shell.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import type { HarnessClient, ValidationReport } from "../domain/publish.ts";
+import type { Component } from "../domain/marketplace.ts";
+import type { HarnessClient, ValidationFinding, ValidationReport } from "../domain/publish.ts";
 
 const run = promisify(execFile);
 
@@ -49,18 +50,45 @@ export function createCliHarnessClient(binary = "harness"): HarnessClient {
   };
 }
 
-function parseReport(output: string): ValidationReport | undefined {
+// Keeps the report fields the API uses: each finding with its hint and line, the description and
+// keywords of plugin.json, and the plugin, version and components the binary read. The raw-tree
+// digest is dropped on purpose: the digest that matters is the one `harness pack` prints after
+// `generate`.
+export function parseReport(output: string): ValidationReport | undefined {
+  let value: Partial<ValidationReport>;
   try {
-    const value = JSON.parse(output) as Partial<ValidationReport>;
-    if (typeof value.valid !== "boolean") return undefined;
-    if (value.description !== undefined && typeof value.description !== "string") return undefined;
-    if (value.keywords !== undefined && (!Array.isArray(value.keywords) || value.keywords.some((tag) => typeof tag !== "string"))) return undefined;
-    return {
-      valid: value.valid, findings: Array.isArray(value.findings) ? value.findings : [],
-      ...(value.description === undefined ? {} : { description: value.description }),
-      ...(value.keywords === undefined ? {} : { keywords: value.keywords }),
-    };
+    value = JSON.parse(output) as Partial<ValidationReport>;
   } catch {
     return undefined;
   }
+  if (value === null || typeof value !== "object" || typeof value.valid !== "boolean") return undefined;
+  // Report v2 adds description and keywords from plugin.json; a wrong type rejects the report.
+  if (value.description !== undefined && typeof value.description !== "string") return undefined;
+  if (value.keywords !== undefined && (!Array.isArray(value.keywords) || value.keywords.some((tag) => typeof tag !== "string"))) {
+    return undefined;
+  }
+  return {
+    valid: value.valid,
+    findings: Array.isArray(value.findings) ? value.findings.map(finding) : [],
+    ...(value.description === undefined ? {} : { description: value.description }),
+    ...(value.keywords === undefined ? {} : { keywords: value.keywords }),
+    ...(typeof value.plugin === "string" ? { plugin: value.plugin } : {}),
+    ...(typeof value.version === "string" ? { version: value.version } : {}),
+    ...(Array.isArray(value.components) ? { components: value.components.map(component) } : {}),
+  };
+}
+
+function finding(raw: ValidationFinding): ValidationFinding {
+  return {
+    code: String(raw.code ?? ""),
+    message: String(raw.message ?? ""),
+    ...(typeof raw.severity === "string" ? { severity: raw.severity } : {}),
+    ...(typeof raw.hint === "string" ? { hint: raw.hint } : {}),
+    ...(typeof raw.path === "string" ? { path: raw.path } : {}),
+    ...(typeof raw.line === "number" ? { line: raw.line } : {}),
+  };
+}
+
+function component(raw: Component): Component {
+  return { kind: raw.kind, name: String(raw.name ?? ""), description: String(raw.description ?? "") };
 }

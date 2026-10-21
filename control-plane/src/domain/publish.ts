@@ -12,7 +12,7 @@ import { join } from "node:path";
 import type { Db } from "../db/database.ts";
 import { savePublishedVersion } from "../db/repos/marketplace.ts";
 import type { PackageStorage } from "../storage/packages.ts";
-import type { Principal } from "./access.ts";
+import { isAdminOf, type Principal } from "./access.ts";
 import {
   digestOf,
   isDigest,
@@ -25,18 +25,26 @@ import {
   type Visibility,
 } from "./marketplace.ts";
 
+// One finding of `harness validate --json`. line is 1-based, 0 when the defect has no line.
 export interface ValidationFinding {
   code: string;
   message: string;
   severity?: string;
+  hint?: string;
   path?: string;
+  line?: number;
 }
 
+// The report of `harness validate --json`. plugin, version and components are absent when an
+// older binary does not print them; components lists only the valid ones.
 export interface ValidationReport {
   description?: string;
   keywords?: string[];
   valid: boolean;
   findings: ValidationFinding[];
+  plugin?: string;
+  version?: string;
+  components?: Component[];
 }
 
 // The `harness` commands the API depends on. The real client runs the binary (harness/cli-client.ts);
@@ -61,21 +69,31 @@ export async function prepareVersion(harness: HarnessClient, sourceDir: string):
     if (!report.valid) {
       throw new PublishError("invalid_package", "package failed validation", report.findings);
     }
-    await harness.generate(packageDir, "claude-code");
-
-    const archivePath = join(workDir, "package.tar.gz");
-    const { digest } = await harness.pack(packageDir, archivePath);
-    const archive = await readFile(archivePath);
-    if (digestOf(archive) !== digest) {
-      throw new PublishError(
-        "digest_mismatch",
-        `harness pack printed ${digest} but the archive hashes to ${digestOf(archive)}`,
-      );
-    }
+    const { archive, digest } = await generateAndPack(harness, packageDir, join(workDir, "package.tar.gz"));
     return { manifest: await readManifest(packageDir, report), archive, digest };
   } finally {
     await rm(workDir, { recursive: true, force: true });
   }
+}
+
+// Generates the Claude Code layer into packageDir and packs it to archivePath. The digest the
+// binary printed must be the sha256 of the file it wrote. Shared by prepareVersion and the draft
+// validation, so a draft is packed exactly like a published version.
+export async function generateAndPack(
+  harness: HarnessClient,
+  packageDir: string,
+  archivePath: string,
+): Promise<{ archive: Uint8Array; digest: string }> {
+  await harness.generate(packageDir, "claude-code");
+  const { digest } = await harness.pack(packageDir, archivePath);
+  const archive = await readFile(archivePath);
+  if (digestOf(archive) !== digest) {
+    throw new PublishError(
+      "digest_mismatch",
+      `harness pack printed ${digest} but the archive hashes to ${digestOf(archive)}`,
+    );
+  }
+  return { archive, digest };
 }
 
 export interface PublishTarget {
@@ -97,10 +115,7 @@ export async function persistVersion(
   target: PublishTarget,
   prepared: PreparedPackage,
 ): Promise<PersistResult> {
-  const isAdmin = publisher.memberships.some(
-    (membership) => membership.tenant.id === target.tenantId && membership.role === "ADMIN",
-  );
-  if (!isAdmin) {
+  if (!isAdminOf(publisher, target.tenantId)) {
     throw new PublishError("forbidden", "only an ADMIN of the owner squad can publish");
   }
   checkManifest(prepared.manifest);

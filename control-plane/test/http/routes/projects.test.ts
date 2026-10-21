@@ -5,6 +5,7 @@ import { upsertUser } from "../../../src/db/repos/seed.ts";
 import { login, marketplaceFixture, TEST_GATEWAY_URL, TEST_SECRET, testServer } from "../../test-support.ts";
 
 const DEV = "dev@smart-harness.local"; // DEV in investimentos and conta
+const ADMIN = "admin@smart-harness.local"; // ADMIN in every squad
 const OUTSIDER = "outsider@smart-harness.local";
 
 // Key names that would mean a credential leaked into a response.
@@ -112,5 +113,58 @@ describe("workspace and setup-plan", () => {
       const { response } = await get(OUTSIDER, `/v1/projects/${slug}/setup-plan`);
       expect(response.statusCode, slug).toBe(404);
     }
+  });
+
+  describe("PUT /v1/projects/{slug}/baseline/{plugin}", () => {
+    const BASELINE_URL = "/v1/projects/investimentos-api/baseline/investimentos-base";
+
+    async function pin(email: string, version: string, url = BASELINE_URL) {
+      const token = await login(app, email);
+      return app.inject({ method: "PUT", url, headers: { authorization: `Bearer ${token}` }, payload: { version } });
+    }
+
+    const pinnedInPlan = async () =>
+      (await get(DEV, "/v1/projects/investimentos-api/setup-plan")).response
+        .json()
+        .baseline.map((entry: { plugin: { name: string }; version: { version: string; digest: string } }) => ({
+          plugin: entry.plugin.name,
+          version: entry.version.version,
+          digest: entry.version.digest,
+        }));
+
+    it("an ADMIN rolls the baseline back to an older version and the setup-plan carries it", async () => {
+      expect((await pinnedInPlan()).map((entry: { version: string }) => entry.version)).toEqual(["1.2.1"]);
+      const older = db
+        .prepare(
+          `SELECT v.digest FROM plugin_versions v JOIN plugins p ON p.id = v.plugin_id
+            WHERE p.name = 'investimentos-base' AND v.version = '1.0.0'`,
+        )
+        .get() as { digest: string };
+
+      const response = await pin(ADMIN, "1.0.0");
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ plugin: "investimentos-base", version: "1.0.0" });
+      expect(await pinnedInPlan()).toEqual([{ plugin: "investimentos-base", version: "1.0.0", digest: older.digest }]);
+      const audit = db.prepare("SELECT details FROM audit_events WHERE action = 'baseline.pinned'").all() as {
+        details: string;
+      }[];
+      expect(audit.map((row) => JSON.parse(row.details))).toEqual([
+        { project: "investimentos-api", plugin: "investimentos-base", version: "1.0.0" },
+      ]);
+    });
+
+    it("a DEV gets 403 and the baseline stays", async () => {
+      const response = await pin(DEV, "1.0.0");
+
+      expect(response.statusCode).toBe(403);
+      expect(response.json().code).toBe("forbidden");
+      expect((await pinnedInPlan()).map((entry: { version: string }) => entry.version)).toEqual(["1.2.1"]);
+    });
+
+    it("an unknown version answers 404; another squad's project answers 404", async () => {
+      expect((await pin(ADMIN, "9.9.9")).statusCode).toBe(404);
+      expect((await pin(DEV, "1.0.0", "/v1/projects/cartoes-app/baseline/cartoes-base")).statusCode).toBe(404);
+    });
   });
 });

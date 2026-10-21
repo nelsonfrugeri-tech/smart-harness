@@ -2,11 +2,14 @@ import { randomUUID } from "node:crypto";
 import Fastify, { LogController, type FastifyInstance } from "fastify";
 import type { Config } from "../config.ts";
 import type { Db } from "../db/database.ts";
+import type { HarnessClient } from "../domain/publish.ts";
 import type { PackageStorage } from "../storage/packages.ts";
 import { registerGatewayTokenGuard } from "./auth.ts";
 import { registerMetrics } from "./metrics.ts";
 import { registerProblemHandlers } from "./problem.ts";
 import { registerDevLoginRoute } from "./routes/auth.ts";
+import { registerContributionRoutes } from "./routes/contributions.ts";
+import { registerDraftRoutes } from "./routes/drafts.ts";
 import { registerGatewayTokenRoutes } from "./routes/gateway-tokens.ts";
 import { registerMarketplaceRoutes } from "./routes/marketplace.ts";
 import { registerMeRoute } from "./routes/me.ts";
@@ -19,6 +22,8 @@ const VALID_CORRELATION_ID = /^[A-Za-z0-9._-]{1,128}$/;
 export interface ServerOptions {
   db: Db;
   storage: PackageStorage;
+  // Runs `harness validate`, `generate` and `pack` for draft validation.
+  harness: HarnessClient;
   config: Pick<
     Config,
     "appEnv" | "jwtSecret" | "tokenTtlSeconds" | "logLevel" | "gatewayPublicUrl" | "gatewayTokenTtlDays"
@@ -29,7 +34,7 @@ export interface ServerOptions {
 }
 
 // Registers every route without opening a port; tests use app.inject().
-export function buildServer({ db, storage, config, logger = false, logStream }: ServerOptions): FastifyInstance {
+export function buildServer({ db, storage, harness, config, logger = false, logStream }: ServerOptions): FastifyInstance {
   const app = Fastify({
     logger: logger ? { level: config.logLevel, ...(logStream === undefined ? {} : { stream: logStream }) } : false,
     // Reuses the caller's correlation id when it is well formed, otherwise creates one.
@@ -59,6 +64,8 @@ export function buildServer({ db, storage, config, logger = false, logStream }: 
   });
   registerProjectRoutes(app, { db, jwtSecret: config.jwtSecret, gatewayPublicUrl: config.gatewayPublicUrl });
   registerMarketplaceRoutes(app, { db, jwtSecret: config.jwtSecret, storage });
+  registerDraftRoutes(app, { db, jwtSecret: config.jwtSecret, storage, harness });
+  registerContributionRoutes(app, { db, jwtSecret: config.jwtSecret });
   if (config.appEnv === "local") {
     registerDevLoginRoute(app, {
       db,

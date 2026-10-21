@@ -3,6 +3,7 @@ import { dirname } from "node:path";
 import { loadConfig } from "./config.ts";
 import { openDatabase, type Db } from "./db/database.ts";
 import { runMigrations } from "./db/migrate.ts";
+import { createCliHarnessClient } from "./harness/cli-client.ts";
 import { buildServer } from "./http/server.ts";
 import { createPackageStorage, createS3Client } from "./storage/packages.ts";
 
@@ -19,7 +20,8 @@ try {
   const storage = createPackageStorage(createS3Client(config.storage), config.storage.bucket);
   await storage.ensureBucket();
 
-  const app = buildServer({ db, storage, config, logger: true });
+  // The harness binary comes from PATH (/usr/local/bin/harness in the image).
+  const app = buildServer({ db, storage, harness: createCliHarnessClient(), config, logger: true });
   app.log.info({ applied_migrations: applied, app_env: config.appEnv }, "database migrated");
   app.log.info({ bucket: config.storage.bucket }, "package bucket ready");
   app.addHook("onClose", async () => db?.close());

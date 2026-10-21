@@ -89,6 +89,21 @@ describe("runMigrations", () => {
     expect(runMigrations(db)).toEqual([]);
   });
 
+  it("upgrades a database that already has 0008 by applying the drafts and contributions files", () => {
+    // A database migrated before 0006 and 0007 existed: everything except those two.
+    for (const name of readdirSync(MIGRATIONS_DIR).filter((file) => !/^000[67]_/.test(file))) {
+      writeFileSync(join(dir, name), readFileSync(join(MIGRATIONS_DIR, name)));
+    }
+    runMigrations(db, dir);
+    seedLocalData(db);
+
+    expect(runMigrations(db)).toEqual(["0006_drafts.sql", "0007_contributions.sql"]);
+    expect(runMigrations(db)).toEqual([]);
+    const columns = db.prepare("SELECT name FROM pragma_table_info('plugin_versions')").all() as { name: string }[];
+    expect(columns.map((column) => column.name)).toContain("keywords");
+    expect(db.prepare("SELECT count(*) AS n FROM contributions").get()).toEqual({ n: 0 });
+  });
+
   it("applies the repository migrations to an empty database", () => {
     expect(runMigrations(db)).toEqual([
       "0001_initial.sql",
@@ -96,6 +111,8 @@ describe("runMigrations", () => {
       "0003_gateway_tokens.sql",
       "0004_gateway_permissions.sql",
       "0005_model_usage.sql",
+      "0006_drafts.sql",
+      "0007_contributions.sql",
       "0008_plugin_keywords.sql",
     ]);
 
@@ -106,6 +123,8 @@ describe("runMigrations", () => {
     expect(tables).toEqual([
       "audit_events",
       "components",
+      "contributions",
+      "drafts",
       "gateway_permissions",
       "gateway_tokens",
       "memberships",
