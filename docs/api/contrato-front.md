@@ -5,6 +5,7 @@ Lista do que o front consome do sh-control-plane na Fase 1. A fonte da verdade �
 ## Convenções
 - Base: `VITE_API_BASE_URL` (local: `http://127.0.0.1:8080`). CORS liberado só para a origem do front.
 - Autenticação: `Authorization: Bearer <JWT>` obtido em `POST /v1/auth/dev-login` (só em ambiente local). Guardar em memória/`sessionStorage`. `401` → voltar ao login.
+- O front usa sempre o JWT. O token do gateway (`shg_...`) é do dev para MCPs, modelos e o CLI `harness`; o front só o cria, lista e revoga, e nunca o guarda. Com ele, a API aceita só as leituras de produto (`GET /v1/me`, `/v1/workspace`, `/v1/marketplace`, `/v1/plugins/**`, setup-plan e download). Qualquer outra rota responde `401` com `code: gateway_token_not_allowed`.
 - Papéis vêm de `GET /v1/me` (`memberships[].role`). Mostrar visão ADMIN só se houver papel `ADMIN` em algum tenant. A API recusa de qualquer forma (403/404).
 - Erro: `application/problem+json` `{type, title, status, code, detail?, correlation_id, errors?[{path,message}]}`. Mostrar `detail` e `correlation_id`.
 - Lista: `?limit=` (1–100) e `?cursor=`; resposta `{items, next_cursor}`; "carregar mais" usa `next_cursor` até `null`.
@@ -21,7 +22,7 @@ Lista do que o front consome do sh-control-plane na Fase 1. A fonte da verdade �
 | Detalhe (versões) | `GET /v1/plugins/{name}/versions` | `Page<PluginVersion>` | #7 |
 | Prepare seu ambiente | `GET /v1/projects/{slug}/setup-plan` | `SetupPlan` (mostrar `harness setup <slug>` e `harness doctor`) | #7 |
 | Pessoas e acesso | `GET /v1/tenants/{slug}/members` | `Page<Member>` (ADMIN) | #7 |
-| Perfil: tokens | `POST/GET /v1/me/gateway-tokens`, `DELETE /v1/me/gateway-tokens/{id}` | `GatewayTokenCreated` (valor aparece uma vez) / `{items}` | #8 |
+| Perfil: tokens | `POST /v1/me/gateway-tokens` `{name}` (1–100 caracteres); `GET /v1/me/gateway-tokens?cursor=&limit=`; `DELETE /v1/me/gateway-tokens/{id}` (só JWT) | `201 GatewayTokenCreated {id, name, token, created_at, expires_at}`: mostrar `token` uma vez, com aviso de copiar agora / `Page<GatewayToken {id, name, created_at, expires_at, revoked_at}>`, do mais novo para o mais antigo, sem valor nem hash / `204`; token de outro dev ou inexistente → `404` | #8 |
 | Minhas criações | `POST/GET /v1/drafts`, `GET/PATCH/DELETE /v1/drafts/{id}` (`PATCH` exige `If-Match: "<revision>"`; 412 = recarregar) | `Draft`, `Page<DraftSummary>` | #16 |
 | Validar | `POST /v1/drafts/{id}:validate` | `ValidationResult {valid, digest, findings[{code,severity,message,hint,path,line}]}` | #16 |
 | Testar localmente | (texto) `harness draft pull <id>` e `claude --plugin-dir <dir>` | — | #10, #16 |

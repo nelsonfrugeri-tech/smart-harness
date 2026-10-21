@@ -1,6 +1,6 @@
 # control-plane
 
-API do Smart Harness em Node/TypeScript: login local, memberships por squad, SQLite com migrations, Marketplace, setup-plan, download de pacotes e endpoints operacionais. O Node 24 executa o TypeScript direto, sem etapa de build. O contrato HTTP está em [`openapi.json`](openapi.json).
+API do Smart Harness em Node/TypeScript: login local, memberships por squad, SQLite com migrations, Marketplace, setup-plan, download de pacotes, token do gateway e endpoints operacionais. O Node 24 executa o TypeScript direto, sem etapa de build. O contrato HTTP está em [`openapi.json`](openapi.json).
 
 ```bash
 npm ci
@@ -19,13 +19,16 @@ Fora do compose, a API também precisa de um S3 (variáveis `S3_*`). Pelo compos
 | `GET /readyz` | não | `{"status":"ready"}` se o banco responde; senão 503 |
 | `GET /metrics` | não | métricas Prometheus (processo e `http_request_duration_seconds`) |
 | `POST /v1/auth/dev-login` `{email}` | não | `{access_token, token_type, expires_in}`; a rota só existe com `APP_ENV=local` |
-| `GET /v1/me` | Bearer | `{user, memberships[{tenant, role}]}` |
-| `GET /v1/workspace` | Bearer | `{user, projects[{slug, name, description, tenant, counts, baseline}]}`, até 100 projetos |
-| `GET /v1/marketplace?kind=&project=&q=&cursor=&limit=` | Bearer | `Page<PluginItem>`: plugins visíveis em ordem de nome, cada um com a última versão visível |
-| `GET /v1/plugins/{name}` | Bearer | `PluginItem` |
-| `GET /v1/plugins/{name}/versions?cursor=&limit=` | Bearer | `Page<PluginVersion>`, da mais nova para a mais antiga |
-| `GET /v1/plugins/{name}/versions/{version}/archive` | Bearer | o tar.gz, com o digest no header `x-package-digest` |
-| `GET /v1/projects/{slug}/setup-plan` | Bearer | `{project, gateway{url}, baseline[], optional{items, next_cursor}}`, sem token nem segredo |
+| `GET /v1/me` | JWT ou token do gateway | `{user, memberships[{tenant, role}]}` |
+| `GET /v1/workspace` | JWT ou token do gateway | `{user, projects[{slug, name, description, tenant, counts, baseline}]}`, até 100 projetos |
+| `GET /v1/marketplace?kind=&project=&q=&cursor=&limit=` | JWT ou token do gateway | `Page<PluginItem>`: plugins visíveis em ordem de nome, cada um com a última versão visível |
+| `GET /v1/plugins/{name}` | JWT ou token do gateway | `PluginItem` |
+| `GET /v1/plugins/{name}/versions?cursor=&limit=` | JWT ou token do gateway | `Page<PluginVersion>`, da mais nova para a mais antiga |
+| `GET /v1/plugins/{name}/versions/{version}/archive` | JWT ou token do gateway | o tar.gz, com o digest no header `x-package-digest` |
+| `GET /v1/projects/{slug}/setup-plan` | JWT ou token do gateway | `{project, gateway{url}, baseline[], optional{items, next_cursor}}`, sem token nem segredo |
+| `POST /v1/me/gateway-tokens` `{name}` | só JWT | `201 {id, name, token, created_at, expires_at}`; o `token` aparece só aqui |
+| `GET /v1/me/gateway-tokens?cursor=&limit=` | só JWT | `Page<{id, name, created_at, expires_at, revoked_at}>`, do mais novo para o mais antigo, sem valor nem hash |
+| `DELETE /v1/me/gateway-tokens/{id}` | só JWT | `204`; revogar de novo também responde `204`; token de outro usuário responde `404` |
 
 ```bash
 JWT=$(curl -s -X POST 127.0.0.1:8080/v1/auth/dev-login -H 'content-type: application/json' \
@@ -49,7 +52,23 @@ Erros usam `application/problem+json` (RFC 9457): `{type, title, status, code, d
 - Recurso de outro tenant e recurso inexistente respondem o mesmo 404.
 - Visibilidade no Marketplace: uma versão é visível se o plugin é de uma squad do usuário, ou se a versão é `organization` e o usuário tem ao menos uma membership. Sem membership, o usuário não vê nada. A regra fica num único trecho SQL em `repos/marketplace.ts`, usado por todas as leituras.
 - Com `?project=` e no setup-plan, vale a visão da squad dona do projeto, e não a soma das squads do usuário. O `?project=` lista os opcionais do projeto: o que a squad vê, menos o pacote base.
-- Exceções explícitas: `repos/identity.ts` filtra pelo id do próprio usuário, porque é ele que monta o scope; `repos/seed.ts` contém escritas de sistema usadas só pelo seed local. Fora de `repos/`, só há SQL de infraestrutura: pragmas e ping em `db/database.ts` e a tabela `schema_migrations` em `db/migrate.ts`.
+- Exceções explícitas: `repos/identity.ts` e `repos/gateway-tokens.ts` filtram pelo id do próprio usuário: o primeiro monta o scope, e o token do gateway pertence ao usuário, não a um tenant; `repos/seed.ts` contém escritas de sistema usadas só pelo seed local. Fora de `repos/`, só há SQL de infraestrutura: pragmas e ping em `db/database.ts` e a tabela `schema_migrations` em `db/migrate.ts`.
+
+## Token do gateway
+
+O dev configura um único segredo, o token do gateway, para MCPs, modelos e o CLI `harness`.
+
+- Formato: `shg_` seguido de 32 bytes aleatórios em base64url (43 caracteres). Validade: `GATEWAY_TOKEN_TTL_DAYS` (padrão 90 dias).
+- A tabela `gateway_tokens` guarda só o sha256 do token inteiro (com o prefixo), em hex minúsculo. O valor aparece uma vez, na resposta do `POST`, com `Cache-Control: no-store`. A listagem, os logs e a auditoria (`gateway_token.created` e `gateway_token.revoked`) nunca levam o valor nem o hash.
+- Regra de validação, a mesma que o Agent Gateway (#13) aplica: o token tem o formato acima, e `sha256(token)` está numa linha com `revoked_at IS NULL` e `expires_at` no futuro. O SQL fica em `ACTIVE_GATEWAY_TOKEN_SQL` (`src/db/repos/gateway-tokens.ts`); o formato e o hash, em `src/domain/gateway-token.ts`.
+- Autorização por rota: o token vale só nas rotas registradas com `config: GATEWAY_TOKEN_ALLOWED` (as leituras de produto da tabela acima). Um hook `onRequest` recusa o token em qualquer outra rota, inclusive inexistente, antes da validação do corpo: escrita e gerenciamento de tokens respondem `401 gateway_token_not_allowed`, nunca 400. O `authenticate()` confere a mesma regra de novo. Rota nova nasce fechada para o token.
+- O token resolve o usuário. Tenants e papéis continuam vindo das memberships a cada requisição.
+
+```bash
+SHG=$(curl -s -X POST 127.0.0.1:8080/v1/me/gateway-tokens -H "Authorization: Bearer $JWT" \
+  -H 'content-type: application/json' -d '{"name":"notebook"}' | jq -r .token)
+curl -s 127.0.0.1:8080/v1/projects/investimentos-api/setup-plan -H "Authorization: Bearer $SHG"
+```
 
 ## Banco e migrations
 
@@ -92,6 +111,7 @@ Assim, `dev@smart-harness.local` (investimentos e conta) vê `code-review` e rec
 | `JWT_SECRET` | obrigatório | chave HS256, mínimo de 32 caracteres |
 | `DATABASE_PATH` | `data/control-plane.sqlite` | arquivo SQLite (`:memory:` nos testes) |
 | `TOKEN_TTL_SECONDS` | `3600` | validade do JWT |
+| `GATEWAY_TOKEN_TTL_DAYS` | `90` | validade de um token do gateway novo |
 | `HOST`, `PORT`, `LOG_LEVEL` | `127.0.0.1`, `8080`, `info` | servidor e logs |
 | `GATEWAY_PUBLIC_URL` | `http://127.0.0.1:8081` | URL do gateway enviada no setup-plan |
 | `S3_ENDPOINT` | vazio (AWS S3) | endpoint S3 compatível; no compose, `http://minio:9000` |
