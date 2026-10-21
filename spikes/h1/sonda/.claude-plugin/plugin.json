@@ -1,0 +1,8 @@
+{
+  "name": "sonda-h1",
+  "version": "0.0.1",
+  "description": "Camada Claude Code da sonda H1.",
+  "author": {
+    "name": "Smart Harness"
+  }
+}
