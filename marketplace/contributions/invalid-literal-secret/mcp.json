@@ -3,7 +3,7 @@
   "mcpServers": {
     "docs": {
       "type": "streamable-http",
-      "url": "http://127.0.0.1:8081/mcp/projects/go-software-engineer/docs",
+      "url": "http://127.0.0.1:8081/mcp/projects/investimentos-api/docs",
       "headers": { "Authorization": "Bearer fake" }
     }
   }

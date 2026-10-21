@@ -4,7 +4,7 @@ Contribuições de exemplo para o fluxo de publicação no Marketplace. `valid/`
 
 | Pasta | O que é | Resultado esperado |
 |---|---|---|
-| `valid/` | Plugin `go-software-engineer`: um agente e a skill `http-contract-testing` | Válido, sem achados |
+| `valid/` | Plugin `go-software-engineer`: um agente, a skill `http-contract-testing` e um MCP do gateway (`/mcp/projects/investimentos-api/docs`) | Válido, sem achados |
 | `invalid-literal-secret/` | `mcp.json` com header `Authorization` literal | `SH-SEC-001` |
 | `invalid-external-mcp/` | `mcp.json` com URL fora do gateway | `SH-MCP-001` |
 | `invalid-stdio/` | `mcp.json` com MCP local por comando (`stdio`) | `SH-MCP-002` |
