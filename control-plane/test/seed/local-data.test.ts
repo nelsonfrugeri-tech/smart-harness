@@ -25,7 +25,7 @@ describe("seedLocalData", () => {
     db.close();
   });
 
-  it("allows github, trello, notion and echo resources only for investimentos-api", () => {
+  it("allows project context and external resources only for investimentos-api", () => {
     const db = seededDatabase();
 
     const rows = db
@@ -39,9 +39,26 @@ describe("seedLocalData", () => {
       { project: "investimentos-api", server: "echo", type: "item" },
       { project: "investimentos-api", server: "github", type: "repo" },
       { project: "investimentos-api", server: "notion", type: "page" },
+      { project: "investimentos-api", server: "project", type: "project" },
       { project: "investimentos-api", server: "trello", type: "board" },
     ]);
     db.close();
+  });
+
+  it("replaces sample service grants without retaining previously configured resources", () => {
+    const db = seededDatabase();
+    try {
+      seedLocalData(db, { githubRepo: "example/first", trelloBoard: "firstboard", notionPage: "firstpage" });
+      seedLocalData(db, { githubRepo: "example/second", trelloBoard: "secondboard", notionPage: "secondpage" });
+      const rows = db.prepare("SELECT server, resource_id AS id FROM gateway_permissions ORDER BY server").all();
+      expect(rows).toEqual([
+        { server: "echo", id: "demo-item" },
+        { server: "github", id: "example/second" },
+        { server: "notion", id: "secondpage" },
+        { server: "project", id: "investimentos-api" },
+        { server: "trello", id: "secondboard" },
+      ]);
+    } finally { db.close(); }
   });
 
   it("is idempotent: a second run keeps the same rows and ids", () => {

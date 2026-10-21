@@ -14,6 +14,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY agent-gateway/package.json ./
 COPY agent-gateway/src ./src
+COPY examples/investimentos-api ./examples/investimentos-api
+ENV PROJECT_CONTEXT_ROOT=/app/examples
 RUN mkdir /data && chown node:node /data
 USER node
 EXPOSE 8081

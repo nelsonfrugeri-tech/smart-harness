@@ -13,7 +13,11 @@ if (config.appEnv !== "local") {
 const db = openDatabase(config.databasePath);
 try {
   runMigrations(db);
-  const counts = seedLocalData(db);
+  const counts = seedLocalData(db, {
+    githubRepo: process.env.GITHUB_PROJECT_REPO,
+    trelloBoard: process.env.TRELLO_PROJECT_BOARD,
+    notionPage: process.env.NOTION_PROJECT_PAGE,
+  });
   console.log(JSON.stringify({ level: 30, msg: "seed applied", ...counts }));
 } finally {
   db.close();

@@ -50,18 +50,25 @@ const USERS: { email: string; name: string; memberships: [TenantSlug, Role][] }[
   { email: "dev.cartoes@smart-harness.local", name: "Dev Cartões", memberships: [["cartoes", "DEV"]] },
 ];
 
-// Example permissions of investimentos-api. The identifiers are fictitious until the real backends (#14).
-// The echo server only exists with APP_ENV=local and is a harmless target for tests and demos.
+// Local sample permissions. Tests use fixed placeholders; seed/run.ts supplies configured service ids.
 const GATEWAY_PERMISSIONS = [
   { projectSlug: "investimentos-api", server: "github", resourceType: "repo", resourceId: "acme-fake/investimentos-api" },
   { projectSlug: "investimentos-api", server: "trello", resourceType: "board", resourceId: "board-investimentos-001" },
   { projectSlug: "investimentos-api", server: "notion", resourceType: "page", resourceId: "page-investimentos-adrs" },
   { projectSlug: "investimentos-api", server: "echo", resourceType: "item", resourceId: "demo-item" },
+  { projectSlug: "investimentos-api", server: "project", resourceType: "project", resourceId: "investimentos-api" },
 ] as const;
+
+export interface ServiceResources {
+  githubRepo?: string;
+  trelloBoard?: string;
+  notionPage?: string;
+}
 
 // Idempotent: every write is an upsert, all in one transaction.
 export function seedLocalData(
   db: Db,
+  resources: ServiceResources = {},
 ): { tenants: number; projects: number; users: number; gatewayPermissions: number } {
   db.transaction(() => {
     const tenantIds = new Map<string, string>();
@@ -77,8 +84,16 @@ export function seedLocalData(
         upsertMembership(db, userId, tenantIdOf(tenantIds, tenant), role);
       }
     }
+    // The local seed owns the sample project's grants for these servers. Reconfiguration revokes
+    // previous sample ids rather than silently leaving old boards and pages authorized.
+    const clear = db.prepare(`DELETE FROM gateway_permissions
+      WHERE project_id = (SELECT id FROM projects WHERE slug = 'investimentos-api') AND server = ?`);
     for (const permission of GATEWAY_PERMISSIONS) {
-      upsertGatewayPermission(db, permission);
+      clear.run(permission.server);
+      const resourceId = permission.server === "github" ? resources.githubRepo
+        : permission.server === "trello" ? resources.trelloBoard
+        : permission.server === "notion" ? resources.notionPage : undefined;
+      upsertGatewayPermission(db, { ...permission, resourceId: resourceId ?? permission.resourceId });
     }
   }).immediate();
 

@@ -19,6 +19,9 @@ services:
       GATEWAY_TOKEN_TTL_DAYS: ${GATEWAY_TOKEN_TTL_DAYS:-90}
       # Sent in the setup-plan: where the developer's coding agent reaches the gateway.
       GATEWAY_PUBLIC_URL: http://127.0.0.1:${GATEWAY_PORT:-8081}
+      GITHUB_PROJECT_REPO: ${GITHUB_PROJECT_REPO:-nelsonfrugeri-tech/smart-harness}
+      TRELLO_PROJECT_BOARD: ${TRELLO_PROJECT_BOARD:-board-investimentos-001}
+      NOTION_PROJECT_PAGE: ${NOTION_PROJECT_PAGE:-page-investimentos-adrs}
       # Package archives. In production, unset S3_ENDPOINT to use AWS S3.
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET: packages
@@ -48,6 +51,11 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Browser origins allowed to call /mcp, comma separated. Empty: any request with an Origin header is refused.
       ALLOWED_ORIGINS: ${GATEWAY_ALLOWED_ORIGINS:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      TRELLO_API_KEY: ${TRELLO_API_KEY:-}
+      TRELLO_TOKEN: ${TRELLO_TOKEN:-}
+      NOTION_TOKEN: ${NOTION_TOKEN:-}
+      PROJECT_CONTEXT_ROOT: /app/examples
     volumes:
       # Same file as the API: the gateway reads tokens and permissions and appends audit events.
       - sqlite-data:/data
