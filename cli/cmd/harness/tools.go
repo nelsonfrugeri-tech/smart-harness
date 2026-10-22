@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/local"
@@ -14,58 +13,37 @@ func runTools(args []string, stdout, stderr io.Writer) int {
 		return usageError(stderr, "expected tools install, check, run or serve")
 	}
 	action := args[0]
-	if (action == "check" && len(args) > 2) || (action == "install" && len(args) != 2) || (action == "run" && len(args) < 3) || (action == "serve" && len(args) != 2) {
+	if action == "install" {
+		return runCategoryInstall(args[1:], "tools", stdout, stderr)
+	}
+	if action == "check" {
+		return runCategoryCheck(args[1:], "tools", stdout, stderr)
+	}
+	if (action == "run" && len(args) < 3) || (action == "serve" && len(args) != 2) {
 		return usageError(stderr, "invalid tools arguments")
 	}
-	if action != "check" && action != "install" && action != "run" && action != "serve" {
+	if action != "run" && action != "serve" {
 		return usageError(stderr, "unknown tools command")
 	}
 	paths, err := local.ResolvePaths()
 	if err != nil {
 		return failure(stderr, exitFailure, err)
 	}
-	selected := localtools.All()
-	if len(args) >= 2 {
-		tool, err := localtools.Find(args[1])
-		if err != nil {
-			return failure(stderr, exitUsage, err)
-		}
-		selected = []localtools.Tool{tool}
-	}
-	if action == "install" {
-		unlock, err := local.Lock(paths.LockFile())
-		if err != nil {
-			return failure(stderr, exitFailure, err)
-		}
-		defer unlock()
-		if err := selected[0].Install(paths.ConfigDir, stdout, stderr); err != nil {
-			return failure(stderr, exitFailure, err)
-		}
-		return exitOK
+	tool, err := localtools.Find(args[1])
+	if err != nil {
+		return failure(stderr, exitUsage, err)
 	}
 	if action == "serve" {
-		if err := selected[0].Serve(paths.ConfigDir, stdin, stdout, stderr); err != nil {
+		if err := tool.Serve(paths.ConfigDir, stdin, stdout, stderr); err != nil {
 			return failure(stderr, exitFailure, err)
 		}
 		return exitOK
 	}
 	if action == "run" {
-		if err := selected[0].Run(paths.ConfigDir, args[2:], stdout, stderr); err != nil {
+		if err := tool.Run(paths.ConfigDir, args[2:], stdout, stderr); err != nil {
 			return failure(stderr, exitFailure, err)
 		}
 		return exitOK
-	}
-	failed := false
-	for _, tool := range selected {
-		if err := tool.Check(paths.ConfigDir); err != nil {
-			fmt.Fprintln(stderr, err)
-			failed = true
-			continue
-		}
-		fmt.Fprintf(stdout, "ok %s %s\n", tool.Name, tool.Version)
-	}
-	if failed {
-		return exitFailure
 	}
 	return exitOK
 }

@@ -45,6 +45,7 @@ func TestMain(m *testing.M) {
 
 // version is one published plugin version in the fake API.
 type published struct {
+	componentKind string
 	name, version string
 	archive       []byte
 	agent         string
@@ -125,6 +126,9 @@ func archivePath(v published) string {
 
 func item(v published) map[string]any {
 	components := []map[string]any{{"kind": "skill", "name": "s", "description": ""}}
+	if v.componentKind != "" {
+		components = []map[string]any{{"kind": v.componentKind, "name": v.name}}
+	}
 	if v.agent != "" {
 		components = append(components, map[string]any{"kind": "agent", "name": v.agent, "description": ""})
 	}

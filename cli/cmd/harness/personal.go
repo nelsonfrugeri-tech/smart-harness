@@ -65,11 +65,15 @@ func runLogin(args []string, stdout, stderr io.Writer) int {
 	if err := s.save(); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
-	fmt.Fprintln(stdout, "logged in; install packages with: harness install <name> [name...]")
+	fmt.Fprintln(stdout, "logged in; use harness tools install <name> [name...] or harness skills install <name> [name...]")
 	return exitOK
 }
 
 func runInstall(args []string, stdout, stderr io.Writer) int {
+	return runCategoryInstall(args, "", stdout, stderr)
+}
+
+func runCategoryInstall(args []string, requestedCategory string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		return usageError(stderr, "install requires at least one package name")
 	}
@@ -110,14 +114,22 @@ func runInstall(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return failure(stderr, exitFailure, explain(err))
 	}
-	if err := checkLocalTools(s.paths.ConfigDir, desired); err != nil {
-		return failure(stderr, exitFailure, err)
+	if requestedCategory != "" {
+		if err := validateCategory(args, requestedCategory, desired); err != nil {
+			return failure(stderr, exitFailure, err)
+		}
 	}
 	if err := s.store.Recover(); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
 	actions, err := reconcile.Diff(desired, s.cfg, s.store)
 	if err != nil {
+		return failure(stderr, exitFailure, err)
+	}
+	if err := installRequestedRuntimes(args, s.paths.ConfigDir, desired, stdout, stderr); err != nil {
+		return failure(stderr, exitFailure, err)
+	}
+	if err := checkLocalTools(s.paths.ConfigDir, desired); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
 	s.cfg.PersonalPlugins, s.cfg.GatewayURL = selected, desired.GatewayURL

@@ -7,6 +7,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/api"
 )
 
 // Config is ~/.config/smart-harness/config.json. It never holds the token.
@@ -28,10 +30,11 @@ type Project struct {
 // replaced or removed. Digest is the archive digest from the plan; ContentDigest is the digest
 // of the installed directory right after the install, which doctor compares again later.
 type Installed struct {
-	Version       string   `json:"version"`
-	Digest        string   `json:"digest"`
-	ContentDigest string   `json:"content_digest"`
-	Projects      []string `json:"projects"`
+	Components    []api.Component `json:"components,omitempty"`
+	Version       string          `json:"version"`
+	Digest        string          `json:"digest"`
+	ContentDigest string          `json:"content_digest"`
+	Projects      []string        `json:"projects"`
 }
 
 // Draft is a pulled draft directory and the digest of its archive.

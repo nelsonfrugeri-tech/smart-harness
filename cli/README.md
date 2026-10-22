@@ -6,7 +6,7 @@ O único `go.mod` do repositório fica aqui, então os comandos Go rodam com `go
 
 ```bash
 go -C cli test ./...
-go -C cli build -ldflags "-X main.version=0.1.0 -X main.commit=$(git rev-parse --short HEAD)" -o bin/harness ./cmd/harness
+go -C cli build -ldflags "-X main.version=0.2.1 -X main.commit=$(git rev-parse --short HEAD)" -o bin/harness ./cmd/harness
 ```
 
 A imagem da API (`control-plane/Dockerfile`) compila este binário e o instala em `/usr/local/bin/harness`.
@@ -15,18 +15,20 @@ A imagem da API (`control-plane/Dockerfile`) compila este binário e o instala e
 
 | Comando | Faz | Saída |
 |---|---|---|
-| `harness version` | Versão e commit | `harness 0.1.0 (commit abc1234)` |
+| `harness version` | Versão e commit | `harness 0.2.1 (commit abc1234)` |
 | `harness validate <dir> [--json] [--gateway-origin <url>]` | Aplica as regras abaixo | Relatório JSON ou uma linha por achado |
 | `harness generate <dir> --target <nome> [--gateway-origin <url>]` | Valida e grava a camada do target no próprio diretório | Um caminho por arquivo gerado |
 | `harness digest <dir>` | Digest do tar.gz que o `pack` gravaria | `sha256:<hex>` |
 | `harness pack <dir> -o <arquivo.tar.gz>` | tar.gz reproduzível | O digest |
 | `harness unpack <arquivo> <destino> [--expect-digest sha256:<hex>]` | Confere o digest do arquivo e extrai com checagens | O digest |
 | `harness login --api-url <url>` | Autentica o token digitado sem eco e configura o gateway pessoal | Login pronto antes de instalar Claude Code ou pacotes |
-| `harness install <nome> [nome...]` | Adiciona pacotes pessoais do catálogo sem slug de projeto | Instalações/atualizações e erros acionáveis |
+| `harness install <nome> [nome...]` | Alias legado de instalação pessoal, sem filtro de categoria | Instalações/atualizações e erros acionáveis |
 | `harness setup <projeto> [--api-url <url>] [--include-optional <a>,<b>]` | Instala o pacote base (e opcionais) no Claude Code e aponta o Claude Code para o gateway | Uma linha por plugin e o comando para abrir o agente |
 | `harness sync` | Aplica o setup-plan atual de todos os projetos configurados | Uma linha por plugin |
-| `harness tools install <graphify\|deja-vu>` | Instala ferramenta upstream fixada em diretório isolado | Versão verificada ou erro acionável |
-| `harness tools check [graphify\|deja-vu]` | Verifica ferramentas locais gerenciadas | Versão ou instrução de instalação |
+| `harness tools install <nome> [nome...]` | Instala pacotes MCP e os runtimes fixados de Graphify/deja-vu, quando selecionados | Versão verificada ou erro acionável |
+| `harness tools check [nome]` | Verifica pacotes Tools instalados e seus runtimes locais | Versão, estado vazio ou instrução de reparo |
+| `harness skills install <nome> [nome...]` | Instala pacotes da categoria Skills | Instalações/atualizações e erros acionáveis |
+| `harness skills check [nome]` | Verifica pacotes Skills instalados | Versão, estado vazio ou instrução de reparo |
 | `harness tools serve <graphify\|deja-vu>` | Executa MCP stdio curado enquanto a sessão existir | Apenas protocolo MCP no stdout |
 | `harness tools run <graphify\|deja-vu> <args...>` | Executa ferramenta gerenciada com argumentos literais | Saída upstream |
 | `harness doctor` | Checa Claude Code, API, token, gateway, `settings.json`, plugins e plano | `ok` ou `FAIL` com `fix:` por checagem |
@@ -182,10 +184,9 @@ servidor declarado no próprio pacote. URLs de gateway podem usar `/mcp/me/<cone
 ou a rota legada `/mcp/projects/<projeto>/<conector>`.
 
 ```sh
-harness tools install graphify
-harness tools install deja-vu
+harness login --api-url http://127.0.0.1:8080
+harness tools install graphify deja-vu
 harness tools check
-harness setup md2poui --api-url http://127.0.0.1:8080 --include-optional graphify,deja-vu
 ```
 
 Para o setup legado, o projeto deve oferecer os dois opcionais no setup-plan. `setup` e `sync` recusam
@@ -221,9 +222,10 @@ Consulte [decisão, fontes e reprodução](../marketplace/local-tools/README.md)
 
 ```sh
 harness login --api-url http://127.0.0.1:8080
-harness tools install graphify
-harness tools install deja-vu
-harness install github trello notion graphify deja-vu md2poui code-review
+harness tools install github trello notion graphify deja-vu
+harness skills install md2poui code-review
+harness tools check
+harness skills check
 harness doctor
 ```
 
@@ -236,7 +238,7 @@ do Claude para os MCPs encontrarem o mesmo executável e ferramentas gerenciadas
 O executável deve ficar em um caminho estável após o login; movê-lo exige novo login
 ou sync. Configurações com pacotes/projetos não podem trocar silenciosamente de API.
 
-`personal_plugins` é uma lista aditiva no config: `harness install notion` preserva
+`personal_plugins` é uma lista aditiva no config: `harness tools install notion` preserva
 os demais pacotes selecionados e os projetos legados. `null`/campo ausente identifica
 config legado; `[]` indica login pessoal ainda sem pacotes. `sync` e `doctor` unem
 as duas seleções e recusam digests/gateways incompatíveis antes de mudar arquivos.
@@ -244,10 +246,23 @@ O plano pessoal é paginado por `/v1/me/setup-plan?cursor=...`; cursor repetido 
 de 100 páginas falha explicitamente. Pacote pessoal ausente do catálogo impede a
 reconciliação, sem apagar a instalação anterior.
 
-Instalação de ferramentas é explícita. `install graphify` não executa automaticamente
-uv ou Go: instrui `harness tools install graphify` quando falta o pré-requisito.
-Graphify agora requer o extra upstream MCP, verificado por import; uma instalação
-anterior apenas CLI é atualizada pelo mesmo comando `tools install graphify`.
+`tools install` e `skills install` exigem login e validam a categoria de todos os
+nomes no setup-plan antes de alterar pacotes, runtimes ou configuração. Um nome da
+categoria errada recusa o lote inteiro. Pacotes mistos seguem a precedência do
+catálogo: Agents, Tools (MCP), Skills. O comando Agents ainda não está disponível.
+`harness install` permanece como alias legado sem filtro de categoria.
+
+Ao selecionar Graphify ou deja-vu em `tools install`, o CLI instala automaticamente
+o runtime upstream fixado antes do pacote. Os pré-requisitos uv/Python ou Go
+precisam estar disponíveis; ausência retorna erro acionável. Graphify requer o extra
+upstream MCP, verificado por import; uma instalação anterior apenas CLI é atualizada
+pelo mesmo comando. Outros pacotes não executam instaladores upstream.
+
+`tools check` e `skills check` verificam a integridade somente dos pacotes instalados
+na categoria. Tools também verifica os runtimes dos conectores locais instalados;
+não exige Graphify/deja-vu quando ausentes. Categoria sem pacotes informa `empty`,
+sem declarar instalações saudáveis. Os checks funcionam sem API; `doctor` mantém o
+diagnóstico completo de autenticação, settings e gateway.
 
 `tools serve` usa os binários gerenciados, sem shell e sem timeout fixo da sessão:
 Graphify roda o Python de seu ambiente com `-m graphify.serve`; deja-vu roda `deja mcp`.

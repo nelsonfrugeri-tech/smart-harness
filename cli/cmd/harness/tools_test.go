@@ -13,7 +13,7 @@ import (
 func TestToolsCommandRefusesMissingManagedInstallation(t *testing.T) {
 	t.Setenv("HARNESS_CONFIG_DIR", t.TempDir())
 	t.Setenv("HARNESS_CLAUDE_DIR", t.TempDir())
-	for _, args := range [][]string{{"tools", "check"}, {"tools", "run", "graphify", "--version"}} {
+	for _, args := range [][]string{{"tools", "run", "graphify", "--version"}} {
 		var output bytes.Buffer
 		if code := run(args, &output, &output); code != exitFailure {
 			t.Fatalf("code=%d", code)
@@ -25,7 +25,7 @@ func TestToolsCommandRefusesMissingManagedInstallation(t *testing.T) {
 }
 
 func TestToolsCommandUsage(t *testing.T) {
-	for _, args := range [][]string{{"tools"}, {"tools", "unknown"}, {"tools", "install"}, {"tools", "install", "bash"}, {"tools", "check", "graphify", "extra"}, {"tools", "run", "deja-vu"}} {
+	for _, args := range [][]string{{"tools"}, {"tools", "unknown"}, {"tools", "install"}, {"tools", "check", "graphify", "extra"}, {"tools", "run", "deja-vu"}} {
 		var output bytes.Buffer
 		if code := run(args, &output, &output); code != exitUsage {
 			t.Fatalf("%v code=%d output=%s", args, code, output.String())

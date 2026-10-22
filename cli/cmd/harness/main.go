@@ -25,8 +25,10 @@ const usage = `usage:
   harness install <name> [name...]
   harness setup <project> [--api-url <url>] [--include-optional <plugin>[,<plugin>...]]
   harness sync
-  harness tools install <graphify|deja-vu>
-  harness tools check [graphify|deja-vu]
+  harness tools install <name> [name...]
+  harness tools check [name]
+  harness skills install <name> [name...]
+  harness skills check [name]
   harness tools serve <graphify|deja-vu>
   harness tools run <graphify|deja-vu> <args...>
   harness doctor
@@ -73,6 +75,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runInstall(rest, stdout, stderr)
 	case "setup":
 		return runSetup(rest, stdout, stderr)
+	case "skills":
+		return runSkills(rest, stdout, stderr)
 	case "tools":
 		return runTools(rest, stdout, stderr)
 	case "sync":

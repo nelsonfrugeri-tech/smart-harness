@@ -257,6 +257,7 @@ func Apply(actions []Action, cfg *local.Config, store install.Store, src Source,
 		case Keep:
 			rec := cfg.Plugins[a.Name]
 			rec.Projects = sortedCopy(a.Want.Projects)
+			rec.Components = slices.Clone(a.Want.Item.Components)
 			cfg.Plugins[a.Name] = rec
 			fmt.Fprintf(out, "unchanged %s %s\n", a.Name, rec.Version)
 		case Remove:
@@ -283,6 +284,7 @@ func intact(dir string, rec local.Installed) bool {
 func record(w *Want, content string) local.Installed {
 	return local.Installed{
 		Version:       w.Item.Version.Version,
+		Components:    slices.Clone(w.Item.Components),
 		Digest:        w.Item.Version.Digest,
 		ContentDigest: content,
 		Projects:      sortedCopy(w.Projects),
