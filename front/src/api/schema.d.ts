@@ -85,6 +85,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/me/setup-plan": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Personal installation catalog; no project or baseline required
+     * @description Same visibility and filters as Marketplace. Continue with this endpoint and next_cursor. Never contains tokens or credentials.
+     */
+    get: operations["getPersonalSetupPlan"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/workspace": {
     parameters: {
       query?: never;
@@ -449,6 +469,8 @@ export interface components {
       id: string;
       email: string;
       name: string;
+      /** @description Presentation only; never an authorization role. */
+      job_title?: string | null;
     };
     TenantRef: {
       slug: string;
@@ -517,6 +539,13 @@ export interface components {
           version: string;
         }[];
       }[];
+    };
+    PersonalSetupPlan: {
+      gateway: {
+        /** Format: uri */
+        url: string;
+      };
+      optional: components["schemas"]["PluginPage"];
     };
     SetupPlan: {
       project: {
@@ -799,6 +828,35 @@ export interface operations {
           };
         };
       };
+      401: components["responses"]["Problem"];
+    };
+  };
+  getPersonalSetupPlan: {
+    parameters: {
+      query?: {
+        type?: "connector" | "skill" | "agent";
+        kind?: components["schemas"]["ComponentKind"];
+        q?: string;
+        /** @description next_cursor of the previous page; an invalid cursor answers 400 invalid_cursor */
+        cursor?: components["parameters"]["Cursor"];
+        limit?: components["parameters"]["Limit"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Personal plan */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonalSetupPlan"];
+        };
+      };
+      400: components["responses"]["Problem"];
       401: components["responses"]["Problem"];
     };
   };

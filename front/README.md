@@ -51,7 +51,11 @@ Os comandos estão centralizados em `src/app/cliCommands.ts`.
 o gateway Smart Harness fornece a autenticação do Claude Code; um segundo login
 na Anthropic não é solicitado. Graphify/deja-vu precisam das ferramentas locais
 antes da instalação dos plugins. A interface mostra os pré-requisitos e os
-comandos nessa ordem.
+comandos nessa ordem. Se instalou Graphify, gere o grafo dentro do checkout antes
+de abrir o Claude Code: `harness tools run graphify update ./src`. Ajuste a pasta
+de fontes quando necessário. O MCP procura `graphify-out/graph.json` ou
+`src/graphify-out/graph.json` no diretório de execução; se a sessão já estiver
+aberta, reconecte o MCP após a geração.
 
 ## Verificar
 

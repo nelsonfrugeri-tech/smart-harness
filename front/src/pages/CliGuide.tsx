@@ -152,6 +152,24 @@ export function CliGuide() {
               label="Diagnóstico do ambiente"
               value={cliCommands.doctor}
             />
+            <div className="cli-note">
+              <strong>Se instalou Graphify</strong>
+              <p>
+                Dentro do repositório, gere o grafo antes de abrir o Claude
+                Code. O comando abaixo usa a pasta de código src; ajuste o
+                caminho se suas fontes estiverem em outra pasta. O MCP precisa
+                encontrar graphify-out/graph.json ou src/graphify-out/graph.json
+                na pasta em que você abrir o Claude Code.
+              </p>
+              <CopyValue
+                label="Preparar grafo local"
+                value={cliCommands.graphify}
+              />
+              <p>
+                Se o Claude Code já estiver aberto, reconecte o MCP do Graphify
+                após gerar o grafo.
+              </p>
+            </div>
             <CopyValue
               label="Iniciar desenvolvimento"
               value={cliCommands.developer}

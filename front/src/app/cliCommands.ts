@@ -17,6 +17,7 @@ export const recommendedPlugins = [
 export const cliCommands = {
   installPlugins: `harness install ${recommendedPlugins.join(" ")}`,
   doctor: "harness doctor",
+  graphify: "harness tools run graphify update ./src",
   tools:
     "harness tools install graphify\nharness tools install deja-vu\nharness tools check",
   developer: "claude --agent software-delivery:developer",
