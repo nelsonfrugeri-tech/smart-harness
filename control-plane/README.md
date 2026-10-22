@@ -267,3 +267,48 @@ Fontes de licença verificadas em 22/10/2026:
 - [Graphify v0.9.56: Apache-2.0](https://github.com/Graphify-Labs/graphify/blob/v0.9.56/LICENSE).
 - [deja-vu v0.16.8: MIT](https://github.com/vshulcz/deja-vu/blob/v0.16.8/LICENSE).
 - [TOTVS md2poui: MIT declarado no package.json, revisão f097b94](https://github.com/totvs/md2poui/blob/f097b94b0dd0dad367cdd7bb2f8312281a6ca90e/package.json).
+
+## Publicação de pacotes pelo GitHub
+
+O ADMIN cadastra `owner`, `repo`, `tenant_id` e `visibility` em `POST /v1/repositories`.
+A tela lista os cadastros por `GET /v1/repositories` com `limit` e `cursor`.
+`POST /v1/repositories/:id/sync` recebe `{ "tag": "v1.0.0" }` e importa uma Release
+publicada com exatamente um asset `.tar.gz`. Gere a camada Claude Code antes de empacotar:
+`harness generate package --target claude-code` e
+`harness pack package -o agent-example-1.0.0.tar.gz`. O asset fica no GitHub; não há upload
+para MinIO. A tag, com ou sem prefixo `v`, precisa corresponder ao `plugin.json`.
+
+SQLite guarda catálogo, squad, visibilidade, versão, digest SHA-256, ID da Release, ID do
+asset e commit resolvido da tag. Uma nova sincronização idêntica retorna `unchanged`.
+Alterar origem ou conteúdo de uma versão publicada retorna `409`; publique outra versão.
+A associação do asset ao commit registra a origem informada pela Release e pela tag:
+ela não é uma prova de build reproduzível nem de revisão do código por PR.
+
+O download continua em `/v1/plugins/:name/versions/:version/archive`, com a autorização
+existente. Para versões novas, a API busca o asset pelo ID fixado, verifica tamanho e
+SHA-256 e só então entrega os bytes. Assets alterados são recusados. Releases não precisam
+ter o recurso de imutabilidade do GitHub ativado; a proteção local detecta alterações.
+Instalação depende da disponibilidade do GitHub. Versões antigas continuam no S3.
+
+Repositórios públicos funcionam sem credencial. `GITHUB_TOKEN`, opcional e somente no
+servidor, permite acessar repositórios privados e usar a cota autenticada; conceda apenas
+`Contents: read` nos repositórios que a plataforma deve publicar. Um ADMIN pode importar
+conteúdo de qualquer repositório acessível a essa credencial para sua squad. O cadastro
+não concede novas permissões no GitHub. A credencial nunca aparece no contrato nem segue
+redirects para os hosts de download. Readiness e listagens não fazem chamadas ao GitHub.
+
+Cada sincronização usa prazo total de 60 segundos nas chamadas GitHub, sem retry.
+Downloads aceitam até três redirects HTTPS apenas para os hosts de assets do GitHub.
+Metadados têm limite de 1 MiB; Releases com mais de 100 assets são recusadas.
+O engine limita a extração a 2.000 arquivos, 5 MiB por arquivo e 50 MiB no total,
+rejeitando links e caminhos inseguros. A validação compara a camada gerada e mantém os
+bytes originais do asset. Extração, validação e geração têm timeout individual de 60 s.
+O histograma HTTP existente registra duração e status das rotas, permitindo calcular p95.
+Os testes do inspector compilam um engine temporário; Go deve estar disponível, como no
+`make check` da raiz.
+
+Referências verificadas em 22/10/2026:
+[Releases](https://docs.github.com/en/rest/releases/releases),
+[Release assets e download](https://docs.github.com/en/rest/releases/assets),
+[Git references](https://docs.github.com/en/rest/git/refs) e
+[annotated tags](https://docs.github.com/en/rest/git/tags).

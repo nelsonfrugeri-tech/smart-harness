@@ -1,3 +1,7 @@
+import { createGitHubPackages } from "../github/packages.ts";
+import { createPackageInspector } from "../harness/package-inspector.ts";
+import type { GitHubPackages, PackageInspector } from "../domain/repositories.ts";
+import { registerRepositoryRoutes } from "./routes/repositories.ts";
 import { randomUUID } from "node:crypto";
 import Fastify, { LogController, type FastifyInstance } from "fastify";
 import type { Config } from "../config.ts";
@@ -29,14 +33,16 @@ export interface ServerOptions {
   config: Pick<
     Config,
     "appEnv" | "jwtSecret" | "tokenTtlSeconds" | "logLevel" | "gatewayPublicUrl" | "gatewayTokenTtlDays"
-  > & Partial<InstallerConfig>;
+  > & Partial<InstallerConfig> & Pick<Config, "githubToken">;
+  github?: GitHubPackages;
+  inspectPackage?: PackageInspector;
   logger?: boolean;
   // Where log lines go when logger is true; stdout by default. Tests pass a collector.
   logStream?: { write(line: string): void };
 }
 
 // Registers every route without opening a port; tests use app.inject().
-export function buildServer({ db, storage, harness, config, logger = false, logStream }: ServerOptions): FastifyInstance {
+export function buildServer({ db, storage, harness, config, github = createGitHubPackages({ token: config.githubToken }), inspectPackage = createPackageInspector(), logger = false, logStream }: ServerOptions): FastifyInstance {
   const app = Fastify({
     logger: logger ? { level: config.logLevel, ...(logStream === undefined ? {} : { stream: logStream }) } : false,
     // Reuses the caller's correlation id when it is well formed, otherwise creates one.
@@ -67,7 +73,8 @@ export function buildServer({ db, storage, harness, config, logger = false, logS
     gatewayTokenTtlDays: config.gatewayTokenTtlDays,
   });
   registerProjectRoutes(app, { db, jwtSecret: config.jwtSecret, gatewayPublicUrl: config.gatewayPublicUrl });
-  registerMarketplaceRoutes(app, { db, jwtSecret: config.jwtSecret, storage });
+  registerMarketplaceRoutes(app, { db, jwtSecret: config.jwtSecret, storage, github });
+  registerRepositoryRoutes(app, { db, jwtSecret: config.jwtSecret, github, inspectPackage });
   registerDraftRoutes(app, { db, jwtSecret: config.jwtSecret, storage, harness });
   registerContributionRoutes(app, { db, jwtSecret: config.jwtSecret });
   if (config.appEnv === "local") {

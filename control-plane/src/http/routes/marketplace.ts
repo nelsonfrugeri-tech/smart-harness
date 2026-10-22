@@ -1,3 +1,6 @@
+import { findGitHubVersion } from "../../db/repos/repositories.ts";
+import { RepositoryError, type GitHubPackages } from "../../domain/repositories.ts";
+import { digestOf } from "../../domain/marketplace.ts";
 import type { FastifyInstance } from "fastify";
 import {
   findVisiblePlugin,
@@ -15,6 +18,7 @@ import { notFound } from "../problem.ts";
 
 export interface MarketplaceDeps extends AuthDeps {
   storage: PackageStorage;
+  github: GitHubPackages;
 }
 
 export const DIGEST_HEADER = "x-package-digest";
@@ -119,7 +123,7 @@ export function registerMarketplaceRoutes(app: FastifyInstance, deps: Marketplac
     },
   );
 
-  // Streams nothing from the database: the archive comes from object storage by digest.
+  // Resolve the authorized version before accessing either package provider.
   app.get<{ Params: { name: string; version: string } }>(
     "/v1/plugins/:name/versions/:version/archive",
     {
@@ -141,7 +145,16 @@ export function registerMarketplaceRoutes(app: FastifyInstance, deps: Marketplac
       const record = findVisibleVersion(deps.db, scope, name, version);
       if (!record) throw notFound("plugin version not found");
 
-      const archive = await deps.storage.getPackage(record.digest);
+      const origin = findGitHubVersion(deps.db, record.id);
+      let archive: Uint8Array | undefined;
+      try { archive = origin ? await deps.github.downloadAsset(origin, origin.assetId) : await deps.storage.getPackage(record.digest); }
+      catch (error) {
+        if (error instanceof RepositoryError) throw new RepositoryError(502, "github_unavailable", "published archive is unavailable on GitHub; try again or contact its publisher");
+        throw error;
+      }
+      if (origin && archive && (digestOf(archive) !== record.digest || archive.byteLength !== record.sizeBytes)) {
+        throw new RepositoryError(502, "archive_changed", "GitHub archive no longer matches the published digest; installation was refused");
+      }
       if (!archive) {
         throw new Error(`archive ${record.digest} of ${name}@${version} is missing from object storage`);
       }

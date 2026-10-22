@@ -1,3 +1,5 @@
+import { RepositoryError } from "../domain/repositories.ts";
+import { PublishError } from "../domain/marketplace.ts";
 import { STATUS_CODES } from "node:http";
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
@@ -96,6 +98,11 @@ export function registerProblemHandlers(app: FastifyInstance): void {
   );
 
   app.setErrorHandler((error: FastifyError | HttpProblem, request, reply) => {
+    if (error instanceof RepositoryError) return sendProblem(request, reply, error.status, error.code, error.message);
+    if (error instanceof PublishError) {
+      const status = error.code === "forbidden" ? 403 : ["version_exists", "plugin_owned_by_other_squad"].includes(error.code) ? 409 : 422;
+      return sendProblem(request, reply, status, error.code, error.message);
+    }
     if (error instanceof HttpProblem) {
       reply.headers(error.headers);
       return sendProblem(request, reply, error.status, error.code, error.detail, error.errors);

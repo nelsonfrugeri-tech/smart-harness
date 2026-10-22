@@ -16,6 +16,185 @@
     { "name": "contributions" }
   ],
   "paths": {
+    "/v1/repositories": {
+      "get": {
+        "tags": [
+          "repositories"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "operationId": "listRepositories",
+        "summary": "Lista os repositórios cadastrados nas squads do usuário",
+        "description": "JWT do login obrigatório. A lista usa paginação por cursor e não consulta o GitHub.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de repositórios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "repositories"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "operationId": "registerRepository",
+        "summary": "Cadastra um repositório GitHub para publicação por Release",
+        "description": "ADMIN da squad indicada. Mesmo cadastro retorna 200; mudança de squad ou visibilidade retorna 409. Credenciais permanecem no servidor.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Repositório cadastrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitHubRepository"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Cadastro já existente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitHubRepository"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
+    "/v1/repositories/{id}/sync": {
+      "post": {
+        "tags": [
+          "repositories"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "operationId": "syncRepository",
+        "summary": "Importa uma versão publicada no GitHub",
+        "description": "ADMIN da squad. A Release deve ter exatamente um asset .tar.gz gerado por harness generate e harness pack, com digest SHA-256. A tag deve corresponder à versão do manifest. Cada origem fica fixada por ID da Release, ID do asset e commit resolvido. A operação não grava no S3. Private repositories usam GITHUB_TOKEN do servidor; nunca é enviado ao cliente.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "tag"
+                ],
+                "properties": {
+                  "tag": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "pattern": "^v?[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Versão importada ou já publicada com a mesma origem",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositorySync"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem"
+          },
+          "502": {
+            "$ref": "#/components/responses/Problem"
+          }
+        }
+      }
+    },
     "/install": {
       "get": {
         "operationId": "getInstaller",
@@ -282,7 +461,8 @@
           },
           "400": { "$ref": "#/components/responses/Problem" },
           "401": { "$ref": "#/components/responses/Problem" },
-          "404": { "$ref": "#/components/responses/Problem" }
+          "404": { "$ref": "#/components/responses/Problem" },
+          "502": { "$ref": "#/components/responses/Problem" }
         }
       }
     },
@@ -653,6 +833,207 @@
       }
     },
     "schemas": {
+      "RepositoryLastSync": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "plugin",
+          "version",
+          "tag",
+          "commit_sha",
+          "digest",
+          "release_url"
+        ],
+        "properties": {
+          "plugin": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "commit_sha": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "release_url": {
+            "type": "string"
+          }
+        }
+      },
+      "GitHubRepository": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "owner",
+          "repo",
+          "repository_url",
+          "tenant",
+          "visibility",
+          "created_at",
+          "last_synced_at",
+          "last_sync"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "repository_url": {
+            "type": "string"
+          },
+          "tenant": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "slug",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "squad",
+              "organization"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "last_synced_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_sync": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepositoryLastSync"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "RepositoryPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GitHubRepository"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RepositoryRegistration": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "owner",
+          "repo",
+          "tenant_id",
+          "visibility"
+        ],
+        "properties": {
+          "owner": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,38}$"
+          },
+          "repo": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,99}$"
+          },
+          "tenant_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "squad",
+              "organization"
+            ]
+          }
+        }
+      },
+      "RepositorySync": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "plugin",
+          "version",
+          "digest",
+          "commit_sha",
+          "release_url"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "unchanged"
+            ]
+          },
+          "plugin": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "commit_sha": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "release_url": {
+            "type": "string"
+          }
+        }
+      },
       "Status": {
         "type": "object",
         "required": ["status"],

@@ -17,6 +17,7 @@ export interface Config extends InstallerConfig {
   // Public URL of the Agent Gateway, sent in the setup-plan.
   gatewayPublicUrl: string;
   storage: StorageConfig;
+  githubToken?: string;
 }
 
 const APP_ENVS: readonly AppEnv[] = ["local", "production"];
@@ -47,6 +48,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     installerVersion: installerVersion(env.INSTALLER_VERSION || DEFAULT_INSTALLER_VERSION),
     installerAssetsDir: env.INSTALLER_ASSETS_DIR || undefined,
     storage: storageConfig(env),
+    githubToken: env.GITHUB_TOKEN || undefined,
   };
 }
 

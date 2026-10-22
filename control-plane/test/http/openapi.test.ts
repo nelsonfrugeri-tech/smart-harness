@@ -83,6 +83,7 @@ describe("openapi.json", () => {
     ["/v1/me/setup-plan", "/v1/me/setup-plan?limit=2"],
     ["/v1/workspace", "/v1/workspace"],
     ["/v1/marketplace", "/v1/marketplace?limit=2"],
+    ["/v1/repositories", "/v1/repositories?limit=2"],
     ["/v1/plugins/{name}", "/v1/plugins/investimentos-base"],
     ["/v1/plugins/{name}/versions", "/v1/plugins/investimentos-base/versions"],
     ["/v1/projects/{slug}/setup-plan", "/v1/projects/investimentos-api/setup-plan"],
@@ -91,6 +92,22 @@ describe("openapi.json", () => {
 
     expect(response.statusCode).toBe(200);
     expect(validate(path, "get", 200, response.json())).toEqual([]);
+  });
+
+  it("repository registration returns the documented shape and requires an ADMIN", async () => {
+    const admin = { authorization: `Bearer ${await login(app, "admin@smart-harness.local")}` };
+    const tenant = db.prepare("SELECT id FROM tenants WHERE slug = 'investimentos'").get() as { id: string };
+    const payload = { owner: "example", repo: "contract-agent", tenant_id: tenant.id, visibility: "squad" };
+    const created = await app.inject({ method: "POST", url: "/v1/repositories", headers: admin, payload });
+    expect(created.statusCode).toBe(201);
+    expect(validate("/v1/repositories", "post", 201, created.json())).toEqual([]);
+    const repeated = await app.inject({ method: "POST", url: "/v1/repositories", headers: admin, payload });
+    expect(repeated.statusCode).toBe(200);
+    expect(validate("/v1/repositories", "post", 200, repeated.json())).toEqual([]);
+    const forbidden = await app.inject({ method: "POST", url: `/v1/repositories/${created.json().id}/sync`,
+      headers: { authorization: `Bearer ${token}` }, payload: { tag: "v1.0.0" } });
+    expect(forbidden.statusCode).toBe(403);
+    expect(validate("/v1/repositories/{id}/sync", "post", 403, forbidden.json())).toEqual([]);
   });
 
   it("gateway token creation and listing answer the documented shapes", async () => {

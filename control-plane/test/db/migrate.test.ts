@@ -82,7 +82,7 @@ describe("runMigrations", () => {
       INSERT INTO plugin_versions (plugin_id, version, description, digest, size_bytes)
         VALUES ('legacy', '1.0.0', 'Original', 'sha256:${"a".repeat(64)}', 1);`);
     const before = db.prepare("SELECT description, digest FROM plugin_versions").get();
-    expect(runMigrations(db)).toEqual(["0008_plugin_keywords.sql", "0009_personal_installation.sql", "0010_plugin_provenance.sql"]);
+    expect(runMigrations(db)).toEqual(["0008_plugin_keywords.sql", "0009_personal_installation.sql", "0010_plugin_provenance.sql", "0011_github_repositories.sql"]);
     expect(db.prepare("SELECT description, digest FROM plugin_versions").get()).toEqual(before);
     expect(db.prepare("SELECT keywords FROM plugin_versions").get()).toEqual({ keywords: "[]" });
     expect(() => db.prepare("UPDATE plugin_versions SET keywords = ?").run('["new"]')).toThrow("immutable");
@@ -101,6 +101,7 @@ describe("runMigrations", () => {
       "0008_plugin_keywords.sql",
       "0009_personal_installation.sql",
       "0010_plugin_provenance.sql",
+      "0011_github_repositories.sql",
     ]);
 
     const tables = db
@@ -114,6 +115,8 @@ describe("runMigrations", () => {
       "drafts",
       "gateway_permissions",
       "gateway_tokens",
+      "github_package_versions",
+      "github_repositories",
       "memberships",
       "model_usage",
       "plugin_versions",
