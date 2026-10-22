@@ -12,7 +12,6 @@ export const recommendedPlugins = [
   "deja-vu",
   "md2poui",
   "code-review",
-  "software-delivery",
 ];
 export const cliCommands = {
   installPlugins: `harness install ${recommendedPlugins.join(" ")}`,
@@ -20,8 +19,8 @@ export const cliCommands = {
   graphify: "harness tools run graphify update ./src",
   tools:
     "harness tools install graphify\nharness tools install deja-vu\nharness tools check",
-  developer: "claude --agent software-delivery:developer",
-  reviewer: "claude --agent software-delivery:reviewer",
+  start: "claude",
+  reviewSkill: "/code-review:code-review",
 };
 export function loginCommand(rawURL: string): string | null {
   try {

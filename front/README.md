@@ -57,6 +57,12 @@ de fontes quando necessário. O MCP procura `graphify-out/graph.json` ou
 `src/graphify-out/graph.json` no diretório de execução; se a sessão já estiver
 aberta, reconecte o MCP após a geração.
 
+O conjunto recomendado contém somente github, trello, notion, graphify, deja-vu,
+md2poui e code-review. Abra o Claude Code com `claude`. Para review independente,
+execute `claude` em outro terminal no mesmo repositório; dentro dessa sessão,
+use `/code-review:code-review` e indique o diff/PR. O prefixo é o nome do plugin
+`code-review`; o segundo nome vem de `skills/code-review/SKILL.md`.
+
 ## Verificar
 
 ```sh
@@ -97,3 +103,5 @@ Documentação oficial consultada em 22/10/2026:
 - [Instalar Claude Code](https://code.claude.com/docs/en/setup)
 - [Autenticação do Claude Code](https://code.claude.com/docs/en/authentication)
 - [Conectar um gateway](https://code.claude.com/docs/en/llm-gateway-connect)
+
+- [Invocação de skills de plugins](https://code.claude.com/docs/en/skills#choose-where-skills-load)

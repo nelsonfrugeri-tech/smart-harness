@@ -72,6 +72,15 @@ it("offers a nonblocking CLI journey with platform selection and no completion c
   expect(
     screen.queryByText(/Ambiente conectado|Instalação concluída/),
   ).toBeNull();
+  expect(
+    screen.getByDisplayValue(
+      "harness install github trello notion graphify deja-vu md2poui code-review",
+    ),
+  ).toBeTruthy();
+  expect(screen.getByDisplayValue("claude")).toBeTruthy();
+  expect(screen.getByDisplayValue("/code-review:code-review")).toBeTruthy();
+  expect(screen.queryByDisplayValue(/--agent/)).toBeNull();
+  expect(screen.queryByRole("link", { name: "software-delivery" })).toBeNull();
 });
 
 it("uses the actual job title when the API supplies it", async () => {

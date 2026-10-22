@@ -41,7 +41,7 @@ export function CliGuide() {
             ao terminal.
           </h1>
           <p>
-            Seu contexto, suas ferramentas e seus agentes.
+            Seu contexto, suas ferramentas e suas skills.
             <br />
             Prepare uma vez. Desenvolva no seu repositório.
           </p>
@@ -145,7 +145,7 @@ export function CliGuide() {
           >
             <p>
               No terminal, entre na pasta do seu código. Confira o diagnóstico
-              antes de iniciar os agentes. Se houver falha, siga a orientação
+              antes de abrir o Claude Code. Se houver falha, siga a orientação
               indicada pela CLI.
             </p>
             <CopyValue
@@ -170,17 +170,15 @@ export function CliGuide() {
                 após gerar o grafo.
               </p>
             </div>
-            <CopyValue
-              label="Iniciar desenvolvimento"
-              value={cliCommands.developer}
-            />
+            <CopyValue label="Abrir Claude Code" value={cliCommands.start} />
             <p>
-              Para revisar uma mudança, abra uma sessão independente no mesmo
-              repositório.
+              Para revisar uma mudança, execute claude em outro terminal, no
+              mesmo repositório. Dentro dessa nova sessão, invoque a skill do
+              plugin code-review instalado e indique o diff ou PR a revisar.
             </p>
             <CopyValue
-              label="Iniciar code review"
-              value={cliCommands.reviewer}
+              label="Invocar skill dentro do Claude Code"
+              value={cliCommands.reviewSkill}
             />
           </GuideStep>
         </div>
