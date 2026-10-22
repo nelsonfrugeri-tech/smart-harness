@@ -199,6 +199,14 @@ usa apenas dois comandos curados: `uv tool install --force "graphifyy[mcp]==0.9.
 `go install -ldflags="-X main.version=0.16.8" github.com/vshulcz/deja-vu/cmd/deja@v0.16.8`.
 Os diretórios UV_TOOL_DIR/UV_TOOL_BIN_DIR/GOBIN são isolados em
 `HARNESS_CONFIG_DIR/tools/<nome>/<versão>` (padrão `~/.config/smart-harness`).
+Instaladores, execução CLI/MCP e probes de versão/import recebem somente uma
+allowlist explícita de variáveis de runtime, sistema e caminhos de fontes locais.
+Tokens do harness, `ANTHROPIC_*`, GH/GitHub, AWS e credenciais de serviços não são
+repassados pelo ambiente. PATH, caches Go/uv e diretórios gerenciados permanecem
+disponíveis. Isso não é um sandbox: HOME é herdado sem alteração e os processos
+continuam podendo ler arquivos locais e acessar a rede. Funcionalidades upstream
+que exigem chaves de serviços no ambiente não recebem essas chaves do harness.
+
 Nenhum `graphify install` ou `deja install` é executado; configurações existentes do
 Claude Code e ferramentas globais permanecem intactas. As dependências transitivas
 do Python seguem os limites upstream; somente a versão principal é fixada.

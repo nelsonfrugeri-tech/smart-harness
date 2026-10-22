@@ -22,7 +22,9 @@ func (t Tool) checkMCP(config string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := exec.CommandContext(ctx, t.pythonPath(config), "-c", "import mcp.server.stdio").Run(); err != nil {
+	cmd := exec.CommandContext(ctx, t.pythonPath(config), "-c", "import mcp.server.stdio")
+	cmd.Env = externalEnvironment()
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("Graphify MCP dependencies are missing; run harness tools install graphify")
 	}
 	return nil
@@ -64,7 +66,7 @@ func graphPath() (string, error) {
 }
 
 func (t Tool) environment(config string) []string {
-	env := os.Environ()
+	env := externalEnvironment()
 	if t.Name == "deja-vu" {
 		for key, path := range map[string]string{"DEJA_INDEX_DIR": filepath.Join(config, "deja-index"), "DEJA_NOTES_FILE": filepath.Join(config, "deja-notes.jsonl")} {
 			if os.Getenv(key) == "" {

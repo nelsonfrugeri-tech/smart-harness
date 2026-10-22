@@ -56,7 +56,9 @@ func (t Tool) Check(config string) error {
 func (t Tool) checkVersion(config string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	output, err := exec.CommandContext(ctx, t.Path(config), "--version").Output()
+	cmd := exec.CommandContext(ctx, t.Path(config), "--version")
+	cmd.Env = externalEnvironment()
+	output, err := cmd.Output()
 	expected := t.Binary + " " + t.Version
 	if err != nil || strings.TrimSpace(string(output)) != expected {
 		return fmt.Errorf("%s requires version %s; run harness tools install %s", t.Name, t.Version, t.Name)
@@ -90,7 +92,7 @@ func (t Tool) Install(config string, stdout, stderr io.Writer) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, binary, args...)
-	cmd.Env = append(os.Environ(), env...)
+	cmd.Env = append(externalEnvironment(), env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("install %s failed: %w; rerun harness tools install %s", t.Name, err, t.Name)
