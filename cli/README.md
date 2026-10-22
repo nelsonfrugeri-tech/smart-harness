@@ -15,6 +15,7 @@ A imagem da API (`control-plane/Dockerfile`) compila este binário e o instala e
 
 | Comando | Faz | Saída |
 |---|---|---|
+| `harness vendor=claude [argumentos do Claude Code...]` | Abre uma sessão Claude via OpenRouter pelo gateway; padrão `openrouter/free` | Terminal interativo e exit code do Claude |
 | `harness version` | Versão e commit | `harness 0.2.1 (commit abc1234)` |
 | `harness validate <dir> [--json] [--gateway-origin <url>]` | Aplica as regras abaixo | Relatório JSON ou uma linha por achado |
 | `harness generate <dir> --target <nome> [--gateway-origin <url>]` | Valida e grava a camada do target no próprio diretório | Um caminho por arquivo gerado |
@@ -23,7 +24,7 @@ A imagem da API (`control-plane/Dockerfile`) compila este binário e o instala e
 | `harness unpack <arquivo> <destino> [--expect-digest sha256:<hex>]` | Confere o digest do arquivo e extrai com checagens | O digest |
 | `harness login --api-url <url>` | Autentica o token digitado sem eco e configura gateway e catálogo pessoal | Tools/Skills instalados ou pendências explícitas |
 | `harness install <nome> [nome...]` | Alias legado de instalação pessoal, sem filtro de categoria | Instalações/atualizações e erros acionáveis |
-| `harness setup <projeto> [--api-url <url>] [--include-optional <a>,<b>]` | Instala o pacote base (e opcionais) no Claude Code e aponta o Claude Code para o gateway | Uma linha por plugin e o comando para abrir o agente |
+| `harness setup <projeto> [--api-url <url>] [--include-optional <a>,<b>]` | Instala o pacote base (e opcionais) no Claude Code e configura os MCPs do gateway | Uma linha por plugin e o comando para abrir o agente |
 | `harness sync` | Aplica o setup-plan atual de todos os projetos configurados | Uma linha por plugin |
 | `harness tools install <nome> [nome...]` | Instala pacotes MCP e os runtimes fixados de Graphify/deja-vu, quando selecionados | Versão verificada ou erro acionável |
 | `harness tools check [nome]` | Verifica pacotes Tools instalados e seus runtimes locais | Versão, estado vazio ou instrução de reparo |
@@ -80,7 +81,16 @@ harness sync
 
 **Token.** Um segredo só: o token do gateway (`shg_` + 43 caracteres). Ordem de leitura: variável `SMART_HARNESS_TOKEN`; se ela não existir, `env.SMART_HARNESS_TOKEN` do `settings.json` gravado pelo setup. Assim, `sync`, `doctor` e `draft pull` funcionam num shell novo, sem exportar nada. No primeiro `setup`, sem variável nem `settings.json`, o CLI pede o token sem eco no terminal. Nenhum comando imprime o token: as mensagens nunca o incluem e, como última defesa, a saída troca o valor por `shg_***`. O cliente HTTP não segue redirect, e o `archive_url` do plano precisa começar com `/v1/`, então o token só vai para a origem da API configurada. A URL da API e a do gateway precisam ser `https`; `http` só vale em loopback (`localhost`, `127.0.0.1`, `::1`), como no `compose.yaml`. Quando o gateway do plano é novo ou muda, `setup` e `sync` imprimem `gateway <antiga> -> <nova>`, porque os prompts e o token vão para lá.
 
-**`settings.json`.** O setup grava no `env`: `SMART_HARNESS_TOKEN` e `ANTHROPIC_AUTH_TOKEN` (o mesmo token, para MCPs e modelo), `ANTHROPIC_BASE_URL` e `SMART_HARNESS_GATEWAY_URL` (a URL do gateway do plano) e `ANTHROPIC_API_KEY` vazia, para uma chave do shell não desviar do gateway. As outras chaves mantêm o valor, mas o arquivo é regravado com as chaves em ordem alfabética e indentação de dois espaços; números e strings (inclusive `&`, `<` e `>`) saem como estavam. Quando o conteúdo muda, a versão anterior vai antes para `settings.json.harness-backup-<data UTC>`. O arquivo novo é gravado de forma atômica, com modo `0600`. Se `settings.json` é um symlink (por exemplo, para um repositório de dotfiles), a gravação vai para o alvo e o link continua link; um symlink quebrado é recusado. Um `settings.json` que não é objeto JSON é recusado antes de qualquer plugin ou do config mudar. O `sync` grava as mesmas cinco chaves, com o token que acabou de usar, então um `settings.json` apagado volta completo.
+**`settings.json`.** Login, install, setup e sync gravam somente `SMART_HARNESS_TOKEN`,
+`SMART_HARNESS_GATEWAY_URL` e os caminhos de runtime dos MCPs. Não alteram o login,
+modelo ou provider do Claude. A migração remove `ANTHROPIC_BASE_URL`,
+`ANTHROPIC_AUTH_TOKEN` e `ANTHROPIC_API_KEY` antigos somente quando o conjunto inteiro
+corresponde exatamente ao gateway/token `SMART_HARNESS_*` já gravados e à API key
+vazia. Configurações parciais ou de outros providers são preservadas. Outras chaves
+mantêm o valor; quando há mudança, o arquivo anterior vai para
+`settings.json.harness-backup-<UTC>`, com modo `0600`. A escrita é atômica, preserva
+symlinks válidos e recusa JSON inválido antes de alterar plugins/config. Um sync
+recria as variáveis MCP se o arquivo foi apagado.
 
 **Reconciliação.** `setup` e `sync` leem o setup-plan de todos os projetos do config antes de mudar qualquer coisa. A instalação é global por nome, então o conjunto desejado é a união dos projetos:
 
@@ -264,10 +274,29 @@ Se faltar uv/Python ou Go, configura os demais pacotes, mantém o login e retorn
 exit 1 com o nome pendente e o comando `harness tools install <nome>` para completar.
 Uma falha parcial nunca imprime que toda a configuração está pronta.
 
-No repositório, execute `claude --model openrouter/free`. Para Graphify, crie o grafo
+No repositório, escolha a sessão:
+
+```sh
+claude                          # sua conta e configuração nativas
+harness vendor=claude            # OpenRouter via gateway, modelo openrouter/free
+harness vendor=claude --model openrouter/other-model
+```
+
+O launcher exige Claude Code instalado e token/gateway obtidos por `harness login`.
+Encaminha os argumentos, diretório atual, stdin/stdout/stderr e exit code ao Claude.
+O token vai somente ao ambiente do processo filho e a um arquivo temporário de
+settings `0600`, removido ao encerrar a sessão, sem aparecer nos argumentos.
+Esse overlay de sessão impede que `env` de settings pessoais/projeto substitua o
+roteamento solicitado; também desativa os seletores Bedrock/Vertex/Foundry somente
+nessa sessão. Não contém a chave OpenRouter: ela permanece no servidor. A flag
+`--settings` é reservada pelo launcher e recusada com orientação para usar `claude`
+quando precisar de settings próprios. Políticas managed do Claude continuam tendo
+precedência. SIGKILL ou queda da máquina podem impedir a remoção do temporário.
+
+Para Graphify, crie o grafo
 com `harness tools run graphify update ./src` antes de conectar seu MCP.
 
-Não precisa do executável Claude nem de plugin instalado. Não existe flag de token.
+O login não precisa do executável Claude nem de plugin instalado. Não existe flag de token.
 As credenciais permanecem em `settings.json`, com modo 0600 e backup do conteúdo
 anterior. Configurações de outros plugins e permissões são preservadas. O CLI também
 grava `HARNESS_CLI_BIN`, `HARNESS_CONFIG_DIR` e `HARNESS_CLAUDE_DIR` absolutos no env

@@ -20,7 +20,7 @@ func TestPersonalLoginBeforeClaudeOrPackages(t *testing.T) {
 	if err := os.MkdirAll(e.claudeDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(e.claudeDir, "settings.json"), []byte(`{"permissions":{"allow":["Read"]},"env":{"EXISTING":"keep"}}`), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(e.claudeDir, "settings.json"), []byte(`{"model":"native-model","permissions":{"allow":["Read"]},"env":{"EXISTING":"keep","ANTHROPIC_BASE_URL":"https://custom.test","ANTHROPIC_AUTH_TOKEN":"custom-token","ANTHROPIC_API_KEY":"custom-key"}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
@@ -50,6 +50,15 @@ func TestPersonalLoginBeforeClaudeOrPackages(t *testing.T) {
 		t.Fatal("token in public config")
 	}
 	e.mustRun("", "sync")
+	preserved := e.settings()
+	if preserved["model"] != "native-model" {
+		t.Fatal("native model changed")
+	}
+	provider := preserved["env"].(map[string]any)
+	if provider["ANTHROPIC_BASE_URL"] != "https://custom.test" || provider["ANTHROPIC_AUTH_TOKEN"] != "custom-token" || provider["ANTHROPIC_API_KEY"] != "custom-key" {
+		t.Fatal("native provider changed by login or sync")
+	}
+
 	s, err := openSession()
 	if err != nil {
 		t.Fatal(err)

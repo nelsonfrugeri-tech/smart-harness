@@ -15,6 +15,7 @@ var (
 )
 
 const usage = `usage:
+  harness vendor=claude [Claude Code arguments...]
   harness version
   harness validate <dir> [--json] [--gateway-origin <url>]
   harness generate <dir> --target <name> [--gateway-origin <url>]
@@ -53,6 +54,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	cmd, rest := args[0], args[1:]
 	switch cmd {
+	case "vendor=claude":
+		return runVendorClaude(rest, stdout, stderr)
 	case "version":
 		if len(rest) != 0 {
 			return usageError(stderr, "")

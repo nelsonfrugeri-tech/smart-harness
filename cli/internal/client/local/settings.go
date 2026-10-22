@@ -95,17 +95,35 @@ func SettingsEnv(path string) (map[string]string, error) {
 	return out, nil
 }
 
-// GatewayEnv is what the coding agent needs: the token for MCPs (SMART_HARNESS_TOKEN) and for the
-// model (ANTHROPIC_AUTH_TOKEN), the gateway for both, and an empty ANTHROPIC_API_KEY so a key in
-// the shell does not bypass the gateway.
+// GatewayEnv is the persistent MCP configuration. Model routing belongs only to the
+// child environment created by harness vendor=claude.
 func GatewayEnv(token, gatewayURL string) map[string]string {
-	return map[string]string{
-		EnvToken:            token,
-		EnvAnthropicAuth:    token,
-		EnvAnthropicBaseURL: gatewayURL,
-		EnvGatewayURL:       gatewayURL,
-		EnvAnthropicAPIKey:  "",
+	return map[string]string{EnvToken: token, EnvGatewayURL: gatewayURL}
+}
+
+// removeOwnedProviderOverrides migrates the exact legacy Harness provider tuple.
+// Partial or custom provider settings remain untouched. Check before updating the
+// MCP values, so token rotation and gateway changes retain proof of ownership.
+func removeOwnedProviderOverrides(env map[string]json.RawMessage) {
+	value := func(key string) (string, bool) {
+		var text string
+		raw, exists := env[key]
+		if !exists || json.Unmarshal(raw, &text) != nil {
+			return "", false
+		}
+		return text, true
 	}
+	token, _ := value(EnvToken)
+	gateway, _ := value(EnvGatewayURL)
+	auth, _ := value(EnvAnthropicAuth)
+	base, _ := value(EnvAnthropicBaseURL)
+	key, hasKey := value(EnvAnthropicAPIKey)
+	if token == "" || gateway == "" || auth != token || base != gateway || !hasKey || key != "" {
+		return
+	}
+	delete(env, EnvAnthropicAuth)
+	delete(env, EnvAnthropicBaseURL)
+	delete(env, EnvAnthropicAPIKey)
 }
 
 // WriteSettingsEnv sets values in the env block of settings.json and keeps every other key.
@@ -128,6 +146,11 @@ func WriteSettingsEnv(path string, values map[string]string, now time.Time) (cha
 	env, err := readEnv(path, top)
 	if err != nil {
 		return false, "", err
+	}
+	if _, token := values[EnvToken]; token {
+		if _, gateway := values[EnvGatewayURL]; gateway {
+			removeOwnedProviderOverrides(env)
+		}
 	}
 	for k, v := range values {
 		encoded, err := marshal(v, false)

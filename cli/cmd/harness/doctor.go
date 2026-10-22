@@ -161,8 +161,7 @@ func tokenCheck(s *session, token, source string, tokenErr error) check {
 	return c
 }
 
-// settingsCheck confirms that Claude Code reaches the gateway with the token, and never shows values
-// other than URLs.
+// settingsCheck validates persistent MCP configuration without requiring model overrides.
 func settingsCheck(s *session) check {
 	path := s.paths.SettingsFile()
 	c := check{name: "settings", fix: "run harness setup <project> to rewrite the env block of " + path}
@@ -172,7 +171,7 @@ func settingsCheck(s *session) check {
 		return c
 	}
 	var problems []string
-	for _, k := range []string{local.EnvAnthropicBaseURL, local.EnvGatewayURL} {
+	for _, k := range []string{local.EnvGatewayURL} {
 		if s.cfg.GatewayURL == "" || env[k] != s.cfg.GatewayURL {
 			problems = append(problems, k+" is not the gateway URL")
 		}
@@ -180,17 +179,11 @@ func settingsCheck(s *session) check {
 	if env[local.EnvToken] == "" {
 		problems = append(problems, local.EnvToken+" is missing")
 	}
-	if env[local.EnvAnthropicAuth] != env[local.EnvToken] {
-		problems = append(problems, local.EnvAnthropicAuth+" differs from "+local.EnvToken)
-	}
-	if v, ok := env[local.EnvAnthropicAPIKey]; !ok || v != "" {
-		problems = append(problems, local.EnvAnthropicAPIKey+" is not empty")
-	}
 	if len(problems) > 0 {
 		c.detail = strings.Join(problems, "; ")
 		return c
 	}
-	c.ok, c.detail = true, path+" points Claude Code at "+s.cfg.GatewayURL
+	c.ok, c.detail = true, path+" points MCP tools at "+s.cfg.GatewayURL
 	return c
 }
 

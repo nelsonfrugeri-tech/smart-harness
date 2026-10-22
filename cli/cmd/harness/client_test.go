@@ -344,10 +344,7 @@ func TestSetupInstallsBaselineAndWritesSettings(t *testing.T) {
 	envBlock := e.settings()["env"].(map[string]any)
 	want := map[string]any{
 		"SMART_HARNESS_TOKEN":       testToken,
-		"ANTHROPIC_AUTH_TOKEN":      testToken,
-		"ANTHROPIC_BASE_URL":        f.gateway.URL,
 		"SMART_HARNESS_GATEWAY_URL": f.gateway.URL,
-		"ANTHROPIC_API_KEY":         "",
 	}
 	for k, v := range want {
 		if envBlock[k] != v {
@@ -415,7 +412,7 @@ func TestSetupPreservesOtherSettingsAndBacksUp(t *testing.T) {
 		t.Fatalf("other keys lost: %s", raw)
 	}
 	envBlock := s["env"].(map[string]any)
-	if envBlock["FOO"] != "bar" || envBlock["ANTHROPIC_API_KEY"] != "" {
+	if envBlock["FOO"] != "bar" || envBlock["ANTHROPIC_API_KEY"] != "sk-old" {
 		t.Fatalf("env = %v", envBlock)
 	}
 	if !bytes.Contains(raw, []byte(`"BIG": 1e3`)) {
@@ -878,7 +875,7 @@ func TestSyncMovesTheGatewayAndSaysSo(t *testing.T) {
 		t.Fatalf("sync does not show the gateway change:\n%s", out)
 	}
 	envBlock := e.settings()["env"].(map[string]any)
-	if envBlock["ANTHROPIC_BASE_URL"] != moved || envBlock["SMART_HARNESS_GATEWAY_URL"] != moved {
+	if _, exists := envBlock["ANTHROPIC_BASE_URL"]; exists || envBlock["SMART_HARNESS_GATEWAY_URL"] != moved {
 		t.Fatalf("settings env = %v, want the new gateway", envBlock)
 	}
 	if out := e.mustRun("", "sync"); strings.Contains(out, "gateway ") {
@@ -919,10 +916,7 @@ func TestSyncRecreatesSettingsWithTheToken(t *testing.T) {
 	envBlock := e.settings()["env"].(map[string]any)
 	for k, v := range map[string]any{
 		"SMART_HARNESS_TOKEN":       testToken,
-		"ANTHROPIC_AUTH_TOKEN":      testToken,
-		"ANTHROPIC_BASE_URL":        f.gateway.URL,
 		"SMART_HARNESS_GATEWAY_URL": f.gateway.URL,
-		"ANTHROPIC_API_KEY":         "",
 	} {
 		if envBlock[k] != v {
 			t.Errorf("env.%s = %v, want %v", k, envBlock[k], v)
@@ -930,7 +924,7 @@ func TestSyncRecreatesSettingsWithTheToken(t *testing.T) {
 	}
 }
 
-func TestDoctorFailsWhenAnAPIKeyBypassesTheGateway(t *testing.T) {
+func TestDoctorPreservesNativeProviderSettings(t *testing.T) {
 	e := newEnv(t)
 	f := newFakeAPI(t)
 	f.setPlan("inv", newVersion(t, "inv-base", "1.0.0"))
@@ -943,7 +937,7 @@ func TestDoctorFailsWhenAnAPIKeyBypassesTheGateway(t *testing.T) {
 
 	code, out, _ := e.run("", "doctor")
 
-	if code != 1 || !strings.Contains(out, "FAIL  settings: ANTHROPIC_API_KEY is not empty") {
+	if code != 0 || strings.Contains(out, "FAIL  settings:") {
 		t.Fatalf("exit %d:\n%s", code, out)
 	}
 }
