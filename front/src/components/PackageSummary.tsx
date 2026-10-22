@@ -1,9 +1,9 @@
 import { Bot, Braces, Plug } from "lucide-react";
 import type { PluginItem } from "../api/client";
 const kinds = [
-  { kind: "agent", singular: "agente", plural: "agentes", icon: Bot },
-  { kind: "skill", singular: "skill", plural: "skills", icon: Braces },
-  { kind: "mcp", singular: "MCP", plural: "MCPs", icon: Plug },
+  { kind: "agent", singular: "Agent", plural: "Agents", icon: Bot },
+  { kind: "skill", singular: "Skill", plural: "Skills", icon: Braces },
+  { kind: "mcp", singular: "Tool", plural: "Tools", icon: Plug },
 ] as const;
 export function PackageSummary({ item }: { item: PluginItem }) {
   if (item.components.length === 0)

@@ -1,7 +1,7 @@
 # Smart Harness — frontend
 
 Interface pessoal em React + TypeScript + Vite. Perfil e tokens, Marketplace de
-Conectores/Skills/Agentes, Workspace vazio e uma jornada guiada para a CLI.
+Tools/Skills/Agents, Workspace vazio e uma jornada guiada para a CLI.
 Os dados de identidade, pacotes e credenciais vêm da API; copiar comandos não
 confirma instalação nem conexão.
 
@@ -32,7 +32,7 @@ interface informa a indisponibilidade; integração OIDC não faz parte desta te
 - **Perfil:** nome e email reais; cargo usa `job_title` quando disponível. Ausência
   aparece como “Não informado”, sem simular papel profissional ou permissão.
   Tokens reutilizam criação, exibição única, paginação e revogação existentes.
-- **Marketplace:** Todos, Conectores, Skills e Agentes usam `type` da API.
+- **Marketplace:** Todos, Tools, Skills e Agents usam `type` da API.
   Keywords viram links de busca textual `q`; não indicam correspondência exata.
   Filtros e busca permanecem na URL; mudanças reiniciam cursor e cancelam requests.
   Origem e GitHub vêm dos campos opcionais `source` e `related_project`. O detalhe
@@ -46,24 +46,29 @@ interface informa a indisponibilidade; integração OIDC não faz parte desta te
   → ferramentas e plugins → diagnóstico → desenvolvimento/review. Etapas podem
   ser acessadas diretamente, sem bloqueio nem progresso simulado.
 
-A release referenciada é `v0.2.0`, com binários macOS/Linux ARM64 e x64 e
+A release referenciada é `v0.2.1`, com binários macOS/Linux ARM64 e x64 e
 `SHA256SUMS`. Windows usa o binário Linux no WSL. A UI não oferece binário nativo
 Windows. O mantenedor precisa publicar a release antes de usar os links da tela.
 Os comandos estão centralizados em `src/app/cliCommands.ts`.
 
 `harness login --api-url '<url>'` recebe o token pelo prompt seguro. Nesta jornada,
 o gateway Smart Harness fornece a autenticação do Claude Code; um segundo login
-na Anthropic não é solicitado. Graphify/deja-vu precisam das ferramentas locais
-antes da instalação dos plugins. A interface mostra os pré-requisitos e os
-comandos nessa ordem. Se instalou Graphify, gere o grafo dentro do checkout antes
+na Anthropic não é solicitado. Com uv/Python ≥ 3.10 e Go ≥ 1.25 disponíveis,
+`harness tools install github trello notion graphify deja-vu` prepara os runtimes
+locais e os pacotes de conexão. `harness skills install md2poui code-review`
+instala as skills. Confira cada categoria com `harness tools check` e
+`harness skills check`; nenhuma categoria vazia indica instalação concluída.
+Se instalou Graphify, gere o grafo dentro do checkout antes
 de abrir o Claude Code: `harness tools run graphify update ./src`. Ajuste a pasta
 de fontes quando necessário. O MCP procura `graphify-out/graph.json` ou
 `src/graphify-out/graph.json` no diretório de execução; se a sessão já estiver
 aberta, reconecte o MCP após a geração.
 
 O conjunto recomendado contém somente github, trello, notion, graphify, deja-vu,
-md2poui e code-review. Abra o Claude Code com `claude`. Para review independente,
-execute `claude` em outro terminal no mesmo repositório; dentro dessa sessão,
+md2poui e code-review. Nesta demo, abra o Claude Code com
+`claude --model openrouter/free`. O login da CLI não fixa o modelo; o argumento
+da sessão escolhe o modelo encaminhado pelo gateway. Para review independente,
+repita esse comando em outro terminal no mesmo repositório; dentro dessa sessão,
 use `/code-review:code-review` e indique o diff/PR. O prefixo é o nome do plugin
 `code-review`; o segundo nome vem de `skills/code-review/SKILL.md`.
 
@@ -87,8 +92,8 @@ Roteiro de QA com API real:
 
 1. Login, perfil e token; sair/navegar deve remover qualquer segredo em exibição.
 2. Abrir Workspace: nenhuma atividade ou projeto fictício deve aparecer.
-3. Filtrar Agentes por teclado; abrir pacote e retornar preservando a consulta.
-4. Abrir CLI, escolher Linux/x64 e conferir asset `harness-v0.2.0-linux-amd64`.
+3. Filtrar Agents por teclado; abrir pacote e retornar preservando a consulta.
+4. Abrir CLI, escolher Linux/x64 e conferir asset `harness-v0.2.1-linux-amd64`.
 5. Informar URL com credenciais ou HTTP externo: comando de login desaparece e
    aparece erro. Corrigir a URL restaura o comando sem conter segredo.
 6. Copiar comando: mensagem deve confirmar somente a cópia. Executar os comandos

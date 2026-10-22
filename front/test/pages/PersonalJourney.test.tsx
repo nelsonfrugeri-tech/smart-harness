@@ -67,17 +67,25 @@ it("offers a nonblocking CLI journey with platform selection and no completion c
   expect(
     screen.getByRole("link", { name: "Baixar CLI" }).getAttribute("href"),
   ).toBe(
-    "https://github.com/nelsonfrugeri-tech/smart-harness/releases/download/v0.2.0/harness-v0.2.0-linux-amd64",
+    "https://github.com/nelsonfrugeri-tech/smart-harness/releases/download/v0.2.1/harness-v0.2.1-linux-amd64",
   );
   expect(
     screen.queryByText(/Ambiente conectado|Instalação concluída/),
   ).toBeNull();
   expect(
     screen.getByDisplayValue(
-      "harness install github trello notion graphify deja-vu md2poui code-review",
+      "harness tools install github trello notion graphify deja-vu",
     ),
   ).toBeTruthy();
-  expect(screen.getByDisplayValue("claude")).toBeTruthy();
+  expect(
+    screen.getByDisplayValue("claude --model openrouter/free"),
+  ).toBeTruthy();
+  expect(
+    screen.getByDisplayValue("harness skills install md2poui code-review"),
+  ).toBeTruthy();
+  expect(screen.getByDisplayValue("harness tools check")).toBeTruthy();
+  expect(screen.getByDisplayValue("harness skills check")).toBeTruthy();
+  expect(screen.queryByDisplayValue(/^harness install /)).toBeNull();
   expect(screen.getByDisplayValue("/code-review:code-review")).toBeTruthy();
   expect(screen.queryByDisplayValue(/--agent/)).toBeNull();
   expect(screen.queryByRole("link", { name: "software-delivery" })).toBeNull();
@@ -118,9 +126,20 @@ it("does not offer a login command for unsafe API URLs and recovers after correc
     ),
   ).toBeTruthy();
   expect(screen.queryByRole("alert")).toBeNull();
-  const tools = screen.getByDisplayValue(/harness tools install graphify/);
-  const install = screen.getByDisplayValue(/^harness install /);
-  expect(
-    tools.compareDocumentPosition(install) & Node.DOCUMENT_POSITION_FOLLOWING,
-  ).toBeTruthy();
+  const commands = [
+    /^harness login /,
+    /^harness tools install /,
+    /^harness skills install /,
+    /^harness tools check$/,
+    /^harness skills check$/,
+    /^harness doctor$/,
+    /^harness tools run graphify update /,
+    /^claude --model openrouter\/free$/,
+  ].map((command) => screen.getByDisplayValue(command));
+  for (let index = 1; index < commands.length; index++) {
+    expect(
+      commands[index - 1].compareDocumentPosition(commands[index]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  }
 });

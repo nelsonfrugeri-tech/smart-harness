@@ -38,7 +38,7 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
         description={
           filters.project
             ? `Pacotes adicionais para ${project?.name ?? filters.project}, além do pacote base.`
-            : "Conectores, skills e agentes para o seu jeito de desenvolver."
+            : "Tools, Skills e Agents para o seu jeito de desenvolver."
         }
       />
       <section

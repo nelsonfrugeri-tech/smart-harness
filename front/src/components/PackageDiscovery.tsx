@@ -7,9 +7,9 @@ import { PackageOrigin } from "./PackageSource";
 import { Badge } from "./Primitives";
 import { followLink } from "./Shell";
 const typeLabels = {
-  connector: "Conector",
+  connector: "Tool",
   skill: "Skill",
-  agent: "Agente",
+  agent: "Agent",
 } as const;
 export function PackageDiscovery({
   item,

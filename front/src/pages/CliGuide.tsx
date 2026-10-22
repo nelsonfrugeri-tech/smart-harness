@@ -97,46 +97,7 @@ export function CliGuide() {
           <DownloadStep />
           <ConnectStep />
           <ClaudeStep />
-          <GuideStep
-            id="plugins"
-            number={5}
-            title="Escolha o que vai com você"
-            icon={<Package size={21} />}
-          >
-            <p>
-              Explore conectores, skills e agentes no Marketplace. Este conjunto
-              prepara o fluxo de desenvolvimento e review.
-            </p>
-            <div className="cli-plugin-chips">
-              {recommendedPlugins.map((name) => (
-                <a
-                  key={name}
-                  href={`/marketplace/packages/${name}`}
-                  onClick={followLink}
-                >
-                  {name}
-                </a>
-              ))}
-            </div>
-            <div className="cli-note">
-              <strong>Prepare as ferramentas locais</strong>
-              <p>
-                Graphify precisa de uv e Python ≥ 3.10. Deja-vu precisa de Go ≥
-                1.25. Instale as ferramentas antes dos plugins que as utilizam.
-              </p>
-            </div>
-            <CopyValue
-              label="Preparar ferramentas locais"
-              value={cliCommands.tools}
-            />
-            <CopyValue
-              label="Instalar plugins"
-              value={cliCommands.installPlugins}
-            />
-            <a className="text-link" href="/marketplace" onClick={followLink}>
-              Explorar o Marketplace <ArrowRight size={15} aria-hidden="true" />
-            </a>
-          </GuideStep>
+          <PluginsStep />
           <GuideStep
             id="develop"
             number={6}
@@ -170,11 +131,16 @@ export function CliGuide() {
                 após gerar o grafo.
               </p>
             </div>
+            <p>
+              Nesta demo, use o modelo openrouter/free pelo gateway. O modelo é
+              escolhido ao abrir a sessão; o login da CLI não o fixa.
+            </p>
             <CopyValue label="Abrir Claude Code" value={cliCommands.start} />
             <p>
-              Para revisar uma mudança, execute claude em outro terminal, no
-              mesmo repositório. Dentro dessa nova sessão, invoque a skill do
-              plugin code-review instalado e indique o diff ou PR a revisar.
+              Para revisar uma mudança, repita o comando acima em outro
+              terminal, no mesmo repositório. Dentro dessa nova sessão, invoque
+              a skill do plugin code-review instalado e indique o diff ou PR a
+              revisar.
             </p>
             <CopyValue
               label="Invocar skill dentro do Claude Code"
@@ -205,6 +171,47 @@ export function CliGuide() {
         </aside>
       </div>
     </div>
+  );
+}
+function PluginsStep() {
+  return (
+    <GuideStep
+      id="plugins"
+      number={5}
+      title="Escolha o que vai com você"
+      icon={<Package size={21} />}
+    >
+      <p>
+        Explore Tools, Skills e Agents no Marketplace. Este conjunto prepara o
+        fluxo de desenvolvimento e review.
+      </p>
+      <div className="cli-plugin-chips">
+        {recommendedPlugins.map((name) => (
+          <a
+            key={name}
+            href={`/marketplace/packages/${name}`}
+            onClick={followLink}
+          >
+            {name}
+          </a>
+        ))}
+      </div>
+      <div className="cli-note">
+        <strong>Prepare as ferramentas locais</strong>
+        <p>
+          Graphify precisa de uv e Python ≥ 3.10. Deja-vu precisa de Go ≥ 1.25.
+          Com esses pré-requisitos disponíveis, tools install prepara os
+          runtimes locais e os pacotes de conexão em um único comando.
+        </p>
+      </div>
+      <CopyValue label="Instalar Tools" value={cliCommands.installTools} />
+      <CopyValue label="Instalar Skills" value={cliCommands.installSkills} />
+      <CopyValue label="Verificar Tools" value={cliCommands.checkTools} />
+      <CopyValue label="Verificar Skills" value={cliCommands.checkSkills} />
+      <a className="text-link" href="/marketplace" onClick={followLink}>
+        Explorar o Marketplace <ArrowRight size={15} aria-hidden="true" />
+      </a>
+    </GuideStep>
   );
 }
 function GuideStep({

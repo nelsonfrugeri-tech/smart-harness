@@ -1,25 +1,20 @@
-export const CLI_RELEASE_VERSION = "v0.2.0";
+export const CLI_RELEASE_VERSION = "v0.2.1";
 export const CLI_RELEASE_URL = `https://github.com/nelsonfrugeri-tech/smart-harness/releases/tag/${CLI_RELEASE_VERSION}`;
 export const CLI_DOWNLOAD_URL = `https://github.com/nelsonfrugeri-tech/smart-harness/releases/download/${CLI_RELEASE_VERSION}`;
 export const CLAUDE_SETUP_URL = "https://code.claude.com/docs/en/setup";
 export const CLAUDE_GATEWAY_URL =
   "https://code.claude.com/docs/en/llm-gateway-connect";
-export const recommendedPlugins = [
-  "github",
-  "trello",
-  "notion",
-  "graphify",
-  "deja-vu",
-  "md2poui",
-  "code-review",
-];
+const recommendedTools = ["github", "trello", "notion", "graphify", "deja-vu"];
+const recommendedSkills = ["md2poui", "code-review"];
+export const recommendedPlugins = [...recommendedTools, ...recommendedSkills];
 export const cliCommands = {
-  installPlugins: `harness install ${recommendedPlugins.join(" ")}`,
+  installTools: `harness tools install ${recommendedTools.join(" ")}`,
+  installSkills: `harness skills install ${recommendedSkills.join(" ")}`,
+  checkTools: "harness tools check",
+  checkSkills: "harness skills check",
   doctor: "harness doctor",
   graphify: "harness tools run graphify update ./src",
-  tools:
-    "harness tools install graphify\nharness tools install deja-vu\nharness tools check",
-  start: "claude",
+  start: "claude --model openrouter/free",
   reviewSkill: "/code-review:code-review",
 };
 export function loginCommand(rawURL: string): string | null {

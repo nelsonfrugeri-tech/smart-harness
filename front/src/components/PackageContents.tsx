@@ -1,7 +1,7 @@
 import { Bot, Braces, Plug } from "lucide-react";
 import type { PluginItem } from "../api/client";
-const labels = { agent: "Agente", skill: "Skill", mcp: "MCP" } as const;
-const groupLabels = { agent: "Agentes", skill: "Skills", mcp: "MCPs" } as const;
+const labels = { agent: "Agent", skill: "Skill", mcp: "Tool" } as const;
+const groupLabels = { agent: "Agents", skill: "Skills", mcp: "Tools" } as const;
 const icons = { agent: Bot, skill: Braces, mcp: Plug } as const;
 export function PackageContents({
   item,

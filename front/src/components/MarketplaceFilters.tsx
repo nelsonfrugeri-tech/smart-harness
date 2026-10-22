@@ -8,9 +8,9 @@ import { navigate } from "../app/navigation";
 import { followLink } from "./Shell";
 const options = [
   { value: undefined, label: "Todos", icon: Layers3 },
-  { value: "connector", label: "Conectores", icon: Plug },
+  { value: "connector", label: "Tools", icon: Plug },
   { value: "skill", label: "Skills", icon: Braces },
-  { value: "agent", label: "Agentes", icon: Bot },
+  { value: "agent", label: "Agents", icon: Bot },
 ] as const;
 export function MarketplaceFilters({
   filters,

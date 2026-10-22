@@ -18,8 +18,8 @@ it("discovers whole packages using API filters from a reloadable URL", async () 
   expect(
     await screen.findByRole("heading", { name: "investment-base" }),
   ).toBeTruthy();
-  expect(screen.getByText("1 agente")).toBeTruthy();
-  expect(screen.getByText("1 skill")).toBeTruthy();
+  expect(screen.getByText("1 Agent")).toBeTruthy();
+  expect(screen.getByText("1 Skill")).toBeTruthy();
   expect(screen.queryByText("investment-guide")).toBeNull();
   expect(screen.queryByText("go-practices")).toBeNull();
   expect(
@@ -134,7 +134,7 @@ it("resets pages on filter changes, ignores delayed pages and preserves filter f
   render(<App />);
   await screen.findByRole("button", { name: "Carregar mais" });
   await userEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
-  const filter = screen.getByRole("button", { name: "Conectores" });
+  const filter = screen.getByRole("button", { name: "Tools" });
   await userEvent.click(filter);
   expect(document.activeElement).toBe(filter);
   await screen.findByRole("heading", { name: "review-tools" });
@@ -176,7 +176,7 @@ it("submits catalog search by keyboard and reloads filters on browser navigation
   });
   await screen.findByRole("heading", { name: "investment-base" });
   expect(
-    screen.getByRole("button", { name: "Conectores", pressed: true }),
+    screen.getByRole("button", { name: "Tools", pressed: true }),
   ).toBeTruthy();
   expect(
     screen.getByRole("combobox", { name: "Pacotes disponíveis" }),
@@ -202,7 +202,7 @@ it("opens the selected package and keeps query context on return", async () => {
   expect(location.pathname).toBe("/marketplace/packages/investment-base");
   expect(location.search).toBe("?type=skill&q=go&limit=1");
   await screen.findByRole("heading", { name: "Componentes do pacote" });
-  expect(screen.getByRole("region", { name: "Agentes" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Agents" })).toBeTruthy();
   expect(screen.getByRole("region", { name: "Skills" })).toBeTruthy();
   expect(screen.getByText("investment-guide")).toBeTruthy();
   expect(screen.getByText("go-practices")).toBeTruthy();
@@ -411,7 +411,7 @@ it("keeps a single catalog search and operates package type filters with the key
   ).toBeTruthy();
   expect(new URLSearchParams(location.search).has("type")).toBe(false);
   await user.tab();
-  const connectorFilter = screen.getByRole("button", { name: "Conectores" });
+  const connectorFilter = screen.getByRole("button", { name: "Tools" });
   expect(document.activeElement).toBe(connectorFilter);
   await user.keyboard(" ");
   await waitFor(() =>
@@ -530,16 +530,16 @@ it("shows API type and searchable keywords on cards and detail without inferring
   );
   render(<App />);
   await screen.findByRole("heading", { name: "investment-base" });
-  expect(screen.getByText("Conector")).toBeTruthy();
+  expect(screen.getByText("Tool")).toBeTruthy();
   expect(screen.getByText("Pinned baseline")).toBeTruthy();
-  expect(screen.getByText("1 agente")).toBeTruthy();
+  expect(screen.getByText("1 Agent")).toBeTruthy();
   expect(screen.queryByText("codex")).toBeNull();
   expect(
     screen.getByRole("link", { name: "Buscar por claude-code" }),
   ).toHaveProperty("search", "?type=skill&q=claude-code&limit=1");
   await userEvent.click(screen.getByRole("link", { name: "investment-base" }));
   await screen.findByRole("heading", { name: "Componentes do pacote" });
-  expect(screen.getByText("Conector")).toBeTruthy();
+  expect(screen.getByText("Tool")).toBeTruthy();
   const tag = screen.getByRole("link", { name: "Buscar por claude-code" });
   tag.focus();
   await userEvent.keyboard("{Enter}");
@@ -626,7 +626,7 @@ it("keeps agent packages accessible through a direct type URL", async () => {
   render(<App />);
   await screen.findByRole("heading", { name: "investment-base" });
   expect(requests[0].searchParams.get("type")).toBe("agent");
-  expect(screen.getByText("Agente")).toBeTruthy();
+  expect(screen.getByText("Agent")).toBeTruthy();
 });
 
 it("filters agents through the API and preserves the selection in the URL", async () => {
@@ -636,7 +636,7 @@ it("filters agents through the API and preserves the selection in the URL", asyn
     return json({ items: [first], next_cursor: null });
   });
   render(<App />);
-  const button = await screen.findByRole("button", { name: "Agentes" });
+  const button = await screen.findByRole("button", { name: "Agents" });
   button.focus();
   await userEvent.keyboard("{Enter}");
   await waitFor(() =>

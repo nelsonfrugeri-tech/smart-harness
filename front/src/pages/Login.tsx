@@ -53,8 +53,8 @@ export function Login({
         <span className="eyebrow">SEU CONTEXTO DE DESENVOLVIMENTO</span>
         <h1>Bom trabalho começa com contexto.</h1>
         <p>
-          Escolha conectores, skills e agentes. Leve seu contexto para o
-          terminal e desenvolva do seu jeito.
+          Escolha Tools, Skills e Agents. Leve seu contexto para o terminal e
+          desenvolva do seu jeito.
         </p>
       </section>
       <section className="login-panel panel">
