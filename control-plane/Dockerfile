@@ -6,7 +6,7 @@ WORKDIR /src
 COPY cli/ ./
 ARG HARNESS_VERSION=dev
 ARG HARNESS_COMMIT=unknown
-ARG INSTALLER_VERSION=v0.2.1
+ARG INSTALLER_VERSION=v0.2.2
 RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags "-s -w -X main.version=${HARNESS_VERSION} -X main.commit=${HARNESS_COMMIT}" \
     -o /out/harness ./cmd/harness
@@ -28,7 +28,7 @@ RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 
 # 3. Final image: Node runs the TypeScript directly, with no build step.
 FROM node:24-alpine
-ARG INSTALLER_VERSION=v0.2.1
+ARG INSTALLER_VERSION=v0.2.2
 ENV INSTALLER_VERSION=${INSTALLER_VERSION} INSTALLER_ASSETS_DIR=/app/install
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080 DATABASE_PATH=/data/control-plane.sqlite
 WORKDIR /app

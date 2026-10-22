@@ -14,7 +14,7 @@ Fora do compose, a API também precisa de um S3 (variáveis `S3_*`). Pelo compos
 ## Instalador público
 
 O Docker compila os quatro binários e `SHA256SUMS`, e inclui `cli/install.sh` em
-`/app/install`. `INSTALLER_VERSION` (padrão `v0.2.1`) controla nomes e versão dos
+`/app/install`. `INSTALLER_VERSION` (padrão `v0.2.2`) controla nomes e versão dos
 binários distribuídos; o `HARNESS_VERSION` do engine pode continuar como `dev`.
 Use o mesmo `INSTALLER_VERSION` no build e no runtime, como faz o Compose.
 
@@ -24,7 +24,7 @@ query ou fragmento. Headers Host/Forwarded não alteram o script. Os valores sã
 literais shell com escaping; não incluem segredo.
 
 Fora do Docker, configure `INSTALLER_ASSETS_DIR` explicitamente com `install.sh`,
-os quatro `harness-v0.2.1-{darwin,linux}-{arm64,amd64}` e `SHA256SUMS`. Ausência,
+os quatro `harness-v0.2.2-{darwin,linux}-{arm64,amd64}` e `SHA256SUMS`. Ausência,
 template inválido ou symlink responde `503 installer_unavailable`; não há
 fallback de download externo. Somente os cinco nomes de assets são públicos.
 As respostas usam `Cache-Control: no-store` e os assets são transmitidos em stream.
