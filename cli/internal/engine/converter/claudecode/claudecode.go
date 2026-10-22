@@ -90,8 +90,15 @@ type mcpServer struct {
 // mcpJSON points every server at the gateway. The origin can be overridden on the developer
 // machine and the token is read from the environment; the file never holds a secret.
 func mcpJSON(servers []pkg.MCPServer) ([]byte, error) {
-	out := map[string]mcpServer{} // encoding/json sorts map keys
+	out := map[string]any{} // encoding/json sorts map keys
 	for _, s := range servers {
+		if s.Local {
+			if s.Name != "graphify" && s.Name != "deja-vu" {
+				return nil, fmt.Errorf("unsupported local connector %q", s.Name)
+			}
+			out[s.Name] = map[string]any{"type": "stdio", "command": "${HARNESS_CLI_BIN}", "args": []string{"tools", "serve", s.Name}}
+			continue
+		}
 		out[s.Name] = mcpServer{
 			Type:    "http",
 			URL:     "${" + pkg.GatewayURLEnv + ":-" + s.Origin + "}" + s.Path,
@@ -128,6 +135,9 @@ func Tools(plugin string, t pkg.Tool) []string {
 		return []string{"Skill"}
 	case pkg.ToolDelegate:
 		return []string{"Agent"}
+	}
+	if t.Kind == pkg.ToolConnector {
+		plugin = t.Server
 	}
 	prefix := "mcp__plugin_" + unsafeNameChar.ReplaceAllString(plugin, "_") + "_" + unsafeNameChar.ReplaceAllString(t.Server, "_") + "__"
 	if t.Name == "" {

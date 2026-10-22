@@ -25,14 +25,15 @@ type Package struct {
 
 // Manifest holds the plugin.json fields the platform uses.
 type Manifest struct {
-	Name        string
-	Version     string
-	Description string
-	Author      *Author // nil when absent
-	Homepage    string
-	Repository  string
-	License     string
-	Keywords    []string
+	Name           string
+	Version        string
+	Description    string
+	Author         *Author // nil when absent
+	Homepage       string
+	Repository     string
+	License        string
+	Keywords       []string
+	LocalConnector string
 }
 
 // Author is the plugin.json author object.
@@ -58,12 +59,13 @@ type ToolKind string
 
 // Logical tools of the agent contract.
 const (
-	ToolRead     ToolKind = "read"
-	ToolSkill    ToolKind = "skill"
-	ToolEdit     ToolKind = "edit"
-	ToolShell    ToolKind = "shell"
-	ToolDelegate ToolKind = "delegate"
-	ToolMCP      ToolKind = "mcp"
+	ToolRead      ToolKind = "read"
+	ToolSkill     ToolKind = "skill"
+	ToolEdit      ToolKind = "edit"
+	ToolShell     ToolKind = "shell"
+	ToolDelegate  ToolKind = "delegate"
+	ToolMCP       ToolKind = "mcp"
+	ToolConnector ToolKind = "connector"
 )
 
 // Tool is one logical tool. Server is set only for ToolMCP. Name is set only for mcp:<server>/<tool>.
@@ -76,6 +78,8 @@ type Tool struct {
 // String returns the logical form, such as "read", "mcp:docs" or "mcp:docs/search".
 func (t Tool) String() string {
 	switch {
+	case t.Kind == ToolConnector:
+		return "connector:" + t.Server
 	case t.Kind != ToolMCP:
 		return string(t.Kind)
 	case t.Name == "":
@@ -95,6 +99,7 @@ type Skill struct {
 // MCPServer is a remote MCP server reached through the Agent Gateway.
 // Its URL is Origin + Path, for example "http://127.0.0.1:8081" + "/mcp/projects/p/docs".
 type MCPServer struct {
+	Local  bool
 	Name   string
 	Origin string
 	Path   string

@@ -125,6 +125,13 @@ func parseTool(raw string) (Tool, error) {
 	case ToolRead, ToolEdit, ToolShell, ToolDelegate, ToolSkill:
 		return Tool{Kind: ToolKind(raw)}, nil
 	}
+	if name, ok := strings.CutPrefix(raw, "connector:"); ok {
+		switch name {
+		case "github", "trello", "notion", "graphify", "deja-vu":
+			return Tool{Kind: ToolConnector, Server: name}, nil
+		}
+		return Tool{}, fmt.Errorf("connector %q is not supported", name)
+	}
 	rest, ok := strings.CutPrefix(raw, "mcp:")
 	if !ok {
 		return Tool{}, fmt.Errorf("tool %q is unknown", raw)

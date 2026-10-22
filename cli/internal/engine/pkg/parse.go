@@ -41,6 +41,14 @@ func Parse(t Tree) (Package, []Finding) {
 
 	servers, declared, fs := parseMCP(t)
 	p.MCPServers = servers
+	if manifest.LocalConnector != "" {
+		if len(servers) > 0 {
+			add(Finding{Code: CodeManifest, Path: ManifestPath, Message: "local_connector cannot be combined with mcp.json servers"})
+		} else {
+			p.MCPServers = []MCPServer{{Name: manifest.LocalConnector, Local: true}}
+			declared[manifest.LocalConnector] = true
+		}
+	}
 	add(fs...)
 
 	skills, fs := parseSkills(t)
@@ -125,6 +133,24 @@ func parseManifest(t Tree) (Manifest, []Finding) {
 	}
 	if v, present := raw["extensions"]; present && !isJSONObject(v) {
 		findings = append(findings, bad("extensions must be an object")...)
+	}
+	if raw["extensions"] != nil && isJSONObject(raw["extensions"]) {
+		var extensions map[string]json.RawMessage
+		_ = json.Unmarshal(raw["extensions"], &extensions)
+		if extension, exists := extensions["dev.smartharness"]; exists {
+			var values map[string]json.RawMessage
+			if !isJSONObject(extension) {
+				findings = append(findings, bad("extensions.dev.smartharness must be an object")...)
+			} else {
+				_ = json.Unmarshal(extension, &values)
+				if connector, exists := values["local_connector"]; exists {
+					if json.Unmarshal(connector, &m.LocalConnector) != nil || (m.LocalConnector != "graphify" && m.LocalConnector != "deja-vu") || m.LocalConnector != m.Name {
+						findings = append(findings, bad("local_connector must be graphify or deja-vu and match the package name")...)
+						m.LocalConnector = ""
+					}
+				}
+			}
+		}
 	}
 	sort.SliceStable(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
 	return m, findings

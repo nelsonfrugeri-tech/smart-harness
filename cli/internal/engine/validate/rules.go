@@ -106,9 +106,9 @@ func checkMCP(tree pkg.Tree, gatewayOrigin string) []pkg.Finding {
 			}
 		}
 		_ = json.Unmarshal(server["url"], &rawURL)
-		pattern := "^" + regexp.QuoteMeta(gatewayOrigin) + "/mcp/projects/[a-z0-9]+(-[a-z0-9]+)*/" + regexp.QuoteMeta(name) + "$"
+		pattern := "^" + regexp.QuoteMeta(gatewayOrigin) + "/mcp/(projects/[a-z0-9]+(-[a-z0-9]+)*|me)/" + regexp.QuoteMeta(name) + "$"
 		if typ != "streamable-http" || !slugRe.MatchString(name) || !regexp.MustCompile(pattern).MatchString(rawURL) {
-			add(pkg.CodeNotGateway, fmt.Sprintf("use type streamable-http and url %s/mcp/projects/<project>/%s", gatewayOrigin, name),
+			add(pkg.CodeNotGateway, fmt.Sprintf("use type streamable-http and a gateway /mcp/me/%[2]s or /mcp/projects/<project>/%[2]s URL on %[1]s", gatewayOrigin, name),
 				"server %q is not an Agent Gateway server", name)
 		}
 	}
