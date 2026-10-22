@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { SetupPlan } from "../api/client";
+import { DemoCheckout, DemoSessions } from "./DemoSetup";
 import { CopyValue } from "./CopyValue";
 import { followLink } from "./Shell";
 declare const __HARNESS_PUBLIC_API_URL__: string;
-// The published CLI release; the repository is private, so the page asks for GitHub access.
+// The repository is private; downloading releases requires GitHub access.
 const CLI_RELEASE_URL =
-  "https://github.com/nelsonfrugeri-tech/smart-harness/releases/tag/v0.1.0";
+  "https://github.com/nelsonfrugeri-tech/smart-harness/releases/latest";
 function terminalURL(raw: string): string | undefined {
   try {
     const url = new URL(raw);
@@ -29,6 +30,12 @@ function quote(value: string) {
 export function SetupInstructions({ plan }: { plan: SetupPlan }) {
   const [apiURL, setApiURL] = useState(__HARNESS_PUBLIC_API_URL__);
   const url = terminalURL(apiURL);
+  const demoOptionals =
+    plan.project.slug === "md2poui"
+      ? plan.optional.items
+          .filter((item) => ["graphify", "deja-vu"].includes(item.plugin.name))
+          .map((item) => item.plugin.name)
+      : [];
   const section = useRef<HTMLElement>(null);
   useEffect(() => {
     if (location.hash === "#setup") {
@@ -62,7 +69,7 @@ export function SetupInstructions({ plan }: { plan: SetupPlan }) {
             <p>
               Baixe o <code>harness</code> para sua plataforma na{" "}
               <a href={CLI_RELEASE_URL} target="_blank" rel="noopener">
-                release v0.1.0 da CLI
+                releases da CLI
               </a>
               , confira <code>SHA256SUMS</code> e coloque o binário no PATH.
               Você também precisa do Claude Code ≥ 2.1.305.
@@ -103,6 +110,7 @@ export function SetupInstructions({ plan }: { plan: SetupPlan }) {
               uso, sem SMART_HARNESS_TOKEN nem credencial salva, cole o token no
               prompt sem eco.
             </p>
+            {plan.project.slug === "md2poui" && <DemoCheckout />}
             <label className="setup-url">
               URL da API para a CLI
               <input
@@ -121,7 +129,7 @@ export function SetupInstructions({ plan }: { plan: SetupPlan }) {
               <CopyValue
                 key={url}
                 label="Comando de setup"
-                value={`harness setup ${quote(plan.project.slug)} --api-url ${quote(url)}`}
+                value={`harness setup ${quote(plan.project.slug)} --api-url ${quote(url)}${demoOptionals.length ? ` --include-optional ${demoOptionals.join(",")}` : ""}`}
               />
             )}
             <details>
@@ -154,6 +162,7 @@ export function SetupInstructions({ plan }: { plan: SetupPlan }) {
               <code>fix:</code> e repita. Esta página não recebe os resultados
               do terminal.
             </p>
+            {plan.project.slug === "md2poui" && <DemoSessions plan={plan} />}
           </div>
         </li>
       </ol>

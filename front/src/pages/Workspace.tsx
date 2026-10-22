@@ -7,6 +7,7 @@ import {
   SectionTitle,
 } from "../components/Primitives";
 import { followLink } from "../components/Shell";
+import { marketplacePath } from "../app/marketplaceQuery";
 import { projectPath } from "../app/navigation";
 export function Workspace({ data }: { data: WorkspaceData }) {
   return (
@@ -16,6 +17,24 @@ export function Workspace({ data }: { data: WorkspaceData }) {
         title="Escolha seu projeto"
         description="Abra um projeto para conhecer o pacote base da squad e preparar seu ambiente de desenvolvimento."
       />
+      <div className="workspace-actions">
+        <a
+          className="button button-secondary"
+          href={marketplacePath()}
+          onClick={followLink}
+        >
+          Explorar Conectores e Skills
+        </a>
+        {data.projects.some((project) => project.slug === "md2poui") && (
+          <a
+            className="button button-primary"
+            href={`${projectPath("md2poui")}#setup`}
+            onClick={followLink}
+          >
+            Preparar demo TOTVS
+          </a>
+        )}
+      </div>
       <SectionTitle
         title="Seus projetos"
         description={`${data.projects.length} ${data.projects.length === 1 ? "projeto disponível" : "projetos disponíveis"}`}

@@ -354,7 +354,7 @@ it.each([200, 401])(
     );
     await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
     await userEvent.click(
-      await screen.findByRole("link", { name: "Marketplace" }),
+      await screen.findByRole("link", { name: "Conectores e Skills" }),
     );
     await screen.findByRole("heading", { name: "review-tools" });
     await act(async () =>

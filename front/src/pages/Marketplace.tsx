@@ -5,6 +5,7 @@ import {
   packagePath,
   type MarketplaceFilters,
 } from "../app/marketplaceQuery";
+import { projectPath } from "../app/navigation";
 import { usePaginationFocus } from "../app/usePaginationFocus";
 import { useMarketplace } from "../app/useMarketplace";
 import { Button, EmptyState, PageHeading } from "../components/Primitives";
@@ -34,13 +35,24 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
   return (
     <div className="page marketplace-page" ref={pagination.results}>
       <PageHeading
-        title="Marketplace"
+        title="Conectores e Skills"
         description={
           filters.project
             ? `Pacotes adicionais para ${project?.name ?? filters.project}, além do pacote base.`
             : "Encontre conectores e skills para o seu trabalho."
         }
       />
+      {projects.some((item) => item.slug === "md2poui") && (
+        <p>
+          <a
+            className="button button-primary"
+            href={`${projectPath("md2poui")}#setup`}
+            onClick={followLink}
+          >
+            Preparar demo TOTVS
+          </a>
+        </p>
+      )}
       <section
         className="catalog-discovery"
         aria-label="Buscar e filtrar pacotes"

@@ -50,12 +50,8 @@ it("shows actual CLI commands with a terminal API URL and never claims local com
     screen.getByRole("link", { name: "Meus tokens" }).getAttribute("href"),
   ).toBe("/profile/tokens?project=investimentos-api");
   expect(
-    screen
-      .getByRole("link", { name: "release v0.1.0 da CLI" })
-      .getAttribute("href"),
-  ).toBe(
-    "https://github.com/nelsonfrugeri-tech/smart-harness/releases/tag/v0.1.0",
-  );
+    screen.getByRole("link", { name: "releases da CLI" }).getAttribute("href"),
+  ).toBe("https://github.com/nelsonfrugeri-tech/smart-harness/releases/latest");
 });
 it("continues optionals using the setup-plan cursor and drops old instructions on a failed project switch", async () => {
   const fetcher = vi.fn(async (input: RequestInfo | URL) =>
@@ -108,4 +104,82 @@ it("continues optionals using the setup-plan cursor and drops old instructions o
     ),
   ).toBeNull();
   expect(await screen.findByText("Conteúdo indisponível")).toBeTruthy();
+});
+
+const demoProject = { ...projects[0], slug: "md2poui", name: "TOTVS md2poui" };
+it("prepares the TOTVS checkout and opens only agents present in the actual plan", async () => {
+  const demoPlan = {
+    ...plan,
+    project: demoProject,
+    optional: {
+      items: ["graphify", "deja-vu"].map((name) => ({
+        ...plan.baseline[0],
+        plugin: { ...plan.baseline[0].plugin, name },
+      })),
+      next_cursor: null,
+    },
+    baseline: [
+      {
+        ...plan.baseline[0],
+        plugin: { ...plan.baseline[0].plugin, name: "md2poui-base" },
+        components: [
+          {
+            kind: "agent",
+            name: "developer",
+            description: "Development",
+          },
+        ],
+      },
+    ],
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json(demoPlan)),
+  );
+  render(
+    <Project
+      slug="md2poui"
+      token="jwt"
+      expire={expire}
+      projects={[demoProject]}
+    />,
+  );
+  expect(
+    await screen.findByDisplayValue(
+      "harness setup 'md2poui' --api-url 'http://127.0.0.1:8080' --include-optional graphify,deja-vu",
+    ),
+  ).toBeTruthy();
+  expect(
+    screen.getByDisplayValue(/git clone --branch demo-start/),
+  ).toBeTruthy();
+  expect(
+    screen.getByDisplayValue("claude --agent 'md2poui-base:developer'"),
+  ).toBeTruthy();
+  expect(screen.queryByDisplayValue(/claude --agent.*review/)).toBeNull();
+  expect(
+    screen.getByText(/O agente de review ainda não está no plano/),
+  ).toBeTruthy();
+  expect(screen.getByDisplayValue("harness tools check")).toBeTruthy();
+  expect(
+    screen.queryByText(/Instalação concluída|Conectores conectados/),
+  ).toBeNull();
+});
+it("does not show the TOTVS checkout or local tool commands for another project", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json(plan)),
+  );
+  render(
+    <Project
+      slug="investimentos-api"
+      token="jwt"
+      expire={expire}
+      projects={projects}
+    />,
+  );
+  await screen.findByDisplayValue("harness doctor");
+  expect(
+    screen.queryByDisplayValue(/git clone --branch demo-start/),
+  ).toBeNull();
+  expect(screen.queryByDisplayValue("harness tools check")).toBeNull();
 });

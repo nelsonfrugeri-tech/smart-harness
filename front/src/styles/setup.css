@@ -233,3 +233,17 @@ a.button {
   background: #e6f8fc;
   margin-bottom: 22px;
 }
+
+.workspace-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.demo-checkout,
+.demo-sessions {
+  margin-top: 24px;
+}
+.demo-sessions h4 {
+  margin-top: 24px;
+}

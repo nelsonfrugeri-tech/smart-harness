@@ -2,7 +2,7 @@
 
 Workspace React + TypeScript + Vite integrado à API. Login local, identidade e
 papéis por squad, projetos autorizados e composição do pacote base nas versões
-fixadas pelo backend. Marketplace de pacotes com busca, filtros de componentes,
+fixadas pelo backend. Catálogo de Conectores e Skills com busca, filtros por tipo,
 complementos por projeto e paginação real. Interface em pt-BR; tipos HTTP gerados do OpenAPI.
 
 ## Executar com a API local
@@ -35,32 +35,32 @@ bundle. Nenhuma credencial ou `JWT_SECRET` deve ser configurada no frontend.
 Login por email só existe na API com `APP_ENV=local`. Fora desse ambiente o
 formulário informa que o login local está indisponível; integração OIDC é futura.
 
-## Demonstrar a entrega
+## Demonstrar a jornada TOTVS
 
-1. Entre como `dev@smart-harness.local`: Conta e Investimentos aparecem, com
-   counts de agentes/skills/MCPs vindos do baseline de cada projeto.
-2. Abra Investimentos. Confira `investimentos-base` versão `1.1.0`, seu agente,
-   skills e MCP. Recarregue `/workspace/projects/investimentos-api`.
-3. Troque para Conta pelo seletor e teste voltar/avançar no navegador.
-4. Saia e entre como `dev.cartoes@smart-harness.local`: somente Cartões aparece.
-   Abra `/workspace/projects/investimentos-api`: o resultado é indisponível,
-   igual a um slug inexistente. `admin@smart-harness.local` vê os três projetos
-   e seus papéis reais; não há alternância simulada de autorização.
-5. Para testar falha sem parar serviços compartilhados, use **Network → Offline**
-   no DevTools, abra um projeto e observe o erro; volte para **Online** e use
-   **Tentar novamente**. Usuário desconhecido mantém o formulário com erro útil.
-6. Teste Tab/Shift+Tab, Enter e Escape na navegação mobile e larguras de 390,
-   768 e 1440 pixels. O seletor de projeto permanece disponível em telas estreitas.
+Siga [docs/onboarding.md](../docs/onboarding.md). Depois do seed da demo, entre
+como `dev@smart-harness.local` e abra **Preparar demo TOTVS**, disponível tanto
+no workspace quanto no catálogo **Conectores e Skills** para quem tem acesso.
+A página usa o plano real de `md2poui`, conserva os pins e mostra clone do fork,
+setup, diagnóstico, ferramentas locais e abertura das sessões de desenvolvimento
+/review. Os agentes só recebem comando quando estão presentes no baseline.
 
-O estado sem memberships é coberto por teste automatizado, pois o seed padrão
-não inclui esse usuário. Não altere o seed apenas para demonstrar essa tela.
+O usuário gera o token em **Meus tokens**, baixa a CLI e trabalha no checkout
+`md2poui`. A CLI deve oferecer `tools --help`; o link aponta para releases/latest,
+sem afirmar que uma versão antiga possui as ferramentas da demo. O browser não
+confirma instalação, saúde ou conexão apenas porque um comando foi copiado.
+
+Os projetos existentes continuam acessíveis por card, seletor e URL. Teste uma
+conta sem `md2poui`: o atalho da demo não deve aparecer. Para testar erro sem parar
+serviços compartilhados, use **Network → Offline**, navegue ao projeto e depois
+volte online e use **Tentar novamente**. Teste Tab/Shift+Tab, Enter, Escape no menu
+mobile e larguras 390, 768 e 1440 px.
 
 ## Demonstrar o Marketplace
 
-1. Entre como `dev@smart-harness.local` e abra **Marketplace**. Os cards mostram
+1. Entre como `dev@smart-harness.local` e abra **Conectores e Skills**. Os cards mostram
    pacote, descrição, contagem por componente, squad dona e versão visível. O pacote privado `cartoes-base` não aparece.
-2. Pesquise `github` no campo principal do catálogo e pressione Enter. Ative **Com
-   MCPs**: o resultado continua sendo o pacote completo, com seus outros componentes.
+2. Pesquise `github` no campo principal do catálogo e pressione Enter. Ative **Conectores**: a consulta usa `type=connector` da API. Tags visíveis usam
+   `keywords`; clicar em uma tag faz busca textual por `q`, sem correspondência exata.
 3. Use **Limpar filtros** e, em **Pacotes disponíveis**, selecione **Complementos de Investimentos API** (ou use **Explorar
    complementos** na página do projeto). `code-review` aparece; o pacote base
    `investimentos-base` não aparece entre os complementos. **Todos os pacotes disponíveis**
@@ -79,10 +79,10 @@ não inclui esse usuário. Não altere o seed apenas para demonstrar essa tela.
    complementos sem acesso mostra indisponibilidade, e não uma busca vazia.
 
 A tela de pacote desta entrega agrupa agentes, skills e MCPs da última versão
-visível. Os botões de tipo selecionam pacotes que contêm esses componentes; Tab,
+visível. Os botões selecionam o tipo calculado pelo backend (Todos, Conectores e Skills); Tab,
 Enter e Espaço permitem operá-los mantendo o foco. Há uma única busca no catálogo,
 logo abaixo do título, e busca no shell nas demais páginas. O histórico paginado permite baixar versões específicas sem mudar a composição
-em exibição. Tokens e setup ficam para suas respectivas issues.
+em exibição. Tokens e setup estão disponíveis na jornada do projeto.
 
 ## Baixar e conferir um pacote
 

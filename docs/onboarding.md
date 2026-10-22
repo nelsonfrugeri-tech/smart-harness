@@ -1,3 +1,85 @@
+# Onboarding da demo TOTVS
+
+Roteiro principal: login → token pessoal → CLI → checkout do fork → Conectores e
+Skills → desenvolvimento → review independente → merge no fork. O exemplo
+Investimentos continua disponível ao final deste documento.
+
+## Preparação do mantenedor
+
+Siga [a preparação md2poui](../examples/md2poui/README.md): publique a história no
+Trello e a ADR no Notion, autorize esses recursos no gateway e execute o seed.
+As credenciais ficam no servidor. A existência do projeto ou de um pacote não
+comprova conexão: valide a leitura real do card, ADR e fork antes da apresentação.
+O baseline esperado é `md2poui-base`, com agentes `developer` e `reviewer`;
+Graphify e deja-vu usam ferramentas locais e suas skills do catálogo.
+
+## Jornada do desenvolvedor
+
+1. Entre como `dev@smart-harness.local` na instância local e abra **Preparar demo
+   TOTVS** no workspace ou em **Conectores e Skills**. O atalho aparece somente
+   quando a API retorna o projeto `md2poui` para sua conta.
+2. Em **Meus tokens**, crie o token pessoal. Guarde o segredo para o prompt sem
+   eco do setup; não coloque o token no comando.
+3. Baixe o binário adequado em [releases da CLI](https://github.com/nelsonfrugeri-tech/smart-harness/releases/latest),
+   confira `SHA256SUMS`, coloque `harness` no PATH e execute `harness version` e
+   `harness tools --help`. A release precisa incluir o comando `tools`; a antiga
+   v0.1.0 não comprova suporte a esta jornada. Se a release ainda não incluir o
+   comando, use o binário compilado da revisão validada pelo mantenedor.
+4. Tenha Claude Code ≥ 2.1.305, Node.js 24, Git, uv/Python ≥ 3.10 e Go ≥ 1.25.
+   Em uma pasta nova:
+
+```sh
+git clone --branch demo-start https://github.com/nelsonfrugeri-tech/md2poui.git
+cd md2poui
+npm ci --ignore-scripts
+npm test
+```
+
+5. Continue nesse checkout. Copie da plataforma o comando de setup e confirme
+   a URL pública da API. A página acrescenta os complementos Graphify/deja-vu
+   quando eles aparecem nos opcionais do plano retornado. Exemplo:
+
+```sh
+harness setup 'md2poui' --api-url 'http://127.0.0.1:8080' --include-optional graphify,deja-vu
+harness doctor
+harness tools install graphify
+harness tools install deja-vu
+harness tools check
+```
+
+6. Abra desenvolvimento e peça a leitura da história Trello e da ADR vinculada
+   antes da implementação. Graphify deve navegar o código; deja-vu deve recuperar
+   histórico real da preparação. Não trate ausência de histórico como resultado.
+
+```sh
+claude --agent 'md2poui-base:developer'
+```
+
+7. Depois do PR, abra outra sessão no checkout para review independente:
+
+```sh
+claude --agent 'md2poui-base:reviewer'
+```
+
+Corrija BLOCKER/MAJOR, verifique novamente e faça merge apenas no fork. Preserve
+`demo-start` para outro ensaio. Comandos de agentes só aparecem no frontend se
+os respectivos componentes constarem no baseline retornado pela API.
+
+## Aceite da jornada
+
+Recarregue `/workspace/projects/md2poui#setup`. Confira composição e tags reais,
+use Tab/Enter para abrir o setup e copiar comandos. A mensagem de cópia confirma
+somente o clipboard, sem anunciar instalado/conectado. Valide 390, 768 e 1440 px.
+Para testar erro, use Network → Offline, navegue para o projeto e confira que
+nenhum comando antigo permanece; volte online e tente novamente. Teste também
+uma conta sem acesso: não deve aparecer o atalho da demo.
+
+A verificação do terminal e as leituras reais dos conectores fazem parte do QA;
+o frontend não recebe esses resultados. Não declare a demo pronta apenas pelo
+build ou pelos testes DOM.
+
+---
+
 # Onboarding de um dev de Investimentos
 
 Roteiro único, do login ao Claude Code respondendo sobre o `investimentos-api` com as fontes

@@ -174,7 +174,7 @@ export function Shell({
             }}
           >
             <PackageSearch size={19} />
-            Marketplace
+            Conectores e Skills
           </a>
         </nav>
         <TokensLink
@@ -263,6 +263,6 @@ function TokensLink({ active, close }: { active: boolean; close: () => void }) {
 }
 
 function surfaceTitle(kind: string, marketplace: boolean) {
-  if (marketplace) return "Marketplace";
+  if (marketplace) return "Conectores e Skills";
   return kind === "tokens" ? "Meus tokens" : "Workspace";
 }
