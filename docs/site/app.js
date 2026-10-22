@@ -69,6 +69,7 @@
       link.href = route(page.id, heading.id);
       link.dataset.heading = heading.id;
       toc.append(link);
+      if (heading.closest("a")) return;
       const anchor = element("a", "heading-anchor", "#");
       anchor.href = link.href;
       anchor.setAttribute("aria-label", `Link para ${title}`);
