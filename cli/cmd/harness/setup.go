@@ -76,6 +76,9 @@ func runSetup(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return failure(stderr, exitFailure, err)
 	}
+	if err := checkLocalTools(s.paths.ConfigDir, desired); err != nil {
+		return failure(stderr, exitFailure, err)
+	}
 	reportGateway(stdout, s.cfg.GatewayURL, desired.GatewayURL)
 	s.cfg.APIURL, s.cfg.GatewayURL, s.cfg.Projects = apiURL, desired.GatewayURL, projects
 	if err := reconcile.Apply(actions, &s.cfg, s.store, client, s.save, stdout); err != nil {
@@ -213,6 +216,9 @@ func runSync(args []string, stdout, stderr io.Writer) int {
 	warnMissing(stderr, desired, "")
 	actions, err := reconcile.Diff(desired, s.cfg, s.store)
 	if err != nil {
+		return failure(stderr, exitFailure, err)
+	}
+	if err := checkLocalTools(s.paths.ConfigDir, desired); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
 	reportGateway(stdout, s.cfg.GatewayURL, desired.GatewayURL)

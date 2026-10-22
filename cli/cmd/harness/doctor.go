@@ -51,6 +51,7 @@ func runDoctor(args []string, stdout, stderr io.Writer) int {
 	checks = append(checks, healthCheck("gateway", s.cfg.GatewayURL, "start the gateway, then run harness sync to refresh its URL"))
 	checks = append(checks, settingsCheck(s))
 	checks = append(checks, pluginChecks(s)...)
+	checks = append(checks, localToolChecks(s)...)
 	if tokenErr == nil {
 		checks = append(checks, planCheck(s, token))
 	}

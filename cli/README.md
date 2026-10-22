@@ -23,6 +23,9 @@ A imagem da API (`control-plane/Dockerfile`) compila este binário e o instala e
 | `harness unpack <arquivo> <destino> [--expect-digest sha256:<hex>]` | Confere o digest do arquivo e extrai com checagens | O digest |
 | `harness setup <projeto> [--api-url <url>] [--include-optional <a>,<b>]` | Instala o pacote base (e opcionais) no Claude Code e aponta o Claude Code para o gateway | Uma linha por plugin e o comando para abrir o agente |
 | `harness sync` | Aplica o setup-plan atual de todos os projetos configurados | Uma linha por plugin |
+| `harness tools install <graphify\|deja-vu>` | Instala ferramenta upstream fixada em diretório isolado | Versão verificada ou erro acionável |
+| `harness tools check [graphify\|deja-vu]` | Verifica ferramentas locais gerenciadas | Versão ou instrução de instalação |
+| `harness tools run <graphify\|deja-vu> <args...>` | Executa ferramenta gerenciada com argumentos literais | Saída upstream |
 | `harness doctor` | Checa Claude Code, API, token, gateway, `settings.json`, plugins e plano | `ok` ou `FAIL` com `fix:` por checagem |
 | `harness draft pull <id> [--dir <dir>]` | Baixa o rascunho para teste local | O diretório e o comando `claude --plugin-dir` |
 
@@ -157,3 +160,45 @@ Fase 1: `claude-code` gera `.claude-plugin/plugin.json` (com `author`, exigido p
 ## Dependência
 
 Só a biblioteca padrão, mais [`go.yaml.in/yaml/v3`](https://github.com/yaml/go-yaml) para ler o frontmatter YAML de agents e skills. É a continuação mantida pela organização YAML do `gopkg.in/yaml.v3`, o parser YAML mais usado em Go. Escrever um parser YAML próprio não seria simples de explicar nem seguro: o contrato aceita listas em bloco e em linha, e o tipo de cada valor importa (`name: true` não é texto).
+
+## Ferramentas locais da demo
+
+Graphify e deja-vu são skills curadas do Smart Harness. O CLI upstream fica fora do
+arquivo do pacote; as regras SH-MCP-002 e SH-EXE-001/002 continuam iguais. Não há
+MCP stdio, hooks ou scripts executáveis distribuídos pelo catálogo.
+
+```sh
+harness tools install graphify
+harness tools install deja-vu
+harness tools check
+harness setup md2poui --api-url http://127.0.0.1:8080 --include-optional graphify,deja-vu
+```
+
+O projeto deve oferecer os dois opcionais no setup-plan. `setup` e `sync` recusam
+os pacotes selecionados sem os binários gerenciados na versão fixada; `doctor`
+também verifica as ferramentas dos pacotes instalados. A presença no PATH não basta.
+
+Pré-requisitos: `uv` e Python 3.10+ para Graphify; Go 1.25+ para deja-vu; rede para
+instalar fontes/dependências. Não há instalação automática de uv/Go. O instalador
+usa apenas dois comandos curados: `uv tool install --force graphifyy==0.9.56` e
+`go install -ldflags="-X main.version=0.16.8" github.com/vshulcz/deja-vu/cmd/deja@v0.16.8`.
+Os diretórios UV_TOOL_DIR/UV_TOOL_BIN_DIR/GOBIN são isolados em
+`HARNESS_CONFIG_DIR/tools/<nome>/<versão>` (padrão `~/.config/smart-harness`).
+Nenhum `graphify install` ou `deja install` é executado; configurações existentes do
+Claude Code e ferramentas globais permanecem intactas. As dependências transitivas
+do Python seguem os limites upstream; somente a versão principal é fixada.
+
+Instalação repetida verifica a versão e não muda nada. Um marcador é gravado somente
+após o binário responder a versão esperada. Instalação incompleta nunca é anunciada
+como pronta; repita o comando para reparar. A instalação tem timeout de dez minutos
+sem retry automático e usa o lock do harness. Após encerramento forçado, o próximo
+comando informa o lock remanescente. A execução também tem timeout de dez minutos;
+falha upstream retorna exit 1, uso incorreto retorna 2.
+
+O índice e as notas do deja-vu ficam em `HARNESS_CONFIG_DIR/deja-index` e
+`HARNESS_CONFIG_DIR/deja-notes.jsonl`. `DEJA_INDEX_DIR` e `DEJA_NOTES_FILE` permitem
+sobrescrever esses destinos. **Índice isolado não isola fontes:** upstream descobre
+históricos locais de coding agents. Use perfil dedicado para uma demo sem histórico
+privado. Busca lexical com `--no-embed` e Graphify `update ./src` não precisam de LLM.
+
+Consulte [decisão, fontes e reprodução](../marketplace/local-tools/README.md).

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "deja-vu",
+  "version": "1.0.0",
+  "description": "Smart Harness skill for local deja-vu 0.16.8 history in Claude Code. Requires Go 1.25+ and harness tools install deja-vu; no MCP or hooks.",
+  "author": {"name": "Smart Harness"},
+  "homepage": "https://github.com/vshulcz/deja-vu",
+  "repository": "https://github.com/nelsonfrugeri-tech/smart-harness",
+  "license": "MIT",
+  "keywords": ["claude-code", "deja-vu", "local", "history"]
+}

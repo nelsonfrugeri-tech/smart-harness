@@ -23,6 +23,9 @@ const usage = `usage:
   harness unpack <file.tar.gz> <dest> [--expect-digest sha256:<hex>]
   harness setup <project> [--api-url <url>] [--include-optional <plugin>[,<plugin>...]]
   harness sync
+  harness tools install <graphify|deja-vu>
+  harness tools check [graphify|deja-vu]
+  harness tools run <graphify|deja-vu> <args...>
   harness doctor
   harness draft pull <id> [--dir <dir>]`
 
@@ -63,6 +66,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runUnpack(rest, stdout, stderr)
 	case "setup":
 		return runSetup(rest, stdout, stderr)
+	case "tools":
+		return runTools(rest, stdout, stderr)
 	case "sync":
 		return runSync(rest, stdout, stderr)
 	case "doctor":
