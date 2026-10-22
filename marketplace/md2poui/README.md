@@ -1,6 +1,6 @@
 # Skills do md2poui
 
-Pacote `md2poui@1.0.0` com conhecimento do repositório TOTVS, sem agentes, MCPs,
+Pacote `md2poui@1.0.1` com conhecimento do repositório TOTVS, sem agentes, MCPs,
 credenciais ou projeto de workspace. Pode ser combinado com agentes e conectores
 selecionados pelo usuário.
 
@@ -16,6 +16,5 @@ Graphify foi usado para localizar relações de Converter; fonte, templates e os
 arquivos de teste foram conferidos diretamente. Não há solução antecipada da tarefa.
 
 O build ocorre pelo engine real, com `node marketplace/build-personal-skills.mjs` após
-compilar `cli/bin/harness`. Os agentes genéricos ficam em `software-delivery`; a revisão
-geral fica em `code-review`. Os pacotes antigos `md2poui-base`, `md2poui-development` e
+compilar `cli/bin/harness`. A skill geral de revisão fica em `code-review`. Os pacotes antigos `md2poui-base`, `md2poui-development` e
 `md2poui-review` permanecem imutáveis como versões legadas, sem serem pré-requisito.

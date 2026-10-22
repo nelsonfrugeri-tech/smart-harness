@@ -52,6 +52,8 @@ describe("personal demo seed", () => {
     expect((await get("/v1/workspace")).json().projects).toEqual([]);
     const catalog = (await get("/v1/marketplace")).json();
     expect(catalog.items.map((item: { plugin: { name: string } }) => item.plugin.name)).toEqual(EXPECTED);
+    expect(catalog.items.find((item: { plugin: { name: string } }) => item.plugin.name === "md2poui").version.version).toBe("1.0.1");
+    expect(catalog.items.find((item: { plugin: { name: string } }) => item.plugin.name === "code-review").version.version).toBe("1.1.1");
     for (const [type, count] of [["connector", 5], ["skill", 2], ["agent", 0]] as const) {
       expect((await get(`/v1/marketplace?type=${type}`)).json().items).toHaveLength(count);
     }

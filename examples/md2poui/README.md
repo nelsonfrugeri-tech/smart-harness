@@ -41,9 +41,7 @@ como se fosse uma licença publicada pelos autores.
 
 O repositório TOTVS é o alvo da tarefa, não um projeto cadastrado no workspace.
 Selecione o pacote `md2poui` para obter as skills de CLI/opções, renderização Markdown
-e geração Angular. Os agentes reutilizáveis ficam em `software-delivery`, com workflow
- de desenvolvimento e code review incluídos. A skill geral também é disponibilizada
-pelo pacote `code-review`.
+e geração Angular. A skill geral de revisão é disponibilizada pelo pacote `code-review`.
 
 Conectores são selecionados e autorizados na conta pessoal. O cenário usa GitHub para
 o fork, Trello para a história e Notion para a ADR; Graphify e deja-vu auxiliam a navegação

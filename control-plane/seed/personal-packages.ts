@@ -108,10 +108,10 @@ export const PERSONAL_FIXTURES: { file: string; manifest: PackageManifest }[] = 
     }
   },
   {
-    "file": "md2poui-1.0.0.tar.gz",
+    "file": "md2poui-1.0.1.tar.gz",
     "manifest": {
       "name": "md2poui",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Skills for the TOTVS md2poui CLI, Markdown renderer and Angular artifact generator.",
       "keywords": [
         "claude-code",
@@ -141,10 +141,10 @@ export const PERSONAL_FIXTURES: { file: string; manifest: PackageManifest }[] = 
     }
   },
   {
-    "file": "code-review-1.1.0.tar.gz",
+    "file": "code-review-1.1.1.tar.gz",
     "manifest": {
       "name": "code-review",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Independent review against repository standards and task acceptance criteria, limited to evidenced BLOCKER and MAJOR findings.",
       "keywords": [
         "claude-code",

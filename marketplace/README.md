@@ -76,14 +76,12 @@ O pacote [md2poui-base](md2poui-base/README.md) contém developer e reviewer com
 incluídas. `make package-md2poui` gera esse baseline e os dois pacotes somente de skill
 para descoberta no catálogo. O baseline é fixado exclusivamente no projeto `md2poui`.
 
-## Instalação pessoal: skills e agentes reutilizáveis
+## Instalação pessoal: skills
 
 - [`md2poui`](md2poui/README.md): três skills específicas do código TOTVS; nenhum workspace.
 - [`code-review`](code-review/README.md): review geral, somente BLOCKER/MAJOR comprovados.
-- [`software-delivery`](software-delivery/README.md): developer/reviewer genéricos que combinam
-  skills e conectores selecionados pelo usuário.
 
-Build e teste, após compilar um engine com suporte a `connector:`:
+Build e teste, após compilar o engine:
 
 ```sh
 node marketplace/build-personal-skills.mjs

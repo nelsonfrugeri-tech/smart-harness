@@ -12,7 +12,6 @@ const binary = process.env.HARNESS_TEST_BINARY ?? join(root, "cli/bin/harness");
 const expected = {
   md2poui: ["md2poui-cli-options", "md2poui-markdown-rendering", "md2poui-angular-generation"],
   "code-review": ["code-review"],
-  "software-delivery": ["development-workflow", "code-review"],
 };
 const readArchive = (file, path) => execFileSync("tar", ["-xzOf", file, path], { encoding: "utf8" });
 
@@ -20,7 +19,7 @@ test("personal packages validate, generate, pack reproducibly and keep skills se
   const directory = await mkdtemp(join(tmpdir(), "sh-personal-packages-test-"));
   try {
     const first = await buildPersonalSkills(binary, directory);
-    assert.equal(first.length, 3);
+    assert.deepEqual(first.map((item) => item.name), ["md2poui", "code-review"]);
     for (const item of first) {
       const published = await readFile(join(root, "control-plane/seed/packages", `${item.name}-${item.version}.tar.gz`));
       assert.deepEqual(await readFile(item.file), published, "published archive must match source and adapter");
@@ -31,25 +30,10 @@ test("personal packages validate, generate, pack reproducibly and keep skills se
       assert.ok(!paths.includes("mcp.json") && !paths.includes(".mcp.json"), "selected connectors own their endpoints");
       for (const skill of expected[item.name]) {
         assert.ok(paths.includes(`skills/${skill}/SKILL.md`));
-        const canonicalPackage = skill === "code-review" ? "code-review" : item.name;
-        const source = await readFile(join(root, "marketplace", canonicalPackage, "skills", skill, "SKILL.md"), "utf8");
+        const source = await readFile(join(root, "marketplace", item.name, "skills", skill, "SKILL.md"), "utf8");
         assert.equal(readArchive(item.file, `skills/${skill}/SKILL.md`), source);
       }
-      if (item.name !== "software-delivery") {
-        assert.ok(!paths.some((path) => path.startsWith("agents/")), "domain and review packages contain skills only");
-      }
-    }
-    const delivery = first.find((item) => item.name === "software-delivery");
-    for (const name of ["developer", "reviewer"]) {
-      const agent = readArchive(delivery.file, `agents/${name}.md`);
-      const frontmatter = agent.split("---")[1];
-      assert.ok(frontmatter.includes("Skill"));
-      assert.ok(frontmatter.includes("Bash"));
-      assert.equal(frontmatter.includes("Edit"), name === "developer");
-      assert.equal(frontmatter.includes("Write"), name === "developer");
-      for (const connector of ["github", "trello", "notion", "graphify", "deja-vu"]) {
-        assert.ok(frontmatter.includes(`mcp__plugin_${connector}_${connector}__*`), `missing selected connector ${connector}`);
-      }
+      assert.ok(!paths.some((path) => path.startsWith("agents/") || path.startsWith("dev.smartharness/agents/")), "personal packages contain skills only");
     }
     assert.deepEqual(await buildPersonalSkills(binary, directory), first);
     const altered = first[0].file;

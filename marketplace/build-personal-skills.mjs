@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-export const PERSONAL_PACKAGES = ["md2poui", "code-review", "software-delivery"];
+export const PERSONAL_PACKAGES = ["md2poui", "code-review"];
 
 export async function buildPersonalSkills(binary, outputDirectory) {
   await mkdir(outputDirectory, { recursive: true });
@@ -24,9 +24,6 @@ async function buildPackage(name, binary, outputDirectory) {
   try {
     const directory = join(staging, "package");
     await cp(source, directory, { recursive: true });
-    if (name === "software-delivery") {
-      await cp(join(root, "marketplace/code-review/skills/code-review"), join(directory, "skills/code-review"), { recursive: true });
-    }
     const run = (...args) => execFileSync(binary, args, { encoding: "utf8" });
     run("validate", directory, "--json");
     run("generate", directory, "--target", "claude-code");
