@@ -8,7 +8,7 @@ import { upsertProject, upsertTenant } from "../../src/db/repos/seed.ts";
 import { createPackageStorage } from "../../src/storage/packages.ts";
 import { FakeS3, login, TEST_BUCKET, testServer } from "../test-support.ts";
 
-const EXPECTED = ["code-review", "deja-vu", "github", "graphify", "md2poui", "notion", "software-delivery", "trello"];
+const EXPECTED = ["code-review", "deja-vu", "github", "graphify", "md2poui", "notion", "trello"];
 
 describe("personal demo seed", () => {
   let db: Db;
@@ -37,11 +37,11 @@ describe("personal demo seed", () => {
     expect(db.prepare("SELECT * FROM user_gateway_permissions").all()).toEqual([]);
   });
 
-  it("publishes exactly five connectors, two skill packages and one agent package without a project", async () => {
+  it("publishes exactly five connectors and two skill packages, with no agents or projects", async () => {
     seedPersonalData(db);
     const storage = createPackageStorage(new FakeS3([TEST_BUCKET]), TEST_BUCKET);
-    expect(await seedPersonalMarketplace({ db, storage })).toEqual({ created: 8, unchanged: 0, storedArchives: 8 });
-    expect(await seedPersonalMarketplace({ db, storage })).toEqual({ created: 0, unchanged: 8, storedArchives: 0 });
+    expect(await seedPersonalMarketplace({ db, storage })).toEqual({ created: 7, unchanged: 0, storedArchives: 7 });
+    expect(await seedPersonalMarketplace({ db, storage })).toEqual({ created: 0, unchanged: 7, storedArchives: 0 });
     const server = testServer(db, "local", storage);
     app = server;
     const headers = { authorization: `Bearer ${await login(server, PERSONAL_DEV)}` };
@@ -52,7 +52,7 @@ describe("personal demo seed", () => {
     expect((await get("/v1/workspace")).json().projects).toEqual([]);
     const catalog = (await get("/v1/marketplace")).json();
     expect(catalog.items.map((item: { plugin: { name: string } }) => item.plugin.name)).toEqual(EXPECTED);
-    for (const [type, count] of [["connector", 5], ["skill", 2], ["agent", 1]] as const) {
+    for (const [type, count] of [["connector", 5], ["skill", 2], ["agent", 0]] as const) {
       expect((await get(`/v1/marketplace?type=${type}`)).json().items).toHaveLength(count);
     }
     expect((await get("/v1/me/setup-plan")).json().optional).toEqual(catalog);

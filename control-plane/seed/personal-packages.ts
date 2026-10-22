@@ -159,41 +159,5 @@ export const PERSONAL_FIXTURES: { file: string; manifest: PackageManifest }[] = 
         }
       ]
     }
-  },
-  {
-    "file": "software-delivery-1.0.0.tar.gz",
-    "manifest": {
-      "name": "software-delivery",
-      "version": "1.0.0",
-      "description": "Reusable developer and reviewer agents that use the user-selected skills and connectors.",
-      "keywords": [
-        "claude-code",
-        "development",
-        "review",
-        "agents"
-      ],
-      "components": [
-        {
-          "kind": "agent",
-          "name": "developer",
-          "description": "Implements the assigned repository task using selected skills and connectors, runs relevant checks and hands the result to an independent reviewer."
-        },
-        {
-          "kind": "agent",
-          "name": "reviewer",
-          "description": "Independently reviews the current change using selected domain skills and context, reporting only evidenced BLOCKER or MAJOR findings."
-        },
-        {
-          "kind": "skill",
-          "name": "code-review",
-          "description": "Independently review a current diff against repository standards and task acceptance criteria, reporting only evidenced BLOCKER or MAJOR findings."
-        },
-        {
-          "kind": "skill",
-          "name": "development-workflow",
-          "description": "Deliver an accepted repository task using the selected domain skills and authorized context connectors, with behavioral checks and an independent review handoff."
-        }
-      ]
-    }
   }
 ];

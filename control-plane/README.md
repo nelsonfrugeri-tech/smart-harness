@@ -203,8 +203,8 @@ TEST_S3_ENDPOINT=http://127.0.0.1:9000 TEST_S3_ACCESS_KEY_ID=<S3_ACCESS_KEY_ID> 
 
 Os comandos padrão `npm run seed` e `npm run seed:marketplace` preparam agora uma
 base local sem projetos: perfil `dev@smart-harness.local`, cargo ilustrativo
-`Software Engineer` e oito pacotes (cinco conectores, dois pacotes de skills e um
-pacote de agentes). Os seeds e endpoints de projetos anteriores permanecem no
+`Software Engineer` e sete pacotes (cinco conectores e dois pacotes de skills).
+O filtro Agentes permanece vazio. Os seeds e endpoints de projetos anteriores permanecem no
 código para compatibilidade; não são executados pelo seed padrão.
 
 Use um banco e bucket separados para a demo pessoal. O seed não apaga projetos,
