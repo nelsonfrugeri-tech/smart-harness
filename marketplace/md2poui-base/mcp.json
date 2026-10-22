@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "project": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:8081/mcp/projects/md2poui/project"
+    },
+    "github": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:8081/mcp/projects/md2poui/github"
+    },
+    "trello": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:8081/mcp/projects/md2poui/trello"
+    },
+    "notion": {
+      "type": "streamable-http",
+      "url": "http://127.0.0.1:8081/mcp/projects/md2poui/notion"
+    }
+  }
+}

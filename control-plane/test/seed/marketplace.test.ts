@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { createPackageStorage } from "../../src/storage/packages.ts";
 import { FakeS3, seededDatabase, TEST_BUCKET } from "../test-support.ts";
+import { seedDemoData } from "../../seed/demo-data.ts";
 import { FIXTURES, PACKAGES_DIR, seedMarketplace } from "../../seed/marketplace.ts";
 
 // Expected archive paths of each declared component, in the package layout of the ADR.
@@ -34,14 +35,15 @@ describe("seedMarketplace", () => {
     const s3 = new FakeS3([TEST_BUCKET]);
     const storage = createPackageStorage(s3, TEST_BUCKET);
 
+    seedDemoData(db);
     const first = await seedMarketplace({ db, storage });
     const second = await seedMarketplace({ db, storage });
 
-    expect(first).toEqual({ created: 12, unchanged: 0, storedArchives: 12, baseline: 4 });
-    expect(second).toEqual({ created: 0, unchanged: 12, storedArchives: 0, baseline: 4 });
-    expect(s3.keys(TEST_BUCKET)).toHaveLength(12);
-    expect(db.prepare("SELECT count(*) AS n FROM plugin_versions").get()).toEqual({ n: 12 });
-    expect(db.prepare("SELECT count(*) AS n FROM project_baseline").get()).toEqual({ n: 4 });
+    expect(first).toEqual({ created: 15, unchanged: 0, storedArchives: 15, baseline: 5 });
+    expect(second).toEqual({ created: 0, unchanged: 15, storedArchives: 0, baseline: 5 });
+    expect(s3.keys(TEST_BUCKET)).toHaveLength(15);
+    expect(db.prepare("SELECT count(*) AS n FROM plugin_versions").get()).toEqual({ n: 15 });
+    expect(db.prepare("SELECT count(*) AS n FROM project_baseline").get()).toEqual({ n: 5 });
     db.close();
   });
 

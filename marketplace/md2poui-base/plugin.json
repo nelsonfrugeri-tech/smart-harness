@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "md2poui-base",
+  "version": "1.0.0",
+  "description": "Development and independent review agents for the TOTVS md2poui demo.",
+  "keywords": [
+    "claude-code",
+    "totvs",
+    "md2poui",
+    "typescript",
+    "development",
+    "review"
+  ]
+}

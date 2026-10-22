@@ -11,8 +11,9 @@ repositório: https://github.com/nelsonfrugeri-tech/md2poui.
 - História: [BL-001](docs/backlog/BL-001-cli-home.md).
 - Decisão: [ADR-001](docs/adr/ADR-001-cli-home.md).
 - Board de preparação: https://trello.com/b/P5hqNFlq/smart-harness.
-- Página de preparação: https://app.notion.com/p/Smart-Harness-400c02b3ab6c80588d08f74767dd8852.
-- Publicação da história e ADR: pendente; os links acima são os espaços de preparação, não evidência de publicação ou leitura pelo gateway.
+- História publicada (TOTVS-001): https://trello.com/c/DbOOTPco.
+- ADR publicada: https://www.notion.so/401c02b3ab6c80719473cce961f7a2ec.
+- Os links são recíprocos. A publicação não comprova leitura pelo gateway; essa etapa pertence ao ensaio integrado.
 
 ## Reproduzir sem implementar a solução
 
@@ -44,11 +45,11 @@ local, configure apenas os recursos da demo:
 
 ```dotenv
 DEMO_GITHUB_REPO=nelsonfrugeri-tech/md2poui
-DEMO_TRELLO_BOARD_ID=P5hqNFlq
-DEMO_NOTION_PAGE_IDS=
+DEMO_TRELLO_BOARD_ID=6ad914e240df9fe7aff0c9b2
+DEMO_NOTION_PAGE_IDS=401c02b3ab6c80719473cce961f7a2ec
 ```
 
-Preencha `DEMO_NOTION_PAGE_IDS` com a página da ADR publicada. Não use a página pai
+`DEMO_NOTION_PAGE_IDS` identifica a ADR publicada. Não use a página pai
 para autorizar todas as páginas: a autorização é por ID. As variáveis
 `GITHUB_TOKEN`, `TRELLO_API_KEY`, `TRELLO_TOKEN` e `NOTION_TOKEN` precisam estar
 configuradas no ambiente e autorizadas nos respectivos serviços. Depois de mudar

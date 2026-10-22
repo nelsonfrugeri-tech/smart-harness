@@ -69,3 +69,9 @@ Os agentes carregam as três skills explicitamente pela tool `Skill`, inclusive 
 `--agent ... -p`. O `project_overview.resources` apresenta os recursos de GitHub, Trello e
 Notion autorizados para o projeto na configuração do gateway. Cada acesso continua validado
 pelo gateway. Sem recurso configurado, o agente pede esclarecimento e não inventa IDs.
+
+## Demo TOTVS md2poui
+
+O pacote [md2poui-base](md2poui-base/README.md) contém developer e reviewer com skills
+incluídas. `make package-md2poui` gera esse baseline e os dois pacotes somente de skill
+para descoberta no catálogo. O baseline é fixado exclusivamente no projeto `md2poui`.

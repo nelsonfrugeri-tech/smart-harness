@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "md2poui-review",
+  "version": "1.0.0",
+  "description": "Reviews an md2poui change independently against its story and ADR and reports only evidenced BLOCKER or MAJOR findings.",
+  "keywords": [
+    "claude-code",
+    "totvs",
+    "md2poui",
+    "typescript",
+    "skill",
+    "review"
+  ]
+}

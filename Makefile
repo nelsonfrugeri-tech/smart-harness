@@ -46,3 +46,9 @@ seed:
 package-investimentos:
 	go -C cli build -o bin/harness ./cmd/harness
 	node marketplace/build-investimentos-base.mjs
+
+## package-md2poui: validates, generates and packs the immutable TOTVS demo agents and skills.
+.PHONY: package-md2poui
+package-md2poui:
+	go -C cli build -o bin/harness ./cmd/harness
+	node marketplace/build-md2poui.mjs

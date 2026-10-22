@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "md2poui-development",
+  "version": "1.0.0",
+  "description": "Develops an md2poui CLI change from its story and ADR with real subprocess tests and an authorized fork PR.",
+  "keywords": [
+    "claude-code",
+    "totvs",
+    "md2poui",
+    "typescript",
+    "skill",
+    "development"
+  ]
+}

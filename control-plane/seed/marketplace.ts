@@ -4,6 +4,7 @@
 // The archives in seed/packages/ are fixtures already generated and packed (reproducible tar.gz).
 // Published fixture bytes are immutable. make package-investimentos builds the current baseline
 // through the real engine; older fixtures remain available for pinned versions.
+import { DEMO_FIXTURES } from "./demo-packages.ts";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import type { Db } from "../src/db/database.ts";
@@ -250,7 +251,10 @@ FIXTURES.push({
     keywords: ["github", "integration"], components: [GITHUB] },
 });
 
+FIXTURES.push(...DEMO_FIXTURES);
+
 export const BASELINE: { project: string; plugin: string; version: string }[] = [
+  { project: "md2poui", plugin: "md2poui-base", version: "1.0.0" },
   { project: "investimentos-api", plugin: "investimentos-base", version: "1.2.1" },
   { project: "conta-digital", plugin: "conta-base", version: "1.0.0" },
   { project: "cartoes-app", plugin: "cartoes-base", version: "1.0.0" },

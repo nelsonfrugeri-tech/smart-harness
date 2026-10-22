@@ -13,6 +13,7 @@ import { join, relative } from "node:path";
 import type { FastifyInstance } from "fastify";
 import type { HarnessClient, ValidationReport } from "../src/domain/publish.ts";
 import { seedLocalData } from "../seed/local-data.ts";
+import { seedDemoData } from "../seed/demo-data.ts";
 import { seedMarketplace } from "../seed/marketplace.ts";
 import type { AppEnv } from "../src/config.ts";
 import { openDatabase, type Db } from "../src/db/database.ts";
@@ -111,6 +112,7 @@ export async function marketplaceFixture(): Promise<{ db: Db; s3: FakeS3; storag
   const db = seededDatabase();
   const s3 = new FakeS3([TEST_BUCKET]);
   const storage = createPackageStorage(s3, TEST_BUCKET);
+  seedDemoData(db);
   await seedMarketplace({ db, storage });
   return { db, s3, storage };
 }

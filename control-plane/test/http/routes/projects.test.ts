@@ -64,6 +64,14 @@ describe("workspace and setup-plan", () => {
         counts: { agent: 2, skill: 3, mcp: 4 },
         baseline: [{ plugin: "investimentos-base", version: "1.2.1" }],
       },
+      {
+        slug: "md2poui",
+        name: "TOTVS md2poui",
+        description: "TypeScript CLI demo: turn Markdown into PO-UI components.",
+        tenant: { slug: "investimentos", name: "Investimentos" },
+        counts: { agent: 2, skill: 2, mcp: 4 },
+        baseline: [{ plugin: "md2poui-base", version: "1.0.0" }],
+      },
     ]);
   });
 
@@ -86,8 +94,22 @@ describe("workspace and setup-plan", () => {
     expect(plan.baseline[0]).toMatchObject({ type: "agent", keywords: [] });
     expect(plan.baseline[0].version.archive_url).toBe("/v1/plugins/investimentos-base/versions/1.2.1/archive");
     // conta-base is visible to the caller (DEV in conta) but not to the investimentos squad.
-    expect(plan.optional.items.map((entry: { plugin: { name: string } }) => entry.plugin.name)).toEqual(["code-review", "github-connector"]);
+    expect(plan.optional.items.map((entry: { plugin: { name: string } }) => entry.plugin.name)).toEqual(["code-review", "github-connector", "md2poui-base", "md2poui-development", "md2poui-review"]);
     expect(plan.optional.next_cursor).toBeNull();
+  });
+
+  it("md2poui installs both agents and their own skills in one pinned baseline", async () => {
+    const { response } = await get(DEV, "/v1/projects/md2poui/setup-plan");
+    expect(response.statusCode).toBe(200);
+    const plan = response.json();
+    expect(plan.baseline).toHaveLength(1);
+    expect(plan.baseline[0]).toMatchObject({
+      plugin: { name: "md2poui-base" }, type: "agent",
+      version: { version: "1.0.0", archive_url: "/v1/plugins/md2poui-base/versions/1.0.0/archive" },
+      keywords: ["claude-code", "totvs", "md2poui", "typescript", "development", "review"],
+    });
+    expect(plan.baseline[0].components.filter((c: { kind: string }) => c.kind === "agent").map((c: { name: string }) => c.name)).toEqual(["developer", "reviewer"]);
+    expect(plan.baseline[0].components.filter((c: { kind: string }) => c.kind === "skill").map((c: { name: string }) => c.name)).toEqual(["md2poui-development", "md2poui-review"]);
   });
 
   it("the setup-plan never carries a token or other secret", async () => {

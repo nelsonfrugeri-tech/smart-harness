@@ -42,4 +42,5 @@ biblioteca. Integrações indisponíveis devem ser reportadas como tal: ler esta
 cópia local não prova leitura do Notion ou Trello.
 
 História local: [BL-001](../backlog/BL-001-cli-home.md).
-Links externos da história e ADR: consultar o README deste contexto após publicação.
+História publicada (TOTVS-001): https://trello.com/c/DbOOTPco.
+ADR no Notion: https://www.notion.so/401c02b3ab6c80719473cce961f7a2ec.

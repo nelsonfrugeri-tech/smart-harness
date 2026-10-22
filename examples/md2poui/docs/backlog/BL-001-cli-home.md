@@ -31,6 +31,8 @@ mas `node dist/bin/md2poui.js test/markdown /tmp/md2poui-before` termina com có
 Fork: https://github.com/nelsonfrugeri-tech/md2poui
 
 Branch inicial preservado: `demo-start`. Criar um branch novo para cada ensaio.
-Decisão: [ADR-001](../adr/ADR-001-cli-home.md), a ser publicada no Notion e ligada aqui.
+História publicada (TOTVS-001): https://trello.com/c/DbOOTPco.
+Decisão: [ADR-001](../adr/ADR-001-cli-home.md), publicada em
+https://www.notion.so/401c02b3ab6c80719473cce961f7a2ec.
 Sem novas dependências, aplicação web, atualização de stack ou alterações no upstream.
 A revisão é independente; comentar apenas BLOCKER/MAJOR comprovados.
