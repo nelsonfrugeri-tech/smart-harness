@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { Counter } from "@prometheus-io/client";
-import { findActiveTokenUserId, findProjectForUser, listAllowedResources, listProjectResources } from "../../db/access.ts";
+import { findActiveTokenUserId, findProjectForUser, listAllowedResources, listProjectResources, listUserAllowedResources } from "../../db/access.ts";
 import type { AuditSink } from "../../db/audit.ts";
 import type { Db } from "../../db/database.ts";
 import { hashGatewayToken, isWellFormedGatewayToken } from "../../domain/gateway-token.ts";
@@ -9,6 +9,7 @@ import type { BackendRegistry, McpBackend, ToolContext } from "../../mcp/backend
 import { createMcpServer } from "../../mcp/protocol.ts";
 
 export const MCP_PATH = "/mcp/projects/:project/:server";
+export const PERSONAL_MCP_PATH = "/mcp/me/:server";
 
 export interface McpRouteDeps {
   readDb: Db;
@@ -33,28 +34,26 @@ const MAX_NAME_LENGTH = 100;
 
 // Streamable HTTP without sessions: every POST is answered on its own, as JSON.
 // Checks run in this order and stop at the first failure:
-// 1. Origin (403)  2. gateway token (401)  3. project of one of the user's squads (404)  4. registered server (404).
+// Origin (403), gateway token (401), optional project membership (404), registered server (404).
 export function registerMcpRoutes(app: FastifyInstance, deps: McpRouteDeps): void {
   app.decorateRequest("mcpCall", null);
 
-  // onRequest runs before the body is parsed, so a bad caller never reaches the JSON parser.
-  app.route({
-    method: "POST",
-    url: MCP_PATH,
-    onRequest: (request, reply) => authorize(deps, request, reply),
-    handler: (request, reply) => handleMcp(deps, request, reply),
-  });
-
-  // The gateway has no server-initiated messages and no sessions to close.
-  app.route({
-    method: ["GET", "DELETE"],
-    url: MCP_PATH,
-    handler: async (_request, reply) =>
-      reply.code(405).header("Allow", "POST").send({ error: "method_not_allowed", message: "use POST" }),
-  });
+  // Authentication precedes body parsing on both routes.
+  for (const [url, personal] of [[MCP_PATH, false], [PERSONAL_MCP_PATH, true]] as const) {
+    app.route({
+      method: "POST", url,
+      onRequest: (request, reply) => authorize(deps, request, reply, personal),
+      handler: (request, reply) => handleMcp(deps, request, reply),
+    });
+    app.route({
+      method: ["GET", "DELETE"], url,
+      handler: async (_request, reply) =>
+        reply.code(405).header("Allow", "POST").send({ error: "method_not_allowed", message: "use POST" }),
+    });
+  }
 }
 
-async function authorize(deps: McpRouteDeps, request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply | undefined> {
+async function authorize(deps: McpRouteDeps, request: FastifyRequest, reply: FastifyReply, personal: boolean): Promise<FastifyReply | undefined> {
   const origin = request.headers.origin;
   if (origin !== undefined && !deps.allowedOrigins.includes(origin)) {
     request.log.warn({ origin: origin.slice(0, MAX_NAME_LENGTH) }, "origin not allowed");
@@ -68,6 +67,8 @@ async function authorize(deps: McpRouteDeps, request: FastifyRequest, reply: Fas
       .header("WWW-Authenticate", "Bearer")
       .send({ error: "invalid_token", message: "send Authorization: Bearer <gateway token>" });
   }
+
+  if (personal) return authorizePersonal(deps, request, reply, userId);
 
   const { project, server } = request.params as { project: string; server: string };
   const projectRef = findProjectForUser(deps.readDb, userId, project);
@@ -99,6 +100,7 @@ async function authorize(deps: McpRouteDeps, request: FastifyRequest, reply: Fas
     backend,
     ctx: {
       userId,
+      scope: "project",
       project: projectRef,
       server,
       correlationId: request.id,
@@ -106,6 +108,23 @@ async function authorize(deps: McpRouteDeps, request: FastifyRequest, reply: Fas
       allowedResources: listAllowedResources(deps.readDb, projectRef.id, server),
     },
   };
+  return undefined;
+}
+
+function authorizePersonal(deps: McpRouteDeps, request: FastifyRequest, reply: FastifyReply, userId: string): FastifyReply | undefined {
+  // There is no client-selected user or tenant on this route.
+  if (Object.keys(request.query as object).length > 0) {
+    return reply.code(400).send({ error: "invalid_query", message: "personal MCP endpoints accept no query parameters" });
+  }
+  const { server } = request.params as { server: string };
+  const backend = server === "project" ? undefined : deps.backends.get(server);
+  if (backend === undefined) {
+    deps.audit.record({ action: "gateway.access_denied", actorUserId: userId, tenantId: null,
+      correlationId: request.id, details: { scope: "personal", server: server.slice(0, MAX_NAME_LENGTH), reason: "server_not_found" } });
+    return reply.code(404).send({ error: "not_found", message: "server not found" });
+  }
+  request.mcpCall = { backend, ctx: { scope: "personal", userId, server, correlationId: request.id,
+    allowedResources: listUserAllowedResources(deps.readDb, userId, server) } };
   return undefined;
 }
 
@@ -122,10 +141,10 @@ async function handleMcp(deps: McpRouteDeps, request: FastifyRequest, reply: Fas
     deps.audit.record({
       action: "gateway.tool_call",
       actorUserId: ctx.userId,
-      tenantId: ctx.project.tenantId,
+      tenantId: ctx.scope === "personal" ? null : ctx.project.tenantId,
       correlationId: ctx.correlationId,
       details: {
-        project: ctx.project.slug,
+        ...(ctx.scope === "personal" ? { scope: "personal" } : { project: ctx.project.slug }),
         server: ctx.server,
         tool: tool.slice(0, MAX_NAME_LENGTH),
         outcome: call.outcome,
@@ -137,7 +156,7 @@ async function handleMcp(deps: McpRouteDeps, request: FastifyRequest, reply: Fas
     });
     deps.toolCalls.inc({ server: ctx.server, outcome: call.outcome });
     request.log.info(
-      { project: ctx.project.slug, server: ctx.server, tool: tool.slice(0, MAX_NAME_LENGTH), outcome: call.outcome, reason: call.reason },
+      { ...(ctx.scope === "personal" ? { scope: "personal" } : { project: ctx.project.slug }), server: ctx.server, tool: tool.slice(0, MAX_NAME_LENGTH), outcome: call.outcome, reason: call.reason },
       "tool call",
     );
   });

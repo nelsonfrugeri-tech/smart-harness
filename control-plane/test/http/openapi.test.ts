@@ -80,6 +80,7 @@ describe("openapi.json", () => {
 
   it.each([
     ["/v1/me", "/v1/me"],
+    ["/v1/me/setup-plan", "/v1/me/setup-plan?limit=2"],
     ["/v1/workspace", "/v1/workspace"],
     ["/v1/marketplace", "/v1/marketplace?limit=2"],
     ["/v1/plugins/{name}", "/v1/plugins/investimentos-base"],

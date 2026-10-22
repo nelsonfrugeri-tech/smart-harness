@@ -5,13 +5,13 @@ import type { Membership, Role, User } from "../../domain/access.ts";
 // so they are filtered by the user's own id or email instead of by a scope.
 
 export function findUserByEmail(db: Db, email: string): User | undefined {
-  return db.prepare("SELECT id, email, name FROM users WHERE email = ?").get(email) as
+  return db.prepare("SELECT id, email, name, job_title FROM users WHERE email = ?").get(email) as
     | User
     | undefined;
 }
 
 export function findUserById(db: Db, userId: string): User | undefined {
-  return db.prepare("SELECT id, email, name FROM users WHERE id = ?").get(userId) as
+  return db.prepare("SELECT id, email, name, job_title FROM users WHERE id = ?").get(userId) as
     | User
     | undefined;
 }

@@ -44,7 +44,7 @@ export function projectBackend(options: ProjectOptions): McpBackend {
     listTools: () => TOOLS,
     callTool: (ctx, name, args) =>
       withToolErrors(async () => {
-        if (!SLUG.test(ctx.project.slug)) throw new ToolError("Project context not found.");
+        if (ctx.scope === "personal" || !SLUG.test(ctx.project.slug)) throw new ToolError("Project context not found.");
         const slug = ctx.project.slug;
         const dir = join(options.root, slug);
         const cursor = typeof args.cursor === "string" ? args.cursor : undefined;

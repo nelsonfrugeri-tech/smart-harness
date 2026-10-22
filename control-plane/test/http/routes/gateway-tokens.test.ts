@@ -26,6 +26,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // The product reads a gateway token may call, as registered in Fastify.
 const GATEWAY_TOKEN_READS = [
   "/v1/me",
+  "/v1/me/setup-plan",
   "/v1/workspace",
   "/v1/marketplace",
   "/v1/plugins/:name",

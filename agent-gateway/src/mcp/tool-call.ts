@@ -41,6 +41,7 @@ export async function executeToolCall(
   const { access } = tool;
 
   if (access.kind === "project") {
+    if (ctx.scope === "personal") return denied("project_context_required", null, null);
     return run(backend, ctx, name, args, { resourceType: "project", resourceId: ctx.project.slug, resourceCount: null });
   }
 
@@ -65,7 +66,8 @@ export async function executeToolCall(
 // Null when the catalog cannot be read. The error text is dropped: it may contain internal details.
 export async function discoverTools(backend: McpBackend, ctx: ToolContext): Promise<ToolDefinition[] | null> {
   try {
-    return await backend.listTools(ctx);
+    const tools = await backend.listTools(ctx);
+    return ctx.scope === "personal" ? tools.filter((tool) => tool.access?.kind !== "project") : tools;
   } catch {
     return null;
   }
@@ -106,7 +108,7 @@ async function run(
 
 function denied(reason: string, resourceType: string | null, resourceId: string | null): ToolCallOutcome {
   return {
-    result: errorResult("Access denied: the tool or resource is not allowed for this project."),
+    result: errorResult("Access denied: the tool or resource is not allowed for this context."),
     outcome: "denied",
     reason,
     resourceType,

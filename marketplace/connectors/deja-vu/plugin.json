@@ -1,0 +1,17 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "deja-vu",
+  "version": "2.0.0",
+  "description": "Curated local deja-vu MCP connector managed by Smart Harness.",
+  "keywords": [
+    "claude-code",
+    "deja-vu",
+    "mcp",
+    "local"
+  ],
+  "extensions": {
+    "dev.smartharness": {
+      "local_connector": "deja-vu"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "graphify",
+  "version": "2.0.0",
+  "description": "Curated local graphify MCP connector managed by Smart Harness.",
+  "keywords": [
+    "claude-code",
+    "graphify",
+    "mcp",
+    "local"
+  ],
+  "extensions": {
+    "dev.smartharness": {
+      "local_connector": "graphify"
+    }
+  }
+}

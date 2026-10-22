@@ -1,4 +1,4 @@
-.PHONY: check check-go check-node check-examples up down seed
+.PHONY: check check-go check-node check-examples check-marketplace up down seed
 
 NODE_COMPONENTS := control-plane agent-gateway front
 EXAMPLES := examples/investimentos-api
@@ -8,13 +8,16 @@ COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT)
 
 ## check: CLI formatting, vet, tests and build; API/gateway checks; frontend contract, format, lint, tests and build; example unit tests.
-check: check-go check-node check-examples
+check: check-go check-node check-examples check-marketplace
 
 check-go:
 	@files="$$(gofmt -l cli)"; if [ -n "$$files" ]; then echo "gofmt: unformatted files:"; echo "$$files"; exit 1; fi
 	go -C cli vet ./...
 	go -C cli test ./...
 	go -C cli build -ldflags "$(LDFLAGS)" -o bin/harness ./cmd/harness
+
+check-marketplace: check-go
+	HARNESS_TEST_BINARY="$(CURDIR)/cli/bin/harness" node --test marketplace/test/*.test.mjs
 
 check-node: $(addsuffix /node_modules,$(NODE_COMPONENTS))
 	@for c in $(NODE_COMPONENTS); do echo "== $$c"; (cd $$c && npm run --silent check) || exit 1; done
@@ -36,7 +39,7 @@ up:
 down:
 	docker compose down
 
-## seed: loads the local sample data and the sample Marketplace into the running api (APP_ENV=local only; idempotent).
+## seed: loads the personal demo identity and Marketplace without projects (APP_ENV=local only; idempotent).
 seed:
 	docker compose exec -T api npm run --silent seed
 	docker compose exec -T api npm run --silent seed:marketplace

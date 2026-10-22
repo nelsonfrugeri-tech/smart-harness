@@ -131,6 +131,27 @@
         }
       }
     },
+    "/v1/me/setup-plan": {
+      "get": {
+        "operationId": "getPersonalSetupPlan",
+        "tags": ["marketplace"],
+        "security": [{ "BearerAuth": [] }, { "GatewayToken": [] }],
+        "summary": "Personal installation catalog; no project or baseline required",
+        "description": "Same visibility and filters as Marketplace. Continue with this endpoint and next_cursor. Never contains tokens or credentials.",
+        "parameters": [
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["connector", "skill", "agent"] } },
+          { "name": "kind", "in": "query", "schema": { "$ref": "#/components/schemas/ComponentKind" } },
+          { "name": "q", "in": "query", "schema": { "type": "string", "minLength": 1, "maxLength": 100 } },
+          { "$ref": "#/components/parameters/Cursor" },
+          { "$ref": "#/components/parameters/Limit" }
+        ],
+        "responses": {
+          "200": { "description": "Personal plan", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PersonalSetupPlan" } } } },
+          "400": { "$ref": "#/components/responses/Problem" },
+          "401": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
     "/v1/workspace": {
       "get": {
         "operationId": "getWorkspace",
@@ -634,7 +655,7 @@
       "User": {
         "type": "object",
         "required": ["id", "email", "name"],
-        "properties": { "id": { "type": "string" }, "email": { "type": "string" }, "name": { "type": "string" } }
+        "properties": { "id": { "type": "string" }, "email": { "type": "string" }, "name": { "type": "string" }, "job_title": { "type": ["string", "null"], "description": "Presentation only; never an authorization role." } }
       },
       "TenantRef": {
         "type": "object",
@@ -746,6 +767,18 @@
               }
             }
           }
+        }
+      },
+      "PersonalSetupPlan": {
+        "type": "object",
+        "required": ["gateway", "optional"],
+        "additionalProperties": false,
+        "properties": {
+          "gateway": {
+            "type": "object", "required": ["url"], "additionalProperties": false,
+            "properties": { "url": { "type": "string", "format": "uri" } }
+          },
+          "optional": { "$ref": "#/components/schemas/PluginPage" }
         }
       },
       "SetupPlan": {

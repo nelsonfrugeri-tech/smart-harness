@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "trello",
+  "version": "1.0.0",
+  "description": "Trello MCP connector through the personal Smart Harness gateway.",
+  "keywords": [
+    "claude-code",
+    "trello",
+    "mcp",
+    "remote"
+  ]
+}

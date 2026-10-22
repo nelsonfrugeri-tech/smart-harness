@@ -61,3 +61,18 @@ export function listProjectResources(db: Db, projectId: string): Record<string, 
   }
   return result;
 }
+
+// Personal grants never inherit a project or another user's permissions. Membership is checked
+// in the same query, so a token issued before removal cannot keep using those resources.
+export function listUserAllowedResources(db: Db, userId: string, server: string): Record<string, string[]> {
+  const rows = db.prepare(`SELECT DISTINCT p.resource_type AS type, p.resource_id AS id
+    FROM user_gateway_permissions p
+    JOIN memberships m ON m.user_id = p.user_id AND m.tenant_id = p.tenant_id
+    WHERE p.user_id = ? AND p.server = ?
+    ORDER BY p.resource_type, p.resource_id LIMIT 1001`).all(userId, server) as { type: string; id: string }[];
+  // A malformed or oversized grant set fails closed instead of returning a partial allowlist.
+  if (rows.length > 1000) return {};
+  const byType: Record<string, string[]> = {};
+  for (const { type, id } of rows) (byType[type] ??= []).push(id);
+  return byType;
+}

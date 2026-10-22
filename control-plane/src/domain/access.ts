@@ -6,6 +6,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  job_title?: string | null;
 }
 
 export interface Tenant {

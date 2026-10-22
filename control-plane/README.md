@@ -198,3 +198,27 @@ TEST_S3_ENDPOINT=http://127.0.0.1:9000 TEST_S3_ACCESS_KEY_ID=<S3_ACCESS_KEY_ID> 
 - `eslint`, `@eslint/js` e `typescript-eslint`: lint com as regras recomendadas para TypeScript.
 - `vitest`: runner de testes com suporte nativo a TypeScript.
 - `ajv` (dev): validador JSON Schema 2020-12; o teste de contrato valida as respostas reais contra os schemas do `openapi.json`.
+
+## Instalação pessoal
+
+Os comandos padrão `npm run seed` e `npm run seed:marketplace` preparam agora uma
+base local sem projetos: perfil `dev@smart-harness.local`, cargo ilustrativo
+`Software Engineer` e oito pacotes (cinco conectores, dois pacotes de skills e um
+pacote de agentes). Os seeds e endpoints de projetos anteriores permanecem no
+código para compatibilidade; não são executados pelo seed padrão.
+
+Use um banco e bucket separados para a demo pessoal. O seed não apaga projetos,
+publicações ou tokens existentes. Se um nome do catálogo já pertence a outro
+tenant, o seed do marketplace interrompe antes de publicar e orienta usar outro
+banco, preservando a propriedade anterior.
+
+`GET /v1/me/setup-plan` autentica o token pessoal ou JWT e retorna `gateway.url` e
+`optional.items/next_cursor`. Aceita `cursor`, `limit`, `type`, `kind` e `q`, com a
+mesma visibilidade do marketplace, sem projeto nem baseline obrigatório. Sem
+membership, a lista é vazia. `GET /v1/me` inclui `user.job_title` (string ou null),
+um campo de apresentação que não altera permissões.
+
+Somente `DEMO_GITHUB_REPO`, `DEMO_TRELLO_BOARD_ID` e `DEMO_NOTION_PAGE_IDS` alimentam
+as permissões dos conectores pessoais do usuário DEV. Variável ausente remove as
+concessões desse servidor no próximo seed. O token autentica o usuário; permissões
+ficam em `user_gateway_permissions` e exigem a membership vigente do mesmo tenant.

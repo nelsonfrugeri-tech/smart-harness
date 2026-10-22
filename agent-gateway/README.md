@@ -197,3 +197,23 @@ curl -sS -X POST 127.0.0.1:8081/mcp/projects/investimentos-api/echo \
 ## Fora do escopo desta etapa
 
 Sessões MCP, roteamento entre provedores, cache, limite de uso, rate limit, retry, `count_tokens`, métricas Prometheus do proxy, escrita nas ferramentas.
+
+## MCP pessoal
+
+`POST /mcp/me/:server` usa o usuário do gateway token, sem projeto cadastrado.
+GitHub, Trello e Notion consultam `user_gateway_permissions`, sempre com JOIN na
+membership vigente do mesmo usuário e tenant. Recursos não concedidos, concessões
+de outro usuário e permissões legadas de projetos não autorizam a chamada. Uma
+lista acima de 1.000 recursos distintos por servidor falha fechada.
+
+O contexto interno tem `scope: personal`, sem `ProjectRef` fictício. O servidor
+`project` e ferramentas exclusivas de projetos ficam indisponíveis. A rota não
+aceita parâmetros de query para selecionar outro usuário ou tenant. Tokens
+revogados ou expirados retornam 401; uma ferramenta sem recurso autorizado retorna
+um erro MCP e não chama o backend. GET e DELETE retornam 405.
+
+As rotas `/mcp/projects/:project/:server` mantêm o comportamento anterior. A
+configuração das credenciais dos provedores e seus timeouts também permanece no
+gateway. Auditoria pessoal registra o usuário e `scope: personal`; não registra
+corpos, tokens ou um tenant fictício. A métrica existente de duração HTTP inclui
+as novas rotas e a contagem de ferramentas mantém os resultados `ok/error/denied`.

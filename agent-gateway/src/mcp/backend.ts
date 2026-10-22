@@ -1,16 +1,21 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-// What the gateway knows about one call, built after the token and the project were checked.
-export interface ToolContext {
+// Identity and resource grants are resolved again for every HTTP request.
+interface BaseToolContext {
   userId: string;
-  project: { id: string; slug: string; tenantId: string };
   server: string;
   correlationId: string;
-  // Resources the project may use on this server, by resource type (for example repo: [...]).
-  // Authorization snapshot for integration discovery; never grants access by itself.
-  projectResources?: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>>;
   allowedResources: Readonly<Record<string, readonly string[]>>;
 }
+
+export type ToolContext = BaseToolContext & (
+  | { scope: "personal"; project?: never; projectResources?: never }
+  | {
+      scope?: "project";
+      project: { id: string; slug: string; tenantId: string };
+      projectResources?: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>>;
+    }
+);
 
 // Every tool says which resource it touches. The gateway enforces it; the backend never decides.
 export type ToolAccess =

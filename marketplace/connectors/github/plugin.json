@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "github",
+  "version": "1.0.0",
+  "description": "Github MCP connector through the personal Smart Harness gateway.",
+  "keywords": [
+    "claude-code",
+    "github",
+    "mcp",
+    "remote"
+  ]
+}

@@ -56,7 +56,7 @@ export function buildServer({ db, storage, harness, config, logger = false, logS
   registerGatewayTokenGuard(app);
 
   registerOpsRoutes(app, { db, storage, metrics });
-  registerMeRoute(app, { db, jwtSecret: config.jwtSecret });
+  registerMeRoute(app, { db, jwtSecret: config.jwtSecret, gatewayPublicUrl: config.gatewayPublicUrl });
   registerGatewayTokenRoutes(app, {
     db,
     jwtSecret: config.jwtSecret,

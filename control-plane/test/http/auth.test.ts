@@ -68,7 +68,7 @@ describe("dev-login and /v1/me", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
-      user: { id: userId(db, DEV), email: DEV, name: "Dev" },
+      user: { id: userId(db, DEV), email: DEV, name: "Dev", job_title: null },
       memberships: [
         { tenant: { id: tenantId(db, "conta"), slug: "conta", name: "Conta" }, role: "DEV" },
         { tenant: { id: tenantId(db, "investimentos"), slug: "investimentos", name: "Investimentos" }, role: "DEV" },
@@ -100,7 +100,7 @@ describe("dev-login and /v1/me", () => {
     const token = await login(app, "lonely@smart-harness.local");
 
     const me = await get(app, "/v1/me", token);
-    expect(me.json()).toEqual({ user: { id, email: "lonely@smart-harness.local", name: "Lonely" }, memberships: [] });
+    expect(me.json()).toEqual({ user: { id, email: "lonely@smart-harness.local", name: "Lonely", job_title: null }, memberships: [] });
     for (const slug of ["investimentos-api", "conta-digital", "cartoes-app"]) {
       expect((await get(app, `/test/projects/${slug}`, token)).statusCode).toBe(404);
     }
