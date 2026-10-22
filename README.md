@@ -1,5 +1,7 @@
 # Smart Harness
 
+[Documentação e demo guiada](https://nelsonfrugeri-tech.github.io/smart-harness/) · [Roteiro da apresentação](https://nelsonfrugeri-tech.github.io/smart-harness/#/demo)
+
 Plataforma para instalar Tools e Skills pessoais no Claude Code. A jornada
 atual começa no perfil: login, token pessoal, um comando para instalar e configurar a CLI e os plugins,
 e trabalho no repositório local.
