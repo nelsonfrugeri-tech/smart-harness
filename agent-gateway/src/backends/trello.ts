@@ -5,7 +5,7 @@ import { asArray, asRecord, asString, fetchJson } from "./rest.ts";
 
 // Trello through its REST API with the gateway's API key and token.
 // The official Trello MCP (Atlassian, mcp.trello.com) only supports interactive OAuth, so it cannot
-// take credentials injected by the gateway. These two read-only tools cover the use case instead.
+// take credentials injected by the gateway. These read-only tools cover the use case instead.
 // The resource type "board" is permitted per project in gateway_permissions (server "trello").
 
 export interface TrelloOptions {
@@ -20,23 +20,34 @@ function trelloId(value: unknown): string | null {
   return typeof value === "string" && TRELLO_ID.test(value) ? value : null;
 }
 
+const BOARD_ID_SCHEMA = {
+  type: "string",
+  description: "Use the id returned by trello_list_boards, not a card id, board name or URL.",
+};
+
 const TOOLS: ToolDefinition[] = [
   {
+    name: "trello_list_boards",
+    description: "Discovers only the boards allowed in this context. Call this first, then pass an item's id as board_id to list or read cards. Pass next_cursor as cursor for the next page.",
+    inputSchema: { type: "object", properties: { cursor: { type: "string" } } },
+    access: { kind: "search", resourceType: "board" },
+  },
+  {
     name: "trello_list_cards",
-    description: "Lists the open cards of an allowed board (id, name, list, labels, due date). Pass next_cursor as cursor for the next page.",
+    description: "Lists the cards of an allowed board (id, name, list, labels, due date). Discover board_id with trello_list_boards first. Pass next_cursor as cursor for the next page.",
     inputSchema: {
       type: "object",
-      properties: { board_id: { type: "string" }, cursor: { type: "string" } },
+      properties: { board_id: BOARD_ID_SCHEMA, cursor: { type: "string" } },
       required: ["board_id"],
     },
     access: { kind: "resource", resourceType: "board", extract: (args) => trelloId(args.board_id) },
   },
   {
     name: "trello_get_card",
-    description: "Reads one card (description, labels, checklists) of an allowed board.",
+    description: "Reads one card (description, labels, checklists) of an allowed board. Discover board_id with trello_list_boards first; card_id accepts the full card id or the short link from a /c/ URL.",
     inputSchema: {
       type: "object",
-      properties: { board_id: { type: "string" }, card_id: { type: "string" } },
+      properties: { board_id: BOARD_ID_SCHEMA, card_id: { type: "string" } },
       required: ["board_id", "card_id"],
     },
     access: { kind: "resource", resourceType: "board", extract: (args) => trelloId(args.board_id) },
@@ -51,8 +62,9 @@ export function trelloBackend(options: TrelloOptions): McpBackend {
   return {
     server: "trello",
     listTools: () => TOOLS,
-    callTool: (_ctx, name, args) =>
+    callTool: (ctx, name, args) =>
       withToolErrors(async () => {
+        if (name === "trello_list_boards") return jsonResult(await listBoards(get, ctx.allowedResources.board ?? [], args.cursor));
         const boardId = trelloId(args.board_id);
         if (boardId === null) throw new ToolError("board_id is required.");
         if (name === "trello_list_cards") return jsonResult(await listCards(get, boardId, args.cursor));
@@ -63,6 +75,28 @@ export function trelloBackend(options: TrelloOptions): McpBackend {
 }
 
 type Get = (path: string) => Promise<unknown>;
+
+// Read only the permitted ids, never the credential owner's complete board list.
+// Page before fetching so each call makes at most MAX_ITEMS_PER_PAGE upstream requests.
+async function listBoards(get: Get, allowed: readonly string[], cursor: unknown) {
+  const candidates = allowed.map((id) => {
+    if (trelloId(id) === null) throw new ToolError("An allowed board id is invalid.");
+    return { id, source: `trello:board/${id}` };
+  });
+  const selected = pageOfList(candidates, typeof cursor === "string" ? cursor : undefined);
+  const items: Item[] = await Promise.all(selected.items.map(async (item) => {
+    const board = asRecord(await get(`/boards/${item.id}?fields=name,shortUrl,shortLink`));
+    const id = trelloId(board.id);
+    if (id === null || (id !== item.id && trelloId(board.shortLink) !== item.id)) {
+      throw new ToolError("Trello returned a board outside the allowed set.");
+    }
+    // Preserve the exact permitted identifier, including configured short links.
+    return { ...item, name: asString(board.name), url: asString(board.shortUrl) };
+  }));
+  const result = pageOfList(items, undefined);
+  if (result.next_cursor === undefined && selected.next_cursor !== undefined) result.next_cursor = selected.next_cursor;
+  return result;
+}
 
 async function listCards(get: Get, boardId: string, cursor: unknown) {
   const [cards, lists] = await Promise.all([

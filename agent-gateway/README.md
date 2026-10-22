@@ -93,7 +93,7 @@ Todos são **somente leitura**.
 | Servidor | Como integra | Tools |
 | --- | --- | --- |
 | `github` | Proxy para o MCP remoto oficial `https://api.githubcopilot.com/mcp/` com `Authorization: Bearer GITHUB_TOKEN` e `X-MCP-Readonly: true`. | `get_file_contents`, `list_commits`, `get_commit`, `list_branches`, `list_issues`, `issue_read`, `list_pull_requests`, `pull_request_read`, `search_code`, `search_commits`, `search_issues`, `search_pull_requests` |
-| `trello` | API REST `api.trello.com/1`, chave e token no header `Authorization: OAuth ...` (nunca na URL). | `trello_list_cards`, `trello_get_card` |
+| `trello` | API REST `api.trello.com/1`, chave e token no header `Authorization: OAuth ...` (nunca na URL). | `trello_list_boards`, `trello_list_cards`, `trello_get_card` |
 | `notion` | API REST `api.notion.com/v1` com `Notion-Version` configurável. | `notion_get_page`, `notion_search_pages` |
 | `project` | Arquivos de `<PROJECT_CONTEXT_ROOT>/<slug do projeto>/`. | `project_overview`, `decisions_search`, `backlog_list`, `backlog_get`, `delivered_list` |
 
@@ -217,3 +217,14 @@ configuração das credenciais dos provedores e seus timeouts também permanece 
 gateway. Auditoria pessoal registra o usuário e `scope: personal`; não registra
 corpos, tokens ou um tenant fictício. A métrica existente de duração HTTP inclui
 as novas rotas e a contagem de ferramentas mantém os resultados `ok/error/denied`.
+
+### Descoberta de boards do Trello
+
+Use `trello_list_boards` sem argumentos para descobrir os boards permitidos e passe o `id`
+retornado como `board_id` em `trello_list_cards` ou `trello_get_card`. O id de um card,
+o nome do board e a URL não substituem esse identificador. `card_id` aceita o id completo
+ou o short link do card (trecho após `/c/` na URL).
+
+A descoberta consulta somente a allowlist do contexto, com até 50 leituras por chamada e
+`next_cursor` para continuar. Nenhum board permitido: acesso negado sem chamar Trello.
+Uma falha ao consultar qualquer board da página retorna erro, sem apresentar dados parciais como completos.
