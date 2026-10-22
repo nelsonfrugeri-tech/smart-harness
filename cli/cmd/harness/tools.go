@@ -11,13 +11,13 @@ import (
 
 func runTools(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		return usageError(stderr, "expected tools install, check or run")
+		return usageError(stderr, "expected tools install, check, run or serve")
 	}
 	action := args[0]
-	if (action == "check" && len(args) > 2) || (action == "install" && len(args) != 2) || (action == "run" && len(args) < 3) {
+	if (action == "check" && len(args) > 2) || (action == "install" && len(args) != 2) || (action == "run" && len(args) < 3) || (action == "serve" && len(args) != 2) {
 		return usageError(stderr, "invalid tools arguments")
 	}
-	if action != "check" && action != "install" && action != "run" {
+	if action != "check" && action != "install" && action != "run" && action != "serve" {
 		return usageError(stderr, "unknown tools command")
 	}
 	paths, err := local.ResolvePaths()
@@ -39,6 +39,12 @@ func runTools(args []string, stdout, stderr io.Writer) int {
 		}
 		defer unlock()
 		if err := selected[0].Install(paths.ConfigDir, stdout, stderr); err != nil {
+			return failure(stderr, exitFailure, err)
+		}
+		return exitOK
+	}
+	if action == "serve" {
+		if err := selected[0].Serve(paths.ConfigDir, stdin, stdout, stderr); err != nil {
 			return failure(stderr, exitFailure, err)
 		}
 		return exitOK

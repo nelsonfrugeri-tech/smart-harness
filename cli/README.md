@@ -21,10 +21,13 @@ A imagem da API (`control-plane/Dockerfile`) compila este binário e o instala e
 | `harness digest <dir>` | Digest do tar.gz que o `pack` gravaria | `sha256:<hex>` |
 | `harness pack <dir> -o <arquivo.tar.gz>` | tar.gz reproduzível | O digest |
 | `harness unpack <arquivo> <destino> [--expect-digest sha256:<hex>]` | Confere o digest do arquivo e extrai com checagens | O digest |
+| `harness login --api-url <url>` | Autentica o token digitado sem eco e configura o gateway pessoal | Login pronto antes de instalar Claude Code ou pacotes |
+| `harness install <nome> [nome...]` | Adiciona pacotes pessoais do catálogo sem slug de projeto | Instalações/atualizações e erros acionáveis |
 | `harness setup <projeto> [--api-url <url>] [--include-optional <a>,<b>]` | Instala o pacote base (e opcionais) no Claude Code e aponta o Claude Code para o gateway | Uma linha por plugin e o comando para abrir o agente |
 | `harness sync` | Aplica o setup-plan atual de todos os projetos configurados | Uma linha por plugin |
 | `harness tools install <graphify\|deja-vu>` | Instala ferramenta upstream fixada em diretório isolado | Versão verificada ou erro acionável |
 | `harness tools check [graphify\|deja-vu]` | Verifica ferramentas locais gerenciadas | Versão ou instrução de instalação |
+| `harness tools serve <graphify\|deja-vu>` | Executa MCP stdio curado enquanto a sessão existir | Apenas protocolo MCP no stdout |
 | `harness tools run <graphify\|deja-vu> <args...>` | Executa ferramenta gerenciada com argumentos literais | Saída upstream |
 | `harness doctor` | Checa Claude Code, API, token, gateway, `settings.json`, plugins e plano | `ok` ou `FAIL` com `fix:` por checagem |
 | `harness draft pull <id> [--dir <dir>]` | Baixa o rascunho para teste local | O diretório e o comando `claude --plugin-dir` |
@@ -117,7 +120,7 @@ O relatório `report_version: "2"` inclui `description` (texto do manifesto, ou 
 | `SH-SEC-001` | Plataforma | Sem `headers` nem `env` em `mcp.json`: o núcleo não tem credencial nem referência a ela |
 | `SH-SEC-002` | Plataforma | Nenhum arquivo com forma de credencial (GitHub, Anthropic, OpenAI, Slack, AWS, chave privada, JWT, `Bearer <20+>`) |
 | `SH-MCP-001` | Plataforma | Servidor `streamable-http` com URL `<gateway-origin>/mcp/projects/<projeto>/<servidor>` |
-| `SH-MCP-002` | Plataforma | Sem `stdio`, `command`, `args` nem `cwd` |
+| `SH-MCP-002` | Plataforma | `mcp.json` não aceita `stdio`, `command`, `args` nem `cwd`. A extensão curada descrita abaixo gera somente os dois comandos internos permitidos |
 | `SH-EXE-001` | Plataforma | Sem hooks: pasta `hooks/`, arquivo `hooks.json` ou campo `hooks` no `plugin.json` ou no frontmatter do `SKILL.md`, escrito ou trazido por merge |
 | `SH-EXE-002` | Plataforma | Sem executáveis: `bin/`, `skills/<n>/scripts/`, bit de execução, `#!` ou cabeçalho ELF, Mach-O, PE ou WebAssembly |
 | `SH-STR-001` | Plataforma | Só os arquivos do layout acima; sem symlink, arquivo especial, `\` ou `:` no caminho |
@@ -163,9 +166,20 @@ Só a biblioteca padrão, mais [`go.yaml.in/yaml/v3`](https://github.com/yaml/go
 
 ## Ferramentas locais da demo
 
-Graphify e deja-vu são skills curadas do Smart Harness. O CLI upstream fica fora do
-arquivo do pacote; as regras SH-MCP-002 e SH-EXE-001/002 continuam iguais. Não há
-MCP stdio, hooks ou scripts executáveis distribuídos pelo catálogo.
+Graphify e deja-vu também podem ser conectores MCP locais curados. O executável
+upstream fica fora do pacote. `mcp.json` continua proibindo comandos arbitrários;
+o gerador aceita somente `extensions["dev.smartharness"].local_connector` com
+`graphify` ou `deja-vu`, igual ao nome do pacote. Não admite hooks ou scripts.
+O relatório registra componente `kind: mcp`; `.mcp.json` contém exclusivamente
+`${HARNESS_CLI_BIN} tools serve <nome>`. Um pacote local não pode combinar essa
+extensão com outros servidores em `mcp.json`.
+
+Agentes podem referenciar conectores instalados em outros pacotes por
+`connector:github`, `connector:trello`, `connector:notion`, `connector:graphify` ou
+`connector:deja-vu`. O adapter gera `mcp__plugin_<conector>_<conector>__*`, preservando
+hífens conforme a normalização Claude existente. `mcp:<servidor>` continua exigindo
+servidor declarado no próprio pacote. URLs de gateway podem usar `/mcp/me/<conector>`
+ou a rota legada `/mcp/projects/<projeto>/<conector>`.
 
 ```sh
 harness tools install graphify
@@ -174,13 +188,13 @@ harness tools check
 harness setup md2poui --api-url http://127.0.0.1:8080 --include-optional graphify,deja-vu
 ```
 
-O projeto deve oferecer os dois opcionais no setup-plan. `setup` e `sync` recusam
+Para o setup legado, o projeto deve oferecer os dois opcionais no setup-plan. `setup` e `sync` recusam
 os pacotes selecionados sem os binários gerenciados na versão fixada; `doctor`
 também verifica as ferramentas dos pacotes instalados. A presença no PATH não basta.
 
 Pré-requisitos: `uv` e Python 3.10+ para Graphify; Go 1.25+ para deja-vu; rede para
 instalar fontes/dependências. Não há instalação automática de uv/Go. O instalador
-usa apenas dois comandos curados: `uv tool install --force graphifyy==0.9.56` e
+usa apenas dois comandos curados: `uv tool install --force "graphifyy[mcp]==0.9.56"` e
 `go install -ldflags="-X main.version=0.16.8" github.com/vshulcz/deja-vu/cmd/deja@v0.16.8`.
 Os diretórios UV_TOOL_DIR/UV_TOOL_BIN_DIR/GOBIN são isolados em
 `HARNESS_CONFIG_DIR/tools/<nome>/<versão>` (padrão `~/.config/smart-harness`).
@@ -202,3 +216,45 @@ históricos locais de coding agents. Use perfil dedicado para uma demo sem hist�
 privado. Busca lexical com `--no-embed` e Graphify `update ./src` não precisam de LLM.
 
 Consulte [decisão, fontes e reprodução](../marketplace/local-tools/README.md).
+
+## Jornada pessoal
+
+```sh
+harness login --api-url http://127.0.0.1:8080
+harness tools install graphify
+harness tools install deja-vu
+harness install github trello notion graphify deja-vu md2poui code-review software-delivery
+harness doctor
+```
+
+`login` pede o token sem eco, valida `GET /v1/me` e lê `GET /v1/me/setup-plan`.
+Não precisa do executável Claude nem de plugin instalado. Não existe flag de token.
+As credenciais permanecem em `settings.json`, com modo 0600 e backup do conteúdo
+anterior. Configurações de outros plugins e permissões são preservadas. O CLI também
+grava `HARNESS_CLI_BIN`, `HARNESS_CONFIG_DIR` e `HARNESS_CLAUDE_DIR` absolutos no env
+do Claude para os MCPs encontrarem o mesmo executável e ferramentas gerenciadas.
+O executável deve ficar em um caminho estável após o login; movê-lo exige novo login
+ou sync. Configurações com pacotes/projetos não podem trocar silenciosamente de API.
+
+`personal_plugins` é uma lista aditiva no config: `harness install notion` preserva
+os demais pacotes selecionados e os projetos legados. `null`/campo ausente identifica
+config legado; `[]` indica login pessoal ainda sem pacotes. `sync` e `doctor` unem
+as duas seleções e recusam digests/gateways incompatíveis antes de mudar arquivos.
+O plano pessoal é paginado por `/v1/me/setup-plan?cursor=...`; cursor repetido ou mais
+de 100 páginas falha explicitamente. Pacote pessoal ausente do catálogo impede a
+reconciliação, sem apagar a instalação anterior.
+
+Instalação de ferramentas é explícita. `install graphify` não executa automaticamente
+uv ou Go: instrui `harness tools install graphify` quando falta o pré-requisito.
+Graphify agora requer o extra upstream MCP, verificado por import; uma instalação
+anterior apenas CLI é atualizada pelo mesmo comando `tools install graphify`.
+
+`tools serve` usa os binários gerenciados, sem shell e sem timeout fixo da sessão:
+Graphify roda o Python de seu ambiente com `-m graphify.serve`; deja-vu roda `deja mcp`.
+Stdin/stdout são preservados exclusivamente para o protocolo. SIGINT/SIGTERM encerram
+o subprocesso. Graphify procura `graphify-out/graph.json` ou
+`src/graphify-out/graph.json` no checkout atual; ausência gera instrução de construir
+o grafo com `harness tools run graphify update ./src` e reconectar o MCP.
+O índice/notas de deja-vu usam os mesmos destinos de `tools run`. As fontes locais
+continuam pertencendo ao upstream: o escopo de leitura deve ser isolado pelo ambiente
+de QA quando não puder acessar histórico pessoal.

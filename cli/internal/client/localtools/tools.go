@@ -44,10 +44,13 @@ func (t Tool) Path(config string) string { return filepath.Join(t.directory(conf
 // Check requires both a completed installation and the pinned runtime version.
 func (t Tool) Check(config string) error {
 	marker, err := os.ReadFile(filepath.Join(t.directory(config), "ready"))
-	if err != nil || string(marker) != t.Version {
+	if err != nil || string(marker) != t.installationID() {
 		return fmt.Errorf("%s is not installed; run harness tools install %s", t.Name, t.Name)
 	}
-	return t.checkVersion(config)
+	if err := t.checkVersion(config); err != nil {
+		return err
+	}
+	return t.checkMCP(config)
 }
 
 func (t Tool) checkVersion(config string) error {
@@ -95,7 +98,10 @@ func (t Tool) Install(config string, stdout, stderr io.Writer) error {
 	if err := t.checkVersion(config); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(dir, "ready"), []byte(t.Version), 0o600); err != nil {
+	if err := t.checkMCP(config); err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ready"), []byte(t.installationID()), 0o600); err != nil {
 		return err
 	}
 	fmt.Fprintf(stdout, "installed %s %s (%s)\n", t.Name, t.Version, t.Source)
@@ -105,7 +111,7 @@ func (t Tool) Install(config string, stdout, stderr io.Writer) error {
 func (t Tool) installCommand(dir string) (string, []string, []string) {
 	bin := filepath.Join(dir, "bin")
 	if t.Name == "graphify" {
-		return "uv", []string{"tool", "install", "--force", "graphifyy==" + t.Version}, []string{"UV_TOOL_DIR=" + filepath.Join(dir, "uv"), "UV_TOOL_BIN_DIR=" + bin}
+		return "uv", []string{"tool", "install", "--force", "graphifyy[mcp]==" + t.Version}, []string{"UV_TOOL_DIR=" + filepath.Join(dir, "uv"), "UV_TOOL_BIN_DIR=" + bin}
 	}
 	return "go", []string{"install", "-ldflags=-X main.version=" + t.Version, "github.com/vshulcz/deja-vu/cmd/deja@v" + t.Version}, []string{"GOBIN=" + bin}
 }
@@ -119,18 +125,18 @@ func (t Tool) Run(config string, args []string, stdout, stderr io.Writer) error 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, t.Path(config), args...)
-	cmd.Env = os.Environ()
+	cmd.Env = t.environment(config)
 	if t.Name == "deja-vu" {
 		fmt.Fprintln(stderr, "deja-vu may index coding-session histories on this machine; use a dedicated demo profile to exclude personal sources. --project filters results, not source discovery.")
-		for key, path := range map[string]string{
-			"DEJA_INDEX_DIR":  filepath.Join(config, "deja-index"),
-			"DEJA_NOTES_FILE": filepath.Join(config, "deja-notes.jsonl"),
-		} {
-			if os.Getenv(key) == "" {
-				cmd.Env = append(cmd.Env, key+"="+path)
-			}
-		}
 	}
+
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 	return cmd.Run()
+}
+
+func (t Tool) installationID() string {
+	if t.Name == "graphify" {
+		return t.Version + "+mcp"
+	}
+	return t.Version
 }

@@ -18,8 +18,16 @@ func fixtureTool(t *testing.T, tool Tool, config, version string, ready bool) {
 	if err := os.WriteFile(tool.Path(config), []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
+	if tool.Name == "graphify" {
+		if err := os.MkdirAll(filepath.Dir(tool.pythonPath(config)), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(tool.pythonPath(config), []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if ready {
-		if err := os.WriteFile(filepath.Join(tool.directory(config), "ready"), []byte(tool.Version), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(tool.directory(config), "ready"), []byte(tool.installationID()), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -70,7 +78,7 @@ func TestMissingPrerequisiteActionable(t *testing.T) {
 func TestPinnedInstallerCommands(t *testing.T) {
 	graph, _ := Find("graphify")
 	manager, args, env := graph.installCommand("/isolated")
-	if manager != "uv" || strings.Join(args, " ") != "tool install --force graphifyy==0.9.56" || !strings.Contains(strings.Join(env, " "), "UV_TOOL_BIN_DIR=/isolated/bin") {
+	if manager != "uv" || strings.Join(args, " ") != "tool install --force graphifyy[mcp]==0.9.56" || !strings.Contains(strings.Join(env, " "), "UV_TOOL_BIN_DIR=/isolated/bin") {
 		t.Fatal(manager, args, env)
 	}
 	deja, _ := Find("deja-vu")

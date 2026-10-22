@@ -11,11 +11,12 @@ import (
 
 // Config is ~/.config/smart-harness/config.json. It never holds the token.
 type Config struct {
-	APIURL     string               `json:"api_url"`
-	GatewayURL string               `json:"gateway_url"`
-	Projects   map[string]Project   `json:"projects"`
-	Plugins    map[string]Installed `json:"plugins"`
-	Drafts     map[string]Draft     `json:"drafts"`
+	PersonalPlugins []string             `json:"personal_plugins"` // nil preserves legacy-only configuration; [] is personal login.
+	APIURL          string               `json:"api_url"`
+	GatewayURL      string               `json:"gateway_url"`
+	Projects        map[string]Project   `json:"projects"`
+	Plugins         map[string]Installed `json:"plugins"`
+	Drafts          map[string]Draft     `json:"drafts"`
 }
 
 // Project is a configured project and the optionals chosen for it.

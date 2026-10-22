@@ -64,7 +64,9 @@ func runSetup(args []string, stdout, stderr io.Writer) int {
 	if err := s.store.Recover(); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
-	desired, err := reconcile.Resolve(client, projects)
+	candidate := s.cfg
+	candidate.Projects = projects
+	desired, err := reconcile.ResolveConfigured(client, candidate)
 	if err != nil {
 		return failure(stderr, exitFailure, explain(err))
 	}
@@ -136,6 +138,13 @@ func setupToken(s *session, stderr io.Writer) (string, error) {
 
 // writeSettings writes env values in the Claude Code settings and reports the file and its backup.
 func writeSettings(s *session, stdout io.Writer, values map[string]string) error {
+	runtime, err := runtimeSettings(s.paths)
+	if err != nil {
+		return err
+	}
+	for key, value := range runtime {
+		values[key] = value
+	}
 	changed, backup, err := local.WriteSettingsEnv(s.paths.SettingsFile(), values, now())
 	if err != nil {
 		return err
@@ -209,7 +218,7 @@ func runSync(args []string, stdout, stderr io.Writer) int {
 	if err := s.store.Recover(); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
-	desired, err := reconcile.Resolve(client, s.cfg.Projects)
+	desired, err := reconcile.ResolveConfigured(client, s.cfg)
 	if err != nil {
 		return failure(stderr, exitFailure, explain(err))
 	}

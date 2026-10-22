@@ -180,6 +180,27 @@ func (c *Client) SetupPlan(slug string) (SetupPlan, error) {
 	return plan, nil
 }
 
+// PersonalPlan returns one page of the authenticated user's installable catalog.
+func (c *Client) PersonalPlan(cursor string) (SetupPlan, error) {
+	var plan SetupPlan
+	path := "/v1/me/setup-plan"
+	if cursor != "" {
+		path += "?" + url.Values{"cursor": {cursor}}.Encode()
+	}
+	if err := c.getJSON(path, &plan); err != nil {
+		return plan, err
+	}
+	if _, err := ParseBaseURL(plan.Gateway.URL); err != nil {
+		return plan, fmt.Errorf("personal setup-plan gateway: %w", err)
+	}
+	for _, it := range plan.Optional.Items {
+		if err := checkItem(it); err != nil {
+			return plan, err
+		}
+	}
+	return plan, nil
+}
+
 // Optionals returns the project's optionals page that follows cursor.
 func (c *Client) Optionals(slug, cursor string) (Page, error) {
 	var page Page

@@ -156,6 +156,10 @@ func (f *fakeAPI) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	switch {
+	case r.URL.Path == "/v1/me/setup-plan":
+		var n int
+		fmt.Sscan(r.URL.Query().Get("cursor"), &n)
+		json.NewEncoder(w).Encode(map[string]any{"gateway": map[string]any{"url": f.gateway.URL}, "optional": f.optionalPage("personal", n)})
 	case r.URL.Path == "/v1/me":
 		json.NewEncoder(w).Encode(map[string]any{"user": map[string]any{"id": "u", "email": "dev@example.test", "name": "Dev"}, "memberships": []any{}})
 	case len(parts) == 4 && parts[1] == "projects" && parts[3] == "setup-plan":

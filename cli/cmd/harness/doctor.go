@@ -111,7 +111,7 @@ func versionAtLeast(got, min string) bool {
 
 func configCheck(s *session) check {
 	c := check{name: "config", fix: "run harness setup <project> --api-url <url>"}
-	if s.cfg.APIURL == "" || len(s.cfg.Projects) == 0 {
+	if s.cfg.APIURL == "" || (len(s.cfg.Projects) == 0 && s.cfg.PersonalPlugins == nil) {
 		c.detail = "no project configured in " + s.paths.ConfigFile()
 		return c
 	}
@@ -121,6 +121,9 @@ func configCheck(s *session) check {
 	}
 	sort.Strings(slugs)
 	c.ok, c.detail = true, "projects "+strings.Join(slugs, ", ")
+	if s.cfg.PersonalPlugins != nil {
+		c.detail += fmt.Sprintf("; personal packages %d", len(s.cfg.PersonalPlugins))
+	}
 	return c
 }
 
@@ -224,7 +227,7 @@ func planCheck(s *session, token string) check {
 		c.detail = err.Error()
 		return c
 	}
-	desired, err := reconcile.Resolve(client, s.cfg.Projects)
+	desired, err := reconcile.ResolveConfigured(client, s.cfg)
 	if err != nil {
 		c.detail = err.Error()
 		return c
