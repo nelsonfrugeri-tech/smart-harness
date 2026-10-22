@@ -1,0 +1,59 @@
+name: package
+
+on:
+  pull_request:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the official Harness CLI
+        env:
+          GH_TOKEN: ${{ secrets.HARNESS_RELEASE_TOKEN || github.token }}
+          HARNESS_VERSION: v0.2.3
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/harness-cli"
+          cd "$RUNNER_TEMP/harness-cli"
+          gh release download "$HARNESS_VERSION" --repo nelsonfrugeri-tech/smart-harness \
+            --pattern "harness-${HARNESS_VERSION}-linux-amd64" --pattern SHA256SUMS
+          sha256sum --check --ignore-missing SHA256SUMS
+          mv "harness-${HARNESS_VERSION}-linux-amd64" harness
+          chmod +x harness
+          echo "$RUNNER_TEMP/harness-cli" >> "$GITHUB_PATH"
+      - name: Validate and package
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -eu
+          harness validate package
+          harness generate package --target claude-code
+          harness validate package
+          name="$(jq -r .name package/plugin.json)"
+          version="$(jq -r .version package/plugin.json)"
+          if [ "$EVENT_NAME" = push ] && [ "$RELEASE_TAG" != "v$version" ]; then
+            echo 'Release tag must match the plugin version' >&2
+            exit 1
+          fi
+          mkdir -p dist
+          harness pack package -o "dist/${name}-${version}.tar.gz"
+          (cd dist && sha256sum -- *.tar.gz > SHA256SUMS)
+      - name: Publish the release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh release create "$RELEASE_TAG" dist/* --verify-tag --title "$RELEASE_TAG" --generate-notes

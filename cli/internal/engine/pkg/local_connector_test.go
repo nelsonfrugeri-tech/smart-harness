@@ -34,3 +34,40 @@ func TestCrossPackageConnectorTools(t *testing.T) {
 		}
 	}
 }
+
+func TestBundledLocalConnectorsWithRemoteServers(t *testing.T) {
+	tree := Tree{Files: []File{
+		{Path: "dev.smartharness/agents/onboard.agent.md", Data: []byte("---\nname: onboard\ndescription: Help contributors\ntools: [read, mcp:github, mcp:graphify, mcp:deja-vu]\n---\nRead the project before proposing changes.\n")},
+		{Path: "mcp.json", Data: []byte(fmt.Sprintf(`{"$schema":%q,"mcpServers":{"github":{"type":"streamable-http","url":"http://127.0.0.1:8081/mcp/me/github"}}}`, MCPSchema))},
+		{Path: "plugin.json", Data: []byte(fmt.Sprintf(`{"$schema":%q,"name":"agent-project","version":"1.0.0","description":"Project assistant","extensions":{"dev.smartharness":{"local_connectors":["graphify","deja-vu"]}}}`, PluginSchema))},
+	}}
+	p, findings := Parse(tree)
+	if len(findings) > 0 || len(p.Agents) != 1 || len(p.MCPServers) != 3 {
+		t.Fatalf("package=%+v findings=%v", p, findings)
+	}
+	for i, name := range []string{"deja-vu", "github", "graphify"} {
+		if server := p.MCPServers[i]; server.Name != name || server.Local != (name != "github") {
+			t.Fatalf("server=%+v", server)
+		}
+	}
+}
+
+func TestBundledLocalConnectorsRejectInvalidDeclarations(t *testing.T) {
+	for _, extension := range []string{
+		`{"local_connectors":null}`, `{"local_connectors":[]}`, `{"local_connectors":"graphify"}`,
+		`{"local_connectors":["shell"]}`, `{"local_connectors":["graphify","graphify"]}`,
+		`{"local_connector":"graphify","local_connectors":["graphify"]}`,
+	} {
+		tree := Tree{Files: []File{{Path: "plugin.json", Data: []byte(fmt.Sprintf(`{"$schema":%q,"name":"graphify","version":"1.0.0","description":"Project assistant","extensions":{"dev.smartharness":%s}}`, PluginSchema, extension))}}}
+		if _, findings := Parse(tree); len(findings) == 0 {
+			t.Fatalf("accepted extension %s", extension)
+		}
+	}
+	tree := Tree{Files: []File{
+		{Path: "mcp.json", Data: []byte(fmt.Sprintf(`{"$schema":%q,"mcpServers":{"graphify":{"type":"streamable-http","url":"http://127.0.0.1:8081/mcp/me/graphify"}}}`, MCPSchema))},
+		{Path: "plugin.json", Data: []byte(fmt.Sprintf(`{"$schema":%q,"name":"agent-project","version":"1.0.0","description":"Project assistant","extensions":{"dev.smartharness":{"local_connectors":["graphify"]}}}`, PluginSchema))},
+	}}
+	if _, findings := Parse(tree); len(findings) == 0 {
+		t.Fatal("accepted duplicate local and remote server")
+	}
+}

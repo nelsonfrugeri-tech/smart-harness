@@ -17,6 +17,7 @@ var (
 const usage = `usage:
   harness vendor=claude [Claude Code arguments...]
   harness version
+  harness new tool|skill|agent <name> [--directory <path>]
   harness validate <dir> [--json] [--gateway-origin <url>]
   harness generate <dir> --target <name> [--gateway-origin <url>]
   harness digest <dir>
@@ -30,6 +31,8 @@ const usage = `usage:
   harness tools check [name]
   harness skills install <name> [name...]
   harness skills check [name]
+  harness agents install <name> [name...]
+  harness agents check [name]
   harness tools serve <graphify|deja-vu>
   harness tools run <graphify|deja-vu> <args...>
   harness doctor
@@ -62,6 +65,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintf(stdout, "harness %s (commit %s)\n", version, commit)
 		return exitOK
+	case "new":
+		return runNew(rest, stdout, stderr)
+	case "agents":
+		return runAgents(rest, stdout, stderr)
 	case "validate":
 		return runValidate(rest, stdout, stderr)
 	case "generate":

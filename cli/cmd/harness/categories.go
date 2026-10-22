@@ -50,30 +50,39 @@ var installLocalRuntime = func(tool localtools.Tool, config string, stdout, stde
 }
 
 func installRequestedRuntimes(names []string, config string, desired reconcile.Desired, stdout, stderr io.Writer) error {
+	installed := map[string]bool{}
 	for _, name := range names {
-		tool, err := localtools.Find(name)
-		if err != nil || category(desired.Plugins[name].Item.Components) != "tools" {
-			continue
-		}
-		if err := installLocalRuntime(tool, config, stdout, stderr); err != nil {
-			return err
+		for _, tool := range packageLocalTools(name, desired.Plugins[name].Item.Components) {
+			if installed[tool.Name] {
+				continue
+			}
+			if err := installLocalRuntime(tool, config, stdout, stderr); err != nil {
+				return err
+			}
+			installed[tool.Name] = true
 		}
 	}
 	return nil
 }
 
 func runSkills(args []string, stdout, stderr io.Writer) int {
-	if len(args) == 0 {
-		return usageError(stderr, "expected skills install or check")
+	return runCategory(args, "skills", stdout, stderr)
+}
+
+func runAgents(args []string, stdout, stderr io.Writer) int {
+	return runCategory(args, "agents", stdout, stderr)
+}
+
+func runCategory(args []string, category string, stdout, stderr io.Writer) int {
+	if len(args) > 0 {
+		switch args[0] {
+		case "install":
+			return runCategoryInstall(args[1:], category, stdout, stderr)
+		case "check":
+			return runCategoryCheck(args[1:], category, stdout, stderr)
+		}
 	}
-	switch args[0] {
-	case "install":
-		return runCategoryInstall(args[1:], "skills", stdout, stderr)
-	case "check":
-		return runCategoryCheck(args[1:], "skills", stdout, stderr)
-	default:
-		return usageError(stderr, "expected skills install or check")
-	}
+	return usageError(stderr, "expected "+category+" install or check")
 }
 
 // Category checks inspect managed installations without requiring API availability.
@@ -140,16 +149,16 @@ func runCategoryCheck(args []string, want string, stdout, stderr io.Writer) int 
 			failed = true
 			continue
 		}
-		if want == "tools" {
-			if tool, err := localtools.Find(name); err == nil {
-				if err := tool.Check(s.paths.ConfigDir); err != nil {
-					fmt.Fprintln(stderr, err)
-					failed = true
-					continue
-				}
+		runtimeFailed := false
+		for _, tool := range packageLocalTools(name, components) {
+			if err := tool.Check(s.paths.ConfigDir); err != nil {
+				fmt.Fprintf(stderr, "FAIL %s: %v; repair with harness %s install %s\n", name, err, want, name)
+				failed, runtimeFailed = true, true
 			}
 		}
-		fmt.Fprintf(stdout, "ok %s %s\n", name, record.Version)
+		if !runtimeFailed {
+			fmt.Fprintf(stdout, "ok %s %s\n", name, record.Version)
+		}
 	}
 	if checked == 0 && !failed {
 		fmt.Fprintf(stdout, "empty %s: no packages installed\n", want)

@@ -25,15 +25,16 @@ type Package struct {
 
 // Manifest holds the plugin.json fields the platform uses.
 type Manifest struct {
-	Name           string
-	Version        string
-	Description    string
-	Author         *Author // nil when absent
-	Homepage       string
-	Repository     string
-	License        string
-	Keywords       []string
-	LocalConnector string
+	Name            string
+	Version         string
+	Description     string
+	Author          *Author // nil when absent
+	Homepage        string
+	Repository      string
+	License         string
+	Keywords        []string
+	LocalConnector  string
+	LocalConnectors []string
 }
 
 // Author is the plugin.json author object.

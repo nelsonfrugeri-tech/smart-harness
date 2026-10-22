@@ -49,6 +49,15 @@ func Parse(t Tree) (Package, []Finding) {
 			declared[manifest.LocalConnector] = true
 		}
 	}
+	for _, name := range manifest.LocalConnectors {
+		if declared[name] {
+			add(Finding{Code: CodeManifest, Path: ManifestPath, Message: fmt.Sprintf("local connector %q is also declared in mcp.json", name)})
+			continue
+		}
+		p.MCPServers = append(p.MCPServers, MCPServer{Name: name, Local: true})
+		declared[name] = true
+	}
+	sort.Slice(p.MCPServers, func(i, j int) bool { return p.MCPServers[i].Name < p.MCPServers[j].Name })
 	add(fs...)
 
 	skills, fs := parseSkills(t)
@@ -147,6 +156,15 @@ func parseManifest(t Tree) (Manifest, []Finding) {
 					if json.Unmarshal(connector, &m.LocalConnector) != nil || (m.LocalConnector != "graphify" && m.LocalConnector != "deja-vu") || m.LocalConnector != m.Name {
 						findings = append(findings, bad("local_connector must be graphify or deja-vu and match the package name")...)
 						m.LocalConnector = ""
+					}
+				}
+				if connectors, exists := values["local_connectors"]; exists {
+					if _, singular := values["local_connector"]; singular {
+						findings = append(findings, bad("local_connector and local_connectors are mutually exclusive")...)
+					}
+					if err := json.Unmarshal(connectors, &m.LocalConnectors); err != nil || !validLocalConnectors(m.LocalConnectors) {
+						findings = append(findings, bad("local_connectors must be a non-empty array of unique graphify or deja-vu names")...)
+						m.LocalConnectors = nil
 					}
 				}
 			}
@@ -405,4 +423,18 @@ func decodeString(raw map[string]json.RawMessage, key string, dst *string) bool 
 func isJSONObject(v json.RawMessage) bool {
 	var m map[string]json.RawMessage
 	return json.Unmarshal(v, &m) == nil && m != nil
+}
+
+func validLocalConnectors(names []string) bool {
+	if len(names) == 0 || len(names) > 2 {
+		return false
+	}
+	seen := map[string]bool{}
+	for _, name := range names {
+		if (name != "graphify" && name != "deja-vu") || seen[name] {
+			return false
+		}
+		seen[name] = true
+	}
+	return true
 }

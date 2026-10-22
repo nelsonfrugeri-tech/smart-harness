@@ -1,0 +1,47 @@
+# [[.Name]]
+
+Pacote [[.Kind]] no formato Agent Plugins para o Smart Harness.
+Edite o conteúdo em `package/`. O workflow e este README ficam fora do pacote publicado.
+
+## Desenvolver e revisar
+
+```sh
+harness validate package
+harness generate package --target claude-code
+harness validate package
+harness pack package -o ../[[.Name]]-1.0.0.tar.gz
+```
+
+Atualize a descrição e acrescente `repository`, `author` e `license` em
+`package/plugin.json` conforme o projeto. Crie uma branch, faça commit e abra um PR
+para revisão. O workflow valida o pacote em PRs internos.
+[[if eq .Kind "tool"]]
+O MCP gerado aponta para `/mcp/me/[[.Name]]`. É um esqueleto: antes de usar,
+implemente ou configure essa integração no Agent Gateway e conceda acesso ao
+usuário. A validação do pacote não comprova que o servidor existe ou está saudável.
+Credenciais e permissões ficam na plataforma; não adicione tokens ao repositório.
+[[end]]
+## Publicar no GitHub
+
+1. Crie o repositório no GitHub e envie o código.
+2. O workflow usa o CLI oficial `v0.2.3`. Se o repositório do Smart Harness for
+   privado, configure o secret `HARNESS_RELEASE_TOKEN` com acesso de leitura aos
+   Releases de `nelsonfrugeri-tech/smart-harness`. Não grave esse token no código.
+3. Depois da revisão e merge, confirme `version` em `package/plugin.json` e envie
+   uma tag correspondente. Exemplo para a versão inicial:
+
+   ```sh
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+4. O workflow valida, gera a camada Claude Code, empacota e publica o asset
+   `[[.Name]]-1.0.0.tar.gz` com `SHA256SUMS` em um GitHub Release. Tag e versão do
+   manifesto precisam coincidir. Falha de validação impede a publicação.
+5. No Marketplace, registre este repositório e sincronize o Release. Só depois
+   instale o pacote autorizado com `harness [[.Kind]]s install [[.Name]]`.
+
+O GitHub guarda código e arquivos publicados; a plataforma controla catálogo,
+versões, digest e permissões. Use uma nova versão para alterações publicadas.
+PRs de forks são ignorados pelo workflow: o secret de download do CLI privado não
+é disponibilizado a forks. Valide esses PRs localmente antes de integrar.

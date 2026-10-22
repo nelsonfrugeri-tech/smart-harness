@@ -312,10 +312,10 @@ O plano pessoal é paginado por `/v1/me/setup-plan?cursor=...`; cursor repetido 
 de 100 páginas falha explicitamente. Pacote pessoal ausente do catálogo impede a
 reconciliação, sem apagar a instalação anterior.
 
-`tools install` e `skills install` exigem login e validam a categoria de todos os
+`tools install`, `skills install` e `agents install` exigem login e validam a categoria de todos os
 nomes no setup-plan antes de alterar pacotes, runtimes ou configuração. Um nome da
 categoria errada recusa o lote inteiro. Pacotes mistos seguem a precedência do
-catálogo: Agents, Tools (MCP), Skills. O comando Agents ainda não está disponível.
+catálogo: Agents, Tools (MCP), Skills. `agents install` disponibiliza pacotes com agentes, inclusive pacotes mistos com Tools e Skills. Agents exigem instalação explícita.
 `harness install` permanece como alias legado sem filtro de categoria.
 
 Ao selecionar Graphify ou deja-vu em `tools install`, o CLI instala automaticamente
@@ -324,8 +324,8 @@ precisam estar disponíveis; ausência retorna erro acionável. Graphify requer 
 upstream MCP, verificado por import; uma instalação anterior apenas CLI é atualizada
 pelo mesmo comando. Outros pacotes não executam instaladores upstream.
 
-`tools check` e `skills check` verificam a integridade somente dos pacotes instalados
-na categoria. Tools também verifica os runtimes dos conectores locais instalados;
+`tools check`, `skills check` e `agents check` verificam a integridade somente dos pacotes instalados
+na categoria. Cada categoria também verifica os runtimes locais incluídos em seus pacotes;
 não exige Graphify/deja-vu quando ausentes. Categoria sem pacotes informa `empty`,
 sem declarar instalações saudáveis. Os checks funcionam sem API; `doctor` mantém o
 diagnóstico completo de autenticação, settings e gateway.
@@ -339,3 +339,57 @@ o grafo com `harness tools run graphify update ./src` e reconectar o MCP.
 O índice/notas de deja-vu usam os mesmos destinos de `tools run`. As fontes locais
 continuam pertencendo ao upstream: o escopo de leitura deve ser isolado pelo ambiente
 de QA quando não puder acessar histórico pessoal.
+
+
+## Criar e publicar no GitHub
+
+```sh
+harness new tool example-tool
+harness new skill example-skill
+harness new agent example-agent --directory ./agent-project
+cd agent-project
+harness validate package
+harness generate package --target claude-code
+harness validate package
+harness pack package -o ../example-agent-1.0.0.tar.gz
+```
+
+`new` cria um repositório de autoria: `package/` contém o núcleo Agent Plugins,
+`README.md` explica a publicação e `.github/workflows/release.yml` valida PRs internos
+e publica tags `v*`. O comando não cria repositório remoto nem faz login.
+O destino deve estar ausente ou vazio, com a pasta pai existente. Arquivos e
+symlinks no destino são recusados. O nome usa 1–64 caracteres, começa por letra
+minúscula e aceita letras minúsculas, números e hífens simples; os nomes reservados
+pelo validador também são recusados. Falha de validação não publica um scaffold parcial.
+
+O workflow usa o CLI oficial `v0.2.3`, verifica `SHA256SUMS`, valida o pacote,
+gera a camada Claude Code e publica `<name>-<version>.tar.gz` com `SHA256SUMS`.
+A tag precisa ser `v` seguida da versão do manifesto. Código → PR → merge → tag →
+GitHub Release → sincronização no Marketplace. O pacote fica no GitHub; SQLite
+registra catálogo, proveniência e permissões na plataforma.
+
+Se `nelsonfrugeri-tech/smart-harness` estiver privado, configure o secret
+`HARNESS_RELEASE_TOKEN` com leitura de seus Releases. O `GITHUB_TOKEN` do novo
+repositório não concede acesso a outro repositório privado. Esse secret só é
+passado à etapa de download do CLI. PRs de forks não executam esse workflow;
+valide localmente antes de integrar. O scaffold de Tool aponta para uma rota de
+gateway ainda a implementar/configurar; `validate` confirma o formato, não a
+existência ou saúde da integração.
+
+Um Agent pode incluir os MCPs remotos em `mcp.json` e os dois runtimes locais curados:
+
+```json
+{"extensions":{"dev.smartharness":{"local_connectors":["graphify","deja-vu"]}}}
+```
+
+`local_connectors` é uma lista não vazia, sem duplicatas, restrita a `graphify` e
+`deja-vu`. Pode coexistir com os servidores remotos, cujos nomes devem ser distintos.
+A extensão singular `local_connector` continua válida para os pacotes antigos;
+as duas formas são mutuamente exclusivas. Nenhuma delas aceita comandos arbitrários.
+Agentes do mesmo pacote referenciam `mcp:graphify`, `mcp:deja-vu` e os servidores
+remotos declarados, gerando o namespace do próprio pacote. `agents install` prepara
+os runtimes presentes nos componentes e `agents check`, `sync` e `doctor` verificam
+sua disponibilidade. MCPs de pacotes previamente instalados mantêm seus namespaces.
+
+Fontes do workflow: [eventos do GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows)
+e [gh release create](https://cli.github.com/manual/gh_release_create), consultados em 2026-10-22.

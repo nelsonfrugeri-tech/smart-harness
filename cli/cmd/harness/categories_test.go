@@ -15,7 +15,7 @@ import (
 
 func TestCategoryInstallRequiresLoginAndEmptyCheckIsExplicit(t *testing.T) {
 	e := newEnv(t)
-	for _, kind := range []string{"tools", "skills"} {
+	for _, kind := range []string{"tools", "skills", "agents"} {
 		code, _, errOut := e.run("", kind, "install", "github")
 		if code != 1 || !strings.Contains(errOut, "harness login") {
 			t.Fatalf("%s code=%d err=%s", kind, code, errOut)
@@ -168,5 +168,65 @@ func TestRuntimeInstallFailurePreservesPackageSelection(t *testing.T) {
 	after, _ := os.ReadFile(filepath.Join(e.configDir, "config.json"))
 	if code != 1 || !strings.Contains(errOut, "Go prerequisite") || f.downloads(tool) != 0 || !bytes.Equal(before, after) {
 		t.Fatal(code, errOut)
+	}
+}
+
+func TestAgentsInstallMixedPackageChecksBundledRuntime(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	agent := newVersion(t, "agent-project", "1.0.0", "agents/helper.md", "---\nname: helper\ndescription: Project assistant\ntools: Read\n---\nHelp contributors.\n")
+	agent.components = []map[string]any{
+		{"kind": "agent", "name": "helper"},
+		{"kind": "mcp", "name": "github"},
+		{"kind": "mcp", "name": "deja-vu"},
+		{"kind": "skill", "name": "s"},
+	}
+	f.optional["personal"] = []published{agent}
+	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
+	if f.downloads(agent) != 0 {
+		t.Fatal("login unexpectedly installed an agent")
+	}
+	original := installLocalRuntime
+	t.Cleanup(func() { installLocalRuntime = original })
+	calls := 0
+	installLocalRuntime = func(tool localtools.Tool, config string, _, _ io.Writer) error {
+		calls++
+		if tool.Name != "deja-vu" {
+			t.Fatalf("unexpected runtime %s", tool.Name)
+		}
+		path := tool.Path(config)
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte("#!/bin/sh\necho 'deja 0.16.8'\n"), 0700); err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(filepath.Dir(filepath.Dir(path)), "ready"), []byte(tool.Version), 0600)
+	}
+	for _, kind := range []string{"tools", "skills"} {
+		if code, _, _ := e.run("", kind, "install", agent.name); code != exitFailure {
+			t.Fatalf("%s accepted mixed agent", kind)
+		}
+	}
+	if calls != 0 || f.downloads(agent) != 0 {
+		t.Fatal("wrong category mutated state")
+	}
+	e.mustRun("", "agents", "install", agent.name)
+	if calls != 1 || f.downloads(agent) != 1 {
+		t.Fatal("agent runtime was not installed")
+	}
+	if out := e.mustRun("", "agents", "check"); !strings.Contains(out, "ok agent-project") {
+		t.Fatal(out)
+	}
+	e.mustRun("", "sync")
+	if err := os.Remove(filepath.Join(e.configDir, "tools", "deja-vu", "0.16.8", "ready")); err != nil {
+		t.Fatal(err)
+	}
+	code, out, stderr := e.run("", "agents", "check", agent.name)
+	if code != exitFailure || strings.Contains(out, "ok agent-project") || !strings.Contains(stderr, "harness agents install agent-project") {
+		t.Fatal(code, out, stderr)
+	}
+	if code, _, _ := e.run("", "sync"); code != exitFailure {
+		t.Fatal("sync ignored missing bundled runtime")
 	}
 }
