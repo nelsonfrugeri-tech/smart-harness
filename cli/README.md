@@ -21,7 +21,7 @@ A imagem da API (`control-plane/Dockerfile`) compila este binário e o instala e
 | `harness digest <dir>` | Digest do tar.gz que o `pack` gravaria | `sha256:<hex>` |
 | `harness pack <dir> -o <arquivo.tar.gz>` | tar.gz reproduzível | O digest |
 | `harness unpack <arquivo> <destino> [--expect-digest sha256:<hex>]` | Confere o digest do arquivo e extrai com checagens | O digest |
-| `harness login --api-url <url>` | Autentica o token digitado sem eco e configura o gateway pessoal | Login pronto antes de instalar Claude Code ou pacotes |
+| `harness login --api-url <url>` | Autentica o token digitado sem eco e configura gateway e catálogo pessoal | Tools/Skills instalados ou pendências explícitas |
 | `harness install <nome> [nome...]` | Alias legado de instalação pessoal, sem filtro de categoria | Instalações/atualizações e erros acionáveis |
 | `harness setup <projeto> [--api-url <url>] [--include-optional <a>,<b>]` | Instala o pacote base (e opcionais) no Claude Code e aponta o Claude Code para o gateway | Uma linha por plugin e o comando para abrir o agente |
 | `harness sync` | Aplica o setup-plan atual de todos os projetos configurados | Uma linha por plugin |
@@ -39,6 +39,27 @@ Exit codes: `0` sucesso; `1` pacote inválido ou operação recusada; `2` uso in
 `--gateway-origin` define a única origem aceita para MCPs. O padrão é `http://127.0.0.1:8081`, o gateway do `compose.yaml`. O pacote grava essa origem canônica; na máquina do dev, `SMART_HARNESS_GATEWAY_URL` a substitui.
 
 ## Instalação na máquina do dev
+
+Com Claude Code disponível no PATH, execute o comando fornecido pela plataforma:
+
+```sh
+curl -fsSL http://127.0.0.1:8080/install | sh
+```
+
+O endpoint publica `cli/install.sh` com origem e versão fixadas. O script detecta
+macOS/Linux e arm64/amd64, baixa o binário e `SHA256SUMS`, verifica o checksum e só
+então substitui o executável. Instala sem sudo em `HARNESS_INSTALL_DIR`, quando
+definido, ou em um diretório gravável do usuário no PATH; o fallback é
+`~/.local/bin`. Se necessário, adiciona uma única linha ao arquivo de inicialização
+do shell (`.zshrc`, `.bashrc`, `.bash_profile` ou `.profile`), preservando seu conteúdo.
+Abra outro terminal para carregar essa alteração de PATH.
+
+O login roda pelo caminho final do binário e pede o token em `/dev/tty`, sem eco,
+mesmo quando o script veio por pipe. Nenhum token vai em argumento ou variável de
+ambiente do instalador. O script exige Claude Code; o login direto continua
+funcionando antes de instalar Claude. Não há login adicional no navegador.
+
+O fluxo legado por projeto continua disponível:
 
 ```bash
 harness setup investimentos-api --api-url http://127.0.0.1:8080
@@ -230,14 +251,22 @@ Consulte [decisão, fontes e reprodução](../marketplace/local-tools/README.md)
 
 ```sh
 harness login --api-url http://127.0.0.1:8080
-harness tools install github trello notion graphify deja-vu
-harness skills install md2poui code-review
 harness tools check
 harness skills check
 harness doctor
 ```
 
-`login` pede o token sem eco, valida `GET /v1/me` e lê `GET /v1/me/setup-plan`.
+`login` pede o token sem eco, valida `GET /v1/me` e percorre todas as páginas de
+`GET /v1/me/setup-plan`. Instala automaticamente os Tools e Skills autorizados,
+preservando seleções anteriores; não instala Agents. Repetir o comando mantém
+pacotes intactos sem baixar novamente. Graphify/deja-vu usam os runtimes fixados.
+Se faltar uv/Python ou Go, configura os demais pacotes, mantém o login e retorna
+exit 1 com o nome pendente e o comando `harness tools install <nome>` para completar.
+Uma falha parcial nunca imprime que toda a configuração está pronta.
+
+No repositório, execute `claude --model openrouter/free`. Para Graphify, crie o grafo
+com `harness tools run graphify update ./src` antes de conectar seu MCP.
+
 Não precisa do executável Claude nem de plugin instalado. Não existe flag de token.
 As credenciais permanecem em `settings.json`, com modo 0600 e backup do conteúdo
 anterior. Configurações de outros plugins e permissões são preservadas. O CLI também
