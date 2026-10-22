@@ -28,5 +28,7 @@ export function pluginView(entry: PluginEntry) {
       : entry.components.length > 0 && entry.components.every((item) => item.kind === "skill") ? "skill" : "agent",
     keywords: JSON.parse(entry.version.keywords) as string[],
     components: entry.components,
+    ...(entry.source ? { source: entry.source } : {}),
+    ...(entry.related_project ? { related_project: entry.related_project } : {}),
   };
 }

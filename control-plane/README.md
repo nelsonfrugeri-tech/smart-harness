@@ -222,3 +222,28 @@ Somente `DEMO_GITHUB_REPO`, `DEMO_TRELLO_BOARD_ID` e `DEMO_NOTION_PAGE_IDS` alim
 as permissões dos conectores pessoais do usuário DEV. Variável ausente remove as
 concessões desse servidor no próximo seed. O token autentica o usuário; permissões
 ficam em `user_gateway_permissions` e exigem a membership vigente do mesmo tenant.
+
+## Origem dos pacotes
+
+A listagem, o detalhe e o setup-plan incluem os campos opcionais `source` e
+`related_project`. `source.kind` identifica a origem do pacote (`internal` ou
+`open-source`); `internal` descreve autoria interna e não afirma licença
+proprietária. `related_project` identifica separadamente o projeto atendido pelo
+wrapper ou pelas skills, com `kind`, `name`, `repository_url` e licença opcional.
+Ausência significa informação não estabelecida, inclusive em publicações legadas.
+
+Os sete pacotes pessoais têm autoria interna. Graphify, deja-vu e md2poui têm
+projetos relacionados open source. A licença desses projetos não é atribuída ao
+pacote de integração. Os registros editoriais ficam em `plugins.catalog_metadata`
+e podem ser atualizados pelo seed sem alterar versões, componentes ou arquivos
+publicados. Não há inferência de origem pelo nome no frontend.
+
+Links de repositório aceitam somente a raiz HTTPS de `github.com/owner/repository`,
+sem credenciais, porta, query ou fragmento. Metadados inválidos são recusados na
+escrita do seed; campos inválidos existentes também são omitidos nas respostas.
+
+Fontes de licença verificadas em 22/10/2026:
+
+- [Graphify v0.9.56: Apache-2.0](https://github.com/Graphify-Labs/graphify/blob/v0.9.56/LICENSE).
+- [deja-vu v0.16.8: MIT](https://github.com/vshulcz/deja-vu/blob/v0.16.8/LICENSE).
+- [TOTVS md2poui: MIT declarado no package.json, revisão f097b94](https://github.com/totvs/md2poui/blob/f097b94b0dd0dad367cdd7bb2f8312281a6ca90e/package.json).

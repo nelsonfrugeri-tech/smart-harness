@@ -1,3 +1,4 @@
+import { readPluginProvenance, type PluginProvenance } from "../../domain/plugin-provenance.ts";
 import { randomUUID } from "node:crypto";
 import type { Db } from "../database.ts";
 import { scopeTenantIdsJson, type Scope } from "../../domain/access.ts";
@@ -43,7 +44,7 @@ export interface VersionRecord {
 }
 
 // A plugin with its latest visible version and that version's components.
-export interface PluginEntry {
+export interface PluginEntry extends PluginProvenance {
   pluginName: string;
   tenant: TenantRef;
   version: VersionRecord;
@@ -66,6 +67,7 @@ interface EntryRow extends VersionRecord {
   pluginName: string;
   tenantSlug: string;
   tenantName: string;
+  catalogMetadata: string;
 }
 
 // Plugins ordered by name, each with its latest visible version. Two queries per call:
@@ -80,7 +82,7 @@ export function listMarketplace(db: Db, scope: Scope, filter: MarketplaceFilter)
           WHERE ${VISIBLE}
           GROUP BY v.plugin_id
        )
-       SELECT p.name AS pluginName, t.slug AS tenantSlug, t.name AS tenantName, ${VERSION_COLUMNS}
+       SELECT p.name AS pluginName, p.catalog_metadata AS catalogMetadata, t.slug AS tenantSlug, t.name AS tenantName, ${VERSION_COLUMNS}
          FROM latest l
          JOIN plugin_versions v ON v.id = l.version_id
          JOIN plugins p ON p.id = l.plugin_id
@@ -172,7 +174,7 @@ export interface BaselineEntry extends PluginEntry {
 export function listBaselines(db: Db, scope: Scope, projectIds: readonly string[]): BaselineEntry[] {
   const rows = db
     .prepare(
-      `SELECT b.project_id AS projectId, p.name AS pluginName,
+      `SELECT b.project_id AS projectId, p.name AS pluginName, p.catalog_metadata AS catalogMetadata,
               t.slug AS tenantSlug, t.name AS tenantName, ${VERSION_COLUMNS}
          FROM project_baseline b
          JOIN projects pr ON pr.id = b.project_id
@@ -317,6 +319,7 @@ function withComponents(db: Db, rows: EntryRow[]): PluginEntry[] {
   }
 
   return rows.map((row) => ({
+    ...readPluginProvenance(row.catalogMetadata),
     pluginName: row.pluginName,
     tenant: { slug: row.tenantSlug, name: row.tenantName },
     version: {

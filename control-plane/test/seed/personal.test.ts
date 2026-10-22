@@ -58,7 +58,15 @@ describe("personal demo seed", () => {
       expect((await get(`/v1/marketplace?type=${type}`)).json().items).toHaveLength(count);
     }
     expect((await get("/v1/me/setup-plan")).json().optional).toEqual(catalog);
+    const related = {
+      graphify: { kind: "open-source", name: "Graphify", repository_url: "https://github.com/Graphify-Labs/graphify", license: "Apache-2.0" },
+      "deja-vu": { kind: "open-source", name: "deja-vu", repository_url: "https://github.com/vshulcz/deja-vu", license: "MIT" },
+      md2poui: { kind: "open-source", name: "TOTVS md2poui", repository_url: "https://github.com/totvs/md2poui", license: "MIT" },
+    };
     for (const item of catalog.items) {
+      expect(item.source).toEqual({ kind: "internal", repository_url: "https://github.com/nelsonfrugeri-tech/smart-harness" });
+      expect(item.related_project).toEqual(related[item.plugin.name as keyof typeof related]);
+      expect((await get(`/v1/plugins/${item.plugin.name}`)).json()).toEqual(item);
       const download = await get(item.version.archive_url);
       expect(download.statusCode).toBe(200);
       expect(download.headers["x-package-digest"]).toBe(item.version.digest);

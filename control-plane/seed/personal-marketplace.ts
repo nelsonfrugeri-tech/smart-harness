@@ -1,13 +1,14 @@
 import { readFile } from "node:fs/promises";
 import type { Db } from "../src/db/database.ts";
 import { findUserByEmail, listMembershipsOfUser } from "../src/db/repos/identity.ts";
-import { tenantIdBySlug } from "../src/db/repos/seed.ts";
+import { setPluginProvenance, tenantIdBySlug } from "../src/db/repos/seed.ts";
 import { buildPrincipal } from "../src/domain/access.ts";
 import { digestOf } from "../src/domain/marketplace.ts";
 import { persistVersion } from "../src/domain/publish.ts";
 import type { PackageStorage } from "../src/storage/packages.ts";
 import { PERSONAL_ADMIN, PERSONAL_TENANT } from "./personal-data.ts";
 import { PERSONAL_FIXTURES } from "./personal-packages.ts";
+import { personalProvenance } from "./personal-provenance.ts";
 
 export async function seedPersonalMarketplace(deps: { db: Db; storage: PackageStorage }) {
   const user = findUserByEmail(deps.db, PERSONAL_ADMIN);
@@ -27,6 +28,7 @@ export async function seedPersonalMarketplace(deps: { db: Db; storage: PackageSt
     const archive = await readFile(new URL(`./packages/${fixture.file}`, import.meta.url));
     const { status, storedArchive } = await persistVersion(deps, publisher,
       { tenantId, visibility: "organization" }, { manifest: fixture.manifest, archive, digest: digestOf(archive) });
+    setPluginProvenance(deps.db, tenantId, fixture.manifest.name, personalProvenance(fixture.manifest.name));
     result[status] += 1;
     if (storedArchive) result.storedArchives += 1;
   }

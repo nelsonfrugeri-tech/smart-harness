@@ -690,6 +690,25 @@
           "archive_url": { "type": "string", "description": "Path of the archive download, relative to the API base" }
         }
       },
+      "PluginSource": {
+        "type": "object", "required": ["kind"], "additionalProperties": false,
+        "description": "Origin of the package itself; internal describes authorship, not a proprietary license claim.",
+        "properties": {
+          "kind": { "type": "string", "enum": ["open-source", "internal"] },
+          "repository_url": { "type": "string", "format": "uri", "description": "Verified HTTPS github.com repository root; omitted when unknown." },
+          "license": { "type": "string", "maxLength": 120, "description": "License declaration verified from the source; omitted when unknown." }
+        }
+      },
+      "RelatedProject": {
+        "type": "object", "required": ["kind", "name", "repository_url"], "additionalProperties": false,
+        "description": "Project supported by the package. Its origin/license do not describe the wrapper or skills package.",
+        "properties": {
+          "kind": { "type": "string", "enum": ["open-source", "internal"] },
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "repository_url": { "type": "string", "format": "uri", "description": "Verified HTTPS github.com repository root." },
+          "license": { "type": "string", "maxLength": 120 }
+        }
+      },
       "PluginItem": {
         "type": "object",
         "description": "A plugin with one version (the latest visible one, or the pinned one in a baseline) and that version's components",
@@ -709,7 +728,9 @@
           "version": { "$ref": "#/components/schemas/PluginVersion" },
           "type": { "type": "string", "enum": ["connector", "skill", "agent"], "description": "Only MCP components: connector; only skills: skill; otherwise: agent" },
           "keywords": { "type": "array", "items": { "type": "string" } },
-          "components": { "type": "array", "items": { "$ref": "#/components/schemas/Component" } }
+          "components": { "type": "array", "items": { "$ref": "#/components/schemas/Component" } },
+          "source": { "$ref": "#/components/schemas/PluginSource" },
+          "related_project": { "$ref": "#/components/schemas/RelatedProject" }
         }
       },
       "PluginPage": {

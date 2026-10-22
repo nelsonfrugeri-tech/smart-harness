@@ -1,3 +1,4 @@
+import { readPluginProvenance, type PluginProvenance } from "../../domain/plugin-provenance.ts";
 import { randomUUID } from "node:crypto";
 import type { Db } from "../database.ts";
 import type { Role } from "../../domain/access.ts";
@@ -77,4 +78,15 @@ export function upsertProject(
     `INSERT INTO projects (id, tenant_id, slug, name, description) VALUES (?, ?, ?, ?, ?)
      ON CONFLICT (slug) DO UPDATE SET name = excluded.name, description = excluded.description`,
   ).run(randomUUID(), tenantId, project.slug, project.name, project.description);
+}
+
+// Catalog-only metadata; published versions, components and archive digests remain immutable.
+export function setPluginProvenance(db: Db, tenantId: string, name: string, metadata: PluginProvenance): void {
+  const validated = readPluginProvenance(JSON.stringify(metadata));
+  if ((metadata.source && !validated.source) || (metadata.related_project && !validated.related_project)) {
+    throw new Error(`Invalid catalog provenance for ${name}`);
+  }
+  const { changes } = db.prepare("UPDATE plugins SET catalog_metadata = ? WHERE tenant_id = ? AND name = ?")
+    .run(JSON.stringify(validated), tenantId, name);
+  if (changes === 0) throw new Error(`Plugin ${name} not found in the seed tenant`);
 }
