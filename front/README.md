@@ -52,8 +52,9 @@ estão centralizados em `src/app/cliCommands.ts`. URLs com credenciais, query,
 fragmento ou HTTP fora de loopback não geram comandos.
 
 O instalador exige Claude Code e curl no PATH. O login lê o token pelo prompt
-seguro, configura o gateway e instala os Tools/Skills autorizados. Não há segundo
-login na Anthropic. Graphify requer uv/Python ≥ 3.10 e deja-vu requer Go ≥ 1.25.
+seguro, configura o acesso aos MCPs e instala os Tools/Skills autorizados.
+Instalar, fazer login e sincronizar não alteram o provedor/modelo global do
+Claude Code. Graphify requer uv/Python ≥ 3.10 e deja-vu requer Go ≥ 1.25.
 Instalação parcial preserva o login e os pacotes disponíveis, retorna falha e
 orienta a recuperação no terminal; a página não a anuncia como concluída.
 Se instalou Graphify, gere o grafo dentro do checkout antes
@@ -64,8 +65,10 @@ aberta, reconecte o MCP após a geração.
 
 O conjunto recomendado contém somente github, trello, notion, graphify, deja-vu,
 md2poui e code-review. Nesta demo, abra o Claude Code com
-`claude --model openrouter/free`. O login da CLI não fixa o modelo; o argumento
-da sessão escolhe o modelo encaminhado pelo gateway. Para review independente,
+`harness vendor=claude`. O launcher configura OpenRouter apenas no processo
+iniciado, com `openrouter/free` por padrão. Use `claude` para abrir sua conta
+Claude normalmente. Argumentos adicionais são encaminhados, por exemplo
+`harness vendor=claude --model <modelo-permitido>`. Para review independente,
 repita esse comando em outro terminal no mesmo repositório; dentro dessa sessão,
 use `/code-review:code-review` e indique o diff/PR. O prefixo é o nome do plugin
 `code-review`; o segundo nome vem de `skills/code-review/SKILL.md`.

@@ -35,8 +35,9 @@ curl -fsSL 'http://127.0.0.1:8080/install' | sh
 
 O instalador detecta macOS/Linux e ARM64/x64, verifica SHA-256 antes de trocar o
 binário e chama o login. Cole o token no prompt sem eco; não coloque o segredo
-no comando. O login configura o gateway, os Tools e as Skills autorizados.
-Não há segundo login na Anthropic nesta jornada.
+no comando. O login configura o acesso aos MCPs, os Tools e as Skills
+autorizados. Instalar, fazer login e sincronizar não alteram o provedor/modelo
+global nem o login do Claude Code.
 
 Se houver instalação parcial, siga os comandos de recuperação do terminal.
 Credencial e pacotes já configurados permanecem salvos; a CLI retorna falha e
@@ -58,11 +59,17 @@ harness tools run graphify update ./src
 
 Ajuste `./src` à pasta de fontes. O MCP procura `graphify-out/graph.json` ou
 `src/graphify-out/graph.json` na pasta em que o Claude Code é aberto. Se a sessão
-já estiver aberta, reconecte o MCP após gerar o grafo. Abra o modelo da demo:
+já estiver aberta, reconecte o MCP após gerar o grafo. Abra uma sessão via
+OpenRouter pelo gateway, com `openrouter/free` por padrão:
 
 ```sh
-claude --model openrouter/free
+harness vendor=claude
 ```
+
+O launcher configura somente o processo iniciado. Para usar sua conta Claude,
+execute `claude` normalmente. Para escolher outro modelo permitido no gateway,
+use `harness vendor=claude --model <modelo-permitido>`. A chave OpenRouter
+permanece no gateway.
 
 Peça a leitura da história do Trello e da ADR vinculada antes da implementação.
 Use Graphify para navegar o projeto e deja-vu para recuperar o histórico que

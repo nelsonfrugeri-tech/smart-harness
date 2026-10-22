@@ -11,7 +11,7 @@ export const cliCommands = {
   checkSkills: "harness skills check",
   doctor: "harness doctor",
   graphify: "harness tools run graphify update ./src",
-  start: "claude --model openrouter/free",
+  start: "harness vendor=claude",
   reviewSkill: "/code-review:code-review",
 };
 export function installerCommand(rawURL: string): string | null {

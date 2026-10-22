@@ -120,10 +120,14 @@ export function CliGuide() {
               </p>
             </div>
             <p>
-              Nesta demo, use o modelo openrouter/free pelo gateway. O modelo é
-              escolhido ao abrir a sessão; o login da CLI não o fixa.
+              Use OpenRouter pelo gateway nesta sessão, com openrouter/free por
+              padrão. O comando abaixo configura apenas o processo iniciado.
+              Para usar sua conta Claude, abra com claude normalmente.
             </p>
-            <CopyValue label="Abrir Claude Code" value={cliCommands.start} />
+            <CopyValue
+              label="Abrir Claude Code com OpenRouter"
+              value={cliCommands.start}
+            />
             <p>
               Para revisar uma mudança, repita o comando acima em outro
               terminal, no mesmo repositório. Dentro dessa nova sessão, invoque
@@ -232,8 +236,10 @@ function InstallStep() {
           esses pré-requisitos estão disponíveis.
         </p>
         <p>
-          Seu token pessoal também conecta o Claude Code ao gateway. Esta
-          jornada não pede outro login na Anthropic.
+          O token pessoal autoriza o gateway e os MCPs. Instalar, fazer login ou
+          sincronizar o Harness preserva sua conta Claude e não define um
+          provedor ou modelo global. Use harness vendor=claude para abrir uma
+          sessão via OpenRouter; use claude para sua conta Claude.
         </p>
         <a href={CLAUDE_GATEWAY_URL} target="_blank" rel="noopener">
           Como funciona a conexão por gateway

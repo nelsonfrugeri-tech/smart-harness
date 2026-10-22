@@ -81,9 +81,13 @@ it("copies one installer command after the token step without claiming completio
   await user.click(screen.getByText("Antes de começar: pré-requisitos"));
   expect(prerequisites?.open).toBe(true);
   expect(screen.getByText(/Instalação parcial/)).toBeTruthy();
-  expect(
-    screen.getByDisplayValue("claude --model openrouter/free"),
-  ).toBeTruthy();
+  expect(screen.getByDisplayValue("harness vendor=claude")).toBeTruthy();
+  await user.click(
+    screen.getByRole("button", {
+      name: "Copiar abrir claude code com openrouter",
+    }),
+  );
+  expect(copy).toHaveBeenLastCalledWith("harness vendor=claude");
   expect(screen.getByDisplayValue("/code-review:code-review")).toBeTruthy();
   expect(screen.queryByDisplayValue(/--agent/)).toBeNull();
   expect(screen.queryByRole("link", { name: "software-delivery" })).toBeNull();
@@ -134,7 +138,7 @@ it("hides the installer for unsafe origins and recovers with the corrected comma
     /^curl -fsSL /,
     /^harness doctor$/,
     /^harness tools run graphify update /,
-    /^claude --model openrouter\/free$/,
+    /^harness vendor=claude$/,
   ].map((command) => screen.getByDisplayValue(command));
   for (let index = 1; index < commands.length; index++) {
     expect(
