@@ -22,4 +22,3 @@ export function installerVersion(value: string): string {
   if (!/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(value)) throw new Error("INSTALLER_VERSION must use vMAJOR.MINOR.PATCH");
   return value;
 }
-
