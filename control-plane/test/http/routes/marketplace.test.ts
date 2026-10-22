@@ -73,7 +73,7 @@ describe("Marketplace routes", () => {
 
   describe("visibility between squads", () => {
     it("a DEV sees the plugins of their squads and the organization ones, never another squad's", async () => {
-      expect(await names(DEV, "/v1/marketplace")).toEqual(["code-review", "conta-base", "github-connector", "investimentos-base", "md2poui-base", "md2poui-development", "md2poui-review"]);
+      expect(await names(DEV, "/v1/marketplace")).toEqual(["code-review", "conta-base", "deja-vu", "github-connector", "graphify", "investimentos-base", "md2poui-base", "md2poui-development", "md2poui-review"]);
       expect(await names(DEV_CARTOES, "/v1/marketplace")).toEqual(["cartoes-base", "code-review"]);
     });
 
@@ -126,11 +126,11 @@ describe("Marketplace routes", () => {
   describe("GET /v1/marketplace filters", () => {
     it("kind keeps plugins whose latest version ships that kind", async () => {
       expect(await names(DEV, "/v1/marketplace?kind=mcp")).toEqual(["conta-base", "github-connector", "investimentos-base", "md2poui-base"]);
-      expect(await names(DEV, "/v1/marketplace?kind=skill")).toEqual(["code-review", "conta-base", "investimentos-base", "md2poui-base", "md2poui-development", "md2poui-review"]);
+      expect(await names(DEV, "/v1/marketplace?kind=skill")).toEqual(["code-review", "conta-base", "deja-vu", "graphify", "investimentos-base", "md2poui-base", "md2poui-development", "md2poui-review"]);
     });
 
     it("finds standalone demo skills by type and Claude Code tag", async () => {
-      expect(await names(DEV, "/v1/marketplace?type=skill&q=claude-code")).toEqual(["md2poui-development", "md2poui-review"]);
+      expect(await names(DEV, "/v1/marketplace?type=skill&q=claude-code")).toEqual(["deja-vu", "graphify", "md2poui-development", "md2poui-review"]);
       expect(await names(DEV_CARTOES, "/v1/marketplace?type=skill&q=claude-code")).toEqual([]);
       expect(await names(DEV, "/v1/marketplace?type=agent&q=md2poui")).toEqual(["md2poui-base"]);
     });
@@ -142,7 +142,7 @@ describe("Marketplace routes", () => {
     });
 
     it("project lists the optionals of that project's squad and hides the baseline", async () => {
-      expect(await names(DEV, "/v1/marketplace?project=investimentos-api")).toEqual(["code-review", "github-connector", "md2poui-base", "md2poui-development", "md2poui-review"]);
+      expect(await names(DEV, "/v1/marketplace?project=investimentos-api")).toEqual(["code-review", "deja-vu", "github-connector", "graphify", "md2poui-base", "md2poui-development", "md2poui-review"]);
       expect((await get(DEV, "/v1/marketplace?project=cartoes-app")).statusCode).toBe(404);
     });
 
@@ -173,7 +173,7 @@ describe("Marketplace routes", () => {
         cursor = page.next_cursor;
       } while (cursor !== null);
 
-      expect(seen).toEqual(["code-review", "conta-base", "github-connector", "investimentos-base", "md2poui-base", "md2poui-development", "md2poui-review"]);
+      expect(seen).toEqual(["code-review", "conta-base", "deja-vu", "github-connector", "graphify", "investimentos-base", "md2poui-base", "md2poui-development", "md2poui-review"]);
     });
 
     it("an invalid cursor answers 400 invalid_cursor", async () => {

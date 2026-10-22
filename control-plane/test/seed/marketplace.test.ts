@@ -39,10 +39,10 @@ describe("seedMarketplace", () => {
     const first = await seedMarketplace({ db, storage });
     const second = await seedMarketplace({ db, storage });
 
-    expect(first).toEqual({ created: 15, unchanged: 0, storedArchives: 15, baseline: 5 });
-    expect(second).toEqual({ created: 0, unchanged: 15, storedArchives: 0, baseline: 5 });
-    expect(s3.keys(TEST_BUCKET)).toHaveLength(15);
-    expect(db.prepare("SELECT count(*) AS n FROM plugin_versions").get()).toEqual({ n: 15 });
+    expect(first).toEqual({ created: 17, unchanged: 0, storedArchives: 17, baseline: 5 });
+    expect(second).toEqual({ created: 0, unchanged: 17, storedArchives: 0, baseline: 5 });
+    expect(s3.keys(TEST_BUCKET)).toHaveLength(17);
+    expect(db.prepare("SELECT count(*) AS n FROM plugin_versions").get()).toEqual({ n: 17 });
     expect(db.prepare("SELECT count(*) AS n FROM project_baseline").get()).toEqual({ n: 5 });
     db.close();
   });

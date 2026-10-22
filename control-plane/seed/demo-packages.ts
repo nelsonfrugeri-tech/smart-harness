@@ -31,3 +31,25 @@ export const DEMO_FIXTURES: Fixture[] = [
     },
   })),
 ];
+
+// Local tool executables remain managed by harness tools; these archives ship their skills.
+DEMO_FIXTURES.push(
+  {
+    file: "graphify-1.0.0.tar.gz", tenant: "investimentos", visibility: "squad",
+    manifest: { name: "graphify", version: "1.0.0",
+      description: "Smart Harness skill for local Graphify 0.9.56 code navigation in Claude Code. Requires uv, Python 3.10+ and harness tools install graphify; no MCP or hooks.",
+      keywords: ["claude-code", "graphify", "local", "code-navigation"],
+      components: [{ kind: "skill", name: "graphify",
+        description: "Navigate the md2poui source graph before editing or reviewing its CLI. Use the managed local Graphify CLI to locate symbols and source relationships." }],
+    },
+  },
+  {
+    file: "deja-vu-1.0.0.tar.gz", tenant: "investimentos", visibility: "squad",
+    manifest: { name: "deja-vu", version: "1.0.0",
+      description: "Smart Harness skill for local deja-vu 0.16.8 history in Claude Code. Requires Go 1.25+ and harness tools install deja-vu; no MCP or hooks.",
+      keywords: ["claude-code", "deja-vu", "local", "history"],
+      components: [{ kind: "skill", name: "deja-vu",
+        description: "Retrieve real local preparation decisions and session history for md2poui before implementation or review; record useful decisions for later sessions." }],
+    },
+  },
+);

@@ -94,7 +94,7 @@ describe("workspace and setup-plan", () => {
     expect(plan.baseline[0]).toMatchObject({ type: "agent", keywords: [] });
     expect(plan.baseline[0].version.archive_url).toBe("/v1/plugins/investimentos-base/versions/1.2.1/archive");
     // conta-base is visible to the caller (DEV in conta) but not to the investimentos squad.
-    expect(plan.optional.items.map((entry: { plugin: { name: string } }) => entry.plugin.name)).toEqual(["code-review", "github-connector", "md2poui-base", "md2poui-development", "md2poui-review"]);
+    expect(plan.optional.items.map((entry: { plugin: { name: string } }) => entry.plugin.name)).toEqual(["code-review", "deja-vu", "github-connector", "graphify", "md2poui-base", "md2poui-development", "md2poui-review"]);
     expect(plan.optional.next_cursor).toBeNull();
   });
 
@@ -110,6 +110,20 @@ describe("workspace and setup-plan", () => {
     });
     expect(plan.baseline[0].components.filter((c: { kind: string }) => c.kind === "agent").map((c: { name: string }) => c.name)).toEqual(["developer", "reviewer"]);
     expect(plan.baseline[0].components.filter((c: { kind: string }) => c.kind === "skill").map((c: { name: string }) => c.name)).toEqual(["md2poui-development", "md2poui-review"]);
+  });
+
+  it("md2poui exposes managed local tools as optional skills with downloadable archives", async () => {
+    const { response } = await get(DEV, "/v1/projects/md2poui/setup-plan");
+    expect(response.statusCode).toBe(200);
+    const optionals = response.json().optional.items;
+    for (const name of ["graphify", "deja-vu"]) {
+      const entry = optionals.find((item: { plugin: { name: string } }) => item.plugin.name === name);
+      expect(entry).toMatchObject({ plugin: { name }, type: "skill", version: { version: "1.0.0" } });
+      expect(entry.keywords).toContain("claude-code");
+      expect(entry.components.map((component: { kind: string; name: string }) => `${component.kind}:${component.name}`)).toEqual([`skill:${name}`]);
+      const archive = await get(DEV, entry.version.archive_url);
+      expect(archive.response.statusCode).toBe(200);
+    }
   });
 
   it("the setup-plan never carries a token or other secret", async () => {
