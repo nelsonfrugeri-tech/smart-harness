@@ -20,7 +20,7 @@ describe("GATEWAY_TOKEN_TTL_DAYS", () => {
 
 describe("public installer configuration", () => {
   it("defaults to the local origin and a coherent release version without implicit asset discovery", () => {
-    expect(loadConfig(BASE)).toMatchObject({ publicApiUrl: "http://127.0.0.1:8080", installerVersion: "v0.2.2" });
+    expect(loadConfig(BASE)).toMatchObject({ publicApiUrl: "http://127.0.0.1:8080", installerVersion: "v0.2.3" });
     expect(loadConfig(BASE).installerAssetsDir).toBeUndefined();
     expect(loadConfig({ ...BASE, PUBLIC_API_URL: "http://127.0.0.1:18380/", INSTALLER_ASSETS_DIR: "/tmp/assets" }))
       .toMatchObject({ publicApiUrl: "http://127.0.0.1:18380", installerAssetsDir: "/tmp/assets" });
@@ -28,7 +28,7 @@ describe("public installer configuration", () => {
   it.each(["javascript:alert(1)", "http://api.example", "https://user:secret@api.example", "https://api.example?q=x", "https://api.example#x", "https://api.example/\n"])("rejects unsafe public URL %s", (value) => {
     expect(() => loadConfig({ ...BASE, PUBLIC_API_URL: value })).toThrow("PUBLIC_API_URL");
   });
-  it.each(["dev", "../secret", "v0.2.2;id"])("rejects invalid installer version %s", (value) => {
+  it.each(["dev", "../secret", "v0.2.3;id"])("rejects invalid installer version %s", (value) => {
     expect(() => loadConfig({ ...BASE, INSTALLER_VERSION: value })).toThrow("INSTALLER_VERSION");
   });
 });

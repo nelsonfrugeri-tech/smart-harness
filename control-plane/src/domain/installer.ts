@@ -1,4 +1,4 @@
-export const DEFAULT_INSTALLER_VERSION = "v0.2.2";
+export const DEFAULT_INSTALLER_VERSION = "v0.2.3";
 export const DEFAULT_PUBLIC_API_URL = "http://127.0.0.1:8080";
 
 export interface InstallerConfig {

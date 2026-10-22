@@ -9,7 +9,7 @@ import { buildServer } from "../../../src/http/server.ts";
 import { createPackageStorage } from "../../../src/storage/packages.ts";
 import { FakeHarness, FakeS3, seededDatabase, TEST_BUCKET } from "../../test-support.ts";
 
-const VERSION = "v0.2.2";
+const VERSION = "v0.2.3";
 const FILENAMES = ["darwin-arm64", "darwin-amd64", "linux-arm64", "linux-amd64"].map((platform) => `harness-${VERSION}-${platform}`);
 
 describe("public installer and curated assets", () => {
@@ -34,7 +34,7 @@ describe("public installer and curated assets", () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers["content-type"]).toContain("text/x-shellscript");
     expect(response.body).not.toContain("@@");
-    expect(execFileSync("sh", ["-c", response.body], { encoding: "utf8" })).toBe("http://127.0.0.1:8080\nv0.2.2\n");
+    expect(execFileSync("sh", ["-c", response.body], { encoding: "utf8" })).toBe("http://127.0.0.1:8080\nv0.2.3\n");
   });
 
   it("quotes the configured URL as one literal shell value", async () => {
@@ -53,7 +53,7 @@ describe("public installer and curated assets", () => {
       expect(response.body).toBe(`fixture:${file}`);
     }
     await writeFile(join(dir, "private.txt"), "private-value");
-    for (const path of ["private.txt", "install.sh", "harness-v0.1.0-linux-amd64", "harness-v0.2.2-windows-amd64", "%2e%2e%2fprivate.txt"]) {
+    for (const path of ["private.txt", "install.sh", "harness-v0.1.0-linux-amd64", "harness-v0.2.3-windows-amd64", "%2e%2e%2fprivate.txt"]) {
       const response = await app.inject({ url: `/install/${path}` });
       expect(response.statusCode).toBe(404);
       expect(response.body).not.toContain("private-value");
