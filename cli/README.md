@@ -223,7 +223,7 @@ Consulte [decisão, fontes e reprodução](../marketplace/local-tools/README.md)
 harness login --api-url http://127.0.0.1:8080
 harness tools install graphify
 harness tools install deja-vu
-harness install github trello notion graphify deja-vu md2poui code-review software-delivery
+harness install github trello notion graphify deja-vu md2poui code-review
 harness doctor
 ```
 
