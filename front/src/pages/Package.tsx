@@ -12,6 +12,7 @@ import { useArchiveDownload } from "../app/useArchiveDownload";
 import { PackageDiscovery } from "../components/PackageDiscovery";
 import { PackageSource } from "../components/PackageSource";
 import { PackageSummary } from "../components/PackageSummary";
+import { PackageInstall } from "../components/PackageInstall";
 import { PackageContents } from "../components/PackageContents";
 import { DownloadFeedback } from "../components/DownloadFeedback";
 import { VersionMetadata } from "../components/VersionMetadata";
@@ -112,7 +113,7 @@ function PackageDetail({
               </a>
             )}
             <Button
-              variant={setupProject ? "secondary" : "primary"}
+              variant="secondary"
               onClick={() => {
                 if (!download.busy) void download.download(item.version);
               }}
@@ -152,6 +153,7 @@ function PackageDetail({
           Ver versão mais recente disponível
         </a>
       )}
+      <PackageInstall item={item} />
       <PackageSource item={item} />
       <DownloadFeedback state={download.state} retry={download.download} />
       <details

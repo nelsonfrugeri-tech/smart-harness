@@ -39,6 +39,14 @@ interface informa a indisponibilidade; integração OIDC não faz parte desta te
   separa a autoria do pacote do projeto relacionado: um pacote interno pode
   integrar um projeto open source. Registros legados não recebem origem presumida;
   links aceitam somente repositórios HTTPS do GitHub, sem credenciais ou parâmetros.
+- **Publicação:** ADMINs veem “Publicar do GitHub” no Marketplace. O painel
+  cadastra repositório/squad/visibilidade e sincroniza uma tag de release. Repositórios
+  existentes têm paginação e podem receber novas versões sem novo cadastro. Erros
+  preservam os campos; depois de cadastrar, uma nova tentativa repete apenas a
+  sincronização. A versão só aparece como publicada após confirmação da API.
+  O pacote é criado/revisado no GitHub; a interface não cria PRs nem edita código.
+  O detalhe do pacote oferece o comando `harness tools|skills|agents install`
+  correspondente ao tipo e lança somente os agents presentes no pacote.
 - **Workspace:** tela vazia, sem projetos ou atividades de demonstração. Não busca
   o workspace antigo para montar essa superfície. URLs antigas de projetos
   permanecem acessíveis, sem entrar na navegação principal.
@@ -103,7 +111,8 @@ Roteiro de QA com API real:
 8. Simular falha de rede no Marketplace/perfil e usar recuperação explícita.
 
 JWT fica em memória e sessionStorage. Logout/401 limpam a sessão; requests antigos
-são cancelados. JSON tem timeout de 10 s; downloads de pacotes têm 30 s e conferem
+são cancelados. JSON tem timeout de 10 s; sincronização de release tem 250 s para cobrir o
+processamento limitado do backend. Downloads de pacotes têm 30 s e conferem
 SHA-256 antes de salvar. Não há polling nem retry automático.
 
 ## Referências
@@ -115,3 +124,5 @@ Documentação oficial consultada em 22/10/2026:
 - [Conectar um gateway](https://code.claude.com/docs/en/llm-gateway-connect)
 
 - [Invocação de skills de plugins](https://code.claude.com/docs/en/skills#choose-where-skills-load)
+
+- [Agents de plugins e `--agent`](https://code.claude.com/docs/en/sub-agents#invoke-subagents)

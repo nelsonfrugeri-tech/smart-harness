@@ -1,4 +1,5 @@
-import { ArrowRight, Package } from "lucide-react";
+import { useRef, useState } from "react";
+import { Github, ArrowRight, Package } from "lucide-react";
 import type { Me, PluginItem, WorkspaceData } from "../api/client";
 import {
   marketplaceSearch,
@@ -13,6 +14,7 @@ import { PackageDiscovery } from "../components/PackageDiscovery";
 import { PackageSummary } from "../components/PackageSummary";
 import { MarketplaceSearch } from "../components/MarketplaceSearch";
 import { MarketplaceFilters as CatalogFilters } from "../components/MarketplaceFilters";
+import { GitHubPublication } from "../components/GitHubPublication";
 import { followLink } from "../components/Shell";
 interface Props {
   filters: MarketplaceFilters;
@@ -22,6 +24,11 @@ interface Props {
   projects: WorkspaceData["projects"];
 }
 export function Marketplace({ filters, token, expire, me, projects }: Props) {
+  const [publishing, setPublishing] = useState(false);
+  const publishTrigger = useRef<HTMLButtonElement>(null);
+  const canPublish = me.memberships.some(
+    (membership) => membership.role === "ADMIN",
+  );
   const { state, more, restart } = useMarketplace(filters, token, expire);
   const pagination = usePaginationFocus(
     state.items.map((item) => item.plugin.name),
@@ -35,12 +42,38 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
     <div className="page marketplace-page" ref={pagination.results}>
       <PageHeading
         title="Marketplace"
+        action={
+          canPublish && (
+            <button
+              ref={publishTrigger}
+              className="button button-secondary"
+              onClick={() => setPublishing(true)}
+              aria-expanded={publishing}
+              aria-controls="github-publication"
+            >
+              <Github size={17} aria-hidden="true" />
+              Publicar do GitHub
+            </button>
+          )
+        }
         description={
           filters.project
             ? `Pacotes adicionais para ${project?.name ?? filters.project}, além do pacote base.`
             : "Tools, Skills e Agents para o seu jeito de desenvolver."
         }
       />
+      {publishing && canPublish && (
+        <GitHubPublication
+          token={token}
+          expire={expire}
+          memberships={me.memberships}
+          published={restart}
+          close={() => {
+            setPublishing(false);
+            publishTrigger.current?.focus();
+          }}
+        />
+      )}
       <section
         className="catalog-discovery"
         aria-label="Buscar e filtrar pacotes"

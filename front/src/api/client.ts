@@ -14,6 +14,11 @@ export type MarketplaceQuery = NonNullable<
 export type GatewayToken = components["schemas"]["GatewayToken"];
 export type GatewayTokenCreated = components["schemas"]["GatewayTokenCreated"];
 export type GatewayTokenPage = components["schemas"]["GatewayTokenPage"];
+export type GitHubRepository = components["schemas"]["GitHubRepository"];
+export type RepositoryPage = components["schemas"]["RepositoryPage"];
+export type RepositoryRegistration =
+  components["schemas"]["RepositoryRegistration"];
+export type RepositorySync = components["schemas"]["RepositorySync"];
 export type SetupPlan = components["schemas"]["SetupPlan"];
 export class ApiError extends Error {
   constructor(
@@ -30,9 +35,13 @@ interface RequestOptions {
   email?: string;
   method?: "POST" | "DELETE";
   body?: unknown;
+  timeoutMs?: number;
 }
 async function request<T>(path: string, options: RequestOptions): Promise<T> {
-  const signal = AbortSignal.any([options.signal, AbortSignal.timeout(10000)]);
+  const signal = AbortSignal.any([
+    options.signal,
+    AbortSignal.timeout(options.timeoutMs ?? 10000),
+  ]);
   const headers: Record<string, string> = { Accept: "application/json" };
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
   if (options.email || options.body)
@@ -76,6 +85,42 @@ export async function readProblem(response: Response): Promise<ApiError> {
   );
 }
 export const api = {
+  repositories: (
+    cursor: string | undefined,
+    token: string,
+    signal: AbortSignal,
+  ) => {
+    const params = new URLSearchParams({ limit: "20" });
+    if (cursor) params.set("cursor", cursor);
+    return request<RepositoryPage>(`/repositories?${params}`, {
+      token,
+      signal,
+    });
+  },
+  registerRepository: (
+    body: RepositoryRegistration,
+    token: string,
+    signal: AbortSignal,
+  ) =>
+    request<GitHubRepository>("/repositories", {
+      token,
+      signal,
+      method: "POST",
+      body,
+    }),
+  syncRepository: (
+    id: string,
+    tag: string,
+    token: string,
+    signal: AbortSignal,
+  ) =>
+    request<RepositorySync>(`/repositories/${encodeURIComponent(id)}/sync`, {
+      token,
+      signal,
+      method: "POST",
+      body: { tag },
+      timeoutMs: 250000,
+    }),
   gatewayTokens: (
     cursor: string | undefined,
     token: string,

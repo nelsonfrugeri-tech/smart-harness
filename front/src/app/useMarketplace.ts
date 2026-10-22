@@ -108,6 +108,9 @@ export function useMarketplace(
   return {
     state: state.query === query ? state : initialState(query),
     more: () => load(state.cursor ?? undefined),
-    restart: () => load(),
+    restart: () => {
+      request.current?.abort();
+      load();
+    },
   };
 }
