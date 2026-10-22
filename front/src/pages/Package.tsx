@@ -10,6 +10,7 @@ import { projectPath } from "../app/navigation";
 import { useResource } from "../app/useResource";
 import { useArchiveDownload } from "../app/useArchiveDownload";
 import { PackageDiscovery } from "../components/PackageDiscovery";
+import { PackageSource } from "../components/PackageSource";
 import { PackageSummary } from "../components/PackageSummary";
 import { PackageContents } from "../components/PackageContents";
 import { DownloadFeedback } from "../components/DownloadFeedback";
@@ -151,6 +152,7 @@ function PackageDetail({
           Ver versão mais recente disponível
         </a>
       )}
+      <PackageSource item={item} />
       <DownloadFeedback state={download.state} retry={download.download} />
       <details
         className="panel package-release"

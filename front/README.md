@@ -35,6 +35,10 @@ interface informa a indisponibilidade; integração OIDC não faz parte desta te
 - **Marketplace:** Todos, Conectores, Skills e Agentes usam `type` da API.
   Keywords viram links de busca textual `q`; não indicam correspondência exata.
   Filtros e busca permanecem na URL; mudanças reiniciam cursor e cancelam requests.
+  Origem e GitHub vêm dos campos opcionais `source` e `related_project`. O detalhe
+  separa a autoria do pacote do projeto relacionado: um pacote interno pode
+  integrar um projeto open source. Registros legados não recebem origem presumida;
+  links aceitam somente repositórios HTTPS do GitHub, sem credenciais ou parâmetros.
 - **Workspace:** tela vazia, sem projetos ou atividades de demonstração. Não busca
   o workspace antigo para montar essa superfície. URLs antigas de projetos
   permanecem acessíveis, sem entrar na navegação principal.

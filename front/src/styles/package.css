@@ -101,3 +101,43 @@
     align-self: flex-start;
   }
 }
+
+.package-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.package-source {
+  min-width: 0;
+  padding: 22px;
+  overflow-wrap: anywhere;
+}
+.package-source-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.package-source-heading h2 {
+  font-size: 14px;
+}
+.package-source > p {
+  font-size: 13px;
+}
+.package-source .package-source-license {
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.package-source-license strong {
+  font-weight: 500;
+  color: #405a6a;
+}
+.package-source-link {
+  display: inline-flex;
+  margin-top: 16px;
+  font-size: 12px;
+}

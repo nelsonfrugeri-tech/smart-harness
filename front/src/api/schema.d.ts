@@ -497,6 +497,30 @@ export interface components {
       /** @description Path of the archive download, relative to the API base */
       archive_url: string;
     };
+    /** @description Origin of the package itself; internal describes authorship, not a proprietary license claim. */
+    PluginSource: {
+      /** @enum {string} */
+      kind: "open-source" | "internal";
+      /**
+       * Format: uri
+       * @description Verified HTTPS github.com repository root; omitted when unknown.
+       */
+      repository_url?: string;
+      /** @description License declaration verified from the source; omitted when unknown. */
+      license?: string;
+    };
+    /** @description Project supported by the package. Its origin/license do not describe the wrapper or skills package. */
+    RelatedProject: {
+      /** @enum {string} */
+      kind: "open-source" | "internal";
+      name: string;
+      /**
+       * Format: uri
+       * @description Verified HTTPS github.com repository root.
+       */
+      repository_url: string;
+      license?: string;
+    };
     /** @description A plugin with one version (the latest visible one, or the pinned one in a baseline) and that version's components */
     PluginItem: {
       plugin: {
@@ -512,6 +536,8 @@ export interface components {
       type: "connector" | "skill" | "agent";
       keywords: string[];
       components: components["schemas"]["Component"][];
+      source?: components["schemas"]["PluginSource"];
+      related_project?: components["schemas"]["RelatedProject"];
     };
     PluginPage: {
       items: components["schemas"]["PluginItem"][];

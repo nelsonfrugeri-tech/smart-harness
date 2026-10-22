@@ -3,6 +3,7 @@ import {
   marketplacePath,
   type MarketplaceFilters,
 } from "../app/marketplaceQuery";
+import { PackageOrigin } from "./PackageSource";
 import { Badge } from "./Primitives";
 import { followLink } from "./Shell";
 const typeLabels = {
@@ -20,6 +21,7 @@ export function PackageDiscovery({
   return (
     <div className="package-discovery">
       <Badge tone="blue">{typeLabels[item.type]}</Badge>
+      <PackageOrigin kind={item.source?.kind} />
       {item.keywords.length > 0 && (
         <ul className="package-tags" aria-label={`Tags de ${item.plugin.name}`}>
           {item.keywords.map((keyword) => (
