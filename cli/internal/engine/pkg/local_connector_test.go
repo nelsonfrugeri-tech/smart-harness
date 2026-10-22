@@ -9,7 +9,7 @@ func TestCuratedLocalConnector(t *testing.T) {
 	for _, tc := range []struct {
 		name, connector string
 		valid           bool
-	}{{"graphify", "graphify", true}, {"deja-vu", "deja-vu", true}, {"other", "graphify", false}, {"graphify", "sh", false}} {
+	}{{"graphify", "graphify", true}, {"deja-vu", "deja-vu", true}, {"observability", "observability", true}, {"claude-tap", "claude-tap", false}, {"observability", "graphify", false}, {"other", "graphify", false}, {"graphify", "sh", false}} {
 		tree := Tree{Files: []File{{Path: "plugin.json", Data: []byte(fmt.Sprintf(`{"$schema":%q,"name":%q,"version":"2.0.0","description":"Local connector","extensions":{"dev.smartharness":{"local_connector":%q}}}`, PluginSchema, tc.name, tc.connector))}}}
 		p, fs := Parse(tree)
 		if (len(fs) == 0) != tc.valid {

@@ -1,4 +1,5 @@
 import {
+  Activity,
   BookOpen,
   LayoutDashboard,
   LogOut,
@@ -221,6 +222,12 @@ function PersonalNavigation({
         kind === "baseline-package",
     },
     { href: "/cli", label: "CLI", icon: Terminal, active: kind === "cli" },
+    {
+      href: "/observability",
+      label: "Observabilidade",
+      icon: Activity,
+      active: kind === "observability",
+    },
   ];
   return (
     <nav aria-label="Navegação principal">
@@ -266,5 +273,6 @@ function PersonalNavigation({
 function surfaceTitle(kind: string, marketplace: boolean) {
   if (marketplace) return "Marketplace";
   if (kind === "profile" || kind === "tokens") return "Meu perfil";
+  if (kind === "observability") return "Observabilidade";
   return kind === "cli" ? "CLI · Começar" : "Workspace";
 }

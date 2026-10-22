@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -189,5 +191,41 @@ func TestLoginAutomaticallyInstallsCatalogAndReportsMissingRuntime(t *testing.T)
 	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
 	if f.downloads(remote) != 1 || f.downloads(skill) != 1 || f.downloads(tool) != 1 || len(e.config().Plugins) != 3 {
 		t.Fatal("repeated login reinstalled packages or lost selection")
+	}
+}
+
+func TestInstallReportsPersonalSetAndToleratesReportFailure(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	first := newVersion(t, "github", "1.0.0")
+	second := newVersion(t, "notion", "1.2.0")
+	f.optional["personal"] = []published{first, second}
+	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
+	f.mu.Lock()
+	reports := append([][]byte(nil), f.reports...)
+	f.reportStatus = http.StatusServiceUnavailable
+	f.mu.Unlock()
+	if len(reports) != 1 {
+		t.Fatalf("login sent %d reports", len(reports))
+	}
+	var body struct {
+		CLIVersion string              `json:"cliVersion"`
+		Plugins    []map[string]string `json:"plugins"`
+	}
+	if err := json.Unmarshal(reports[0], &body); err != nil {
+		t.Fatal(err)
+	}
+	want := []map[string]string{{"name": "github", "version": "1.0.0"}, {"name": "notion", "version": "1.2.0"}}
+	if body.CLIVersion != version || !reflect.DeepEqual(body.Plugins, want) {
+		t.Fatalf("report %s", reports[0])
+	}
+	code, _, errOut := e.run("", "install", "github")
+	if code != 0 || !strings.Contains(errOut, "warning: could not report installations: API answered 503") {
+		t.Fatalf("exit=%d stderr=%s", code, errOut)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.reports) != 2 {
+		t.Fatalf("install sent %d reports in total", len(f.reports))
 	}
 }

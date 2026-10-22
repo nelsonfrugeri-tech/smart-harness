@@ -20,6 +20,12 @@ export type RepositoryRegistration =
   components["schemas"]["RepositoryRegistration"];
 export type RepositorySync = components["schemas"]["RepositorySync"];
 export type SetupPlan = components["schemas"]["SetupPlan"];
+// Hand-written until GET /v1/me/installations lands in the generated schema.
+export interface Installations {
+  cliVersion: string | null;
+  reportedAt: string | null;
+  plugins: { name: string; version: string; installedAt: string }[];
+}
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -180,6 +186,8 @@ export const api = {
     request<Login>("/auth/dev-login", { email, signal }),
   me: (token: string, signal: AbortSignal) =>
     request<Me>("/me", { token, signal }),
+  installations: (token: string, signal: AbortSignal) =>
+    request<Installations>("/me/installations", { token, signal }),
   workspace: (token: string, signal: AbortSignal) =>
     request<WorkspaceData>("/workspace", { token, signal }),
   plan: (slug: string, token: string, signal: AbortSignal) =>

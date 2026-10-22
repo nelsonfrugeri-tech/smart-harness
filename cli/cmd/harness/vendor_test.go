@@ -156,3 +156,30 @@ kill -TERM $$
 		t.Fatal("stored credentials changed")
 	}
 }
+
+func TestVendorClaudeFallsBackToGatewayWithoutClaudeTap(t *testing.T) {
+	for _, tc := range []struct {
+		observability, warning string
+	}{{"", "observability off (observability is not installed"}, {"off", ""}} {
+		e := newEnv(t)
+		t.Setenv("SMART_HARNESS_TOKEN", testToken)
+		t.Setenv("SMART_HARNESS_GATEWAY_URL", "http://127.0.0.1:8081")
+		t.Setenv(envObservability, tc.observability)
+		bin := filepath.Join(t.TempDir(), "claude")
+		script := "#!/bin/sh\n[ \"$ANTHROPIC_BASE_URL\" = 'http://127.0.0.1:8081' ] || exit 91\nexit 0\n"
+		if err := os.WriteFile(bin, []byte(script), 0700); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv(envClaudeBin, bin)
+		code, _, errOut := e.run("", "vendor=claude")
+		if code != 0 {
+			t.Fatalf("observability=%q exit=%d stderr=%s", tc.observability, code, errOut)
+		}
+		if tc.warning == "" && strings.Contains(errOut, "observability") {
+			t.Fatalf("opt-out still warned: %s", errOut)
+		}
+		if tc.warning != "" && (!strings.Contains(errOut, tc.warning) || strings.Count(strings.TrimSpace(errOut), "\n") != 0) {
+			t.Fatalf("expected one warning line, got %q", errOut)
+		}
+	}
+}

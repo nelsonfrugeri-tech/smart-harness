@@ -60,6 +60,9 @@ func TestAllRuntimeSubprocessesExcludeAmbientCredentials(t *testing.T) {
 			if output.String() != "runtime-ok\n" {
 				t.Fatal(output.String())
 			}
+			if tool.Name == TapName {
+				return // claude-tap serves MCP in-process; no subprocess receives the environment.
+			}
 			output.Reset()
 			if err := tool.Serve(config, strings.NewReader(""), &output, io.Discard); err != nil {
 				t.Fatal(err)

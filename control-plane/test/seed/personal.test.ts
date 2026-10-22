@@ -8,7 +8,7 @@ import { upsertProject, upsertTenant } from "../../src/db/repos/seed.ts";
 import { createPackageStorage } from "../../src/storage/packages.ts";
 import { FakeS3, login, TEST_BUCKET, testServer } from "../test-support.ts";
 
-const EXPECTED = ["code-review", "deja-vu", "github", "graphify", "md2poui", "notion", "trello"];
+const EXPECTED = ["code-review", "deja-vu", "github", "graphify", "md2poui", "notion", "observability", "trello"];
 
 describe("personal demo seed", () => {
   let db: Db;
@@ -37,11 +37,11 @@ describe("personal demo seed", () => {
     expect(db.prepare("SELECT * FROM user_gateway_permissions").all()).toEqual([]);
   });
 
-  it("publishes exactly five connectors and two skill packages, with no agents or projects", async () => {
+  it("publishes exactly six connectors and two skill packages, with no agents or projects", async () => {
     seedPersonalData(db);
     const storage = createPackageStorage(new FakeS3([TEST_BUCKET]), TEST_BUCKET);
-    expect(await seedPersonalMarketplace({ db, storage })).toEqual({ created: 7, unchanged: 0, storedArchives: 7 });
-    expect(await seedPersonalMarketplace({ db, storage })).toEqual({ created: 0, unchanged: 7, storedArchives: 0 });
+    expect(await seedPersonalMarketplace({ db, storage })).toEqual({ created: 8, unchanged: 0, storedArchives: 8 });
+    expect(await seedPersonalMarketplace({ db, storage })).toEqual({ created: 0, unchanged: 8, storedArchives: 0 });
     const server = testServer(db, "local", storage);
     app = server;
     const headers = { authorization: `Bearer ${await login(server, PERSONAL_DEV)}` };
@@ -54,13 +54,14 @@ describe("personal demo seed", () => {
     expect(catalog.items.map((item: { plugin: { name: string } }) => item.plugin.name)).toEqual(EXPECTED);
     expect(catalog.items.find((item: { plugin: { name: string } }) => item.plugin.name === "md2poui").version.version).toBe("1.0.1");
     expect(catalog.items.find((item: { plugin: { name: string } }) => item.plugin.name === "code-review").version.version).toBe("1.1.1");
-    for (const [type, count] of [["connector", 5], ["skill", 2], ["agent", 0]] as const) {
+    for (const [type, count] of [["connector", 6], ["skill", 2], ["agent", 0]] as const) {
       expect((await get(`/v1/marketplace?type=${type}`)).json().items).toHaveLength(count);
     }
     expect((await get("/v1/me/setup-plan")).json().optional).toEqual(catalog);
     const related = {
       graphify: { kind: "open-source", name: "Graphify", repository_url: "https://github.com/Graphify-Labs/graphify", license: "Apache-2.0" },
       "deja-vu": { kind: "open-source", name: "deja-vu", repository_url: "https://github.com/vshulcz/deja-vu", license: "MIT" },
+      observability: { kind: "open-source", name: "claude-tap", repository_url: "https://github.com/liaohch3/claude-tap", license: "MIT" },
       md2poui: { kind: "open-source", name: "TOTVS md2poui", repository_url: "https://github.com/totvs/md2poui", license: "MIT" },
     };
     for (const item of catalog.items) {

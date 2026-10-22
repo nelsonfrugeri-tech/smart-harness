@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -82,17 +83,19 @@ func (v published) digest() string { return digest.Of(v.archive) }
 
 // fakeAPI serves the control plane routes the CLI uses, plus a gateway /healthz.
 type fakeAPI struct {
-	t        *testing.T
-	api      *httptest.Server
-	gateway  *httptest.Server
-	mu       sync.Mutex
-	plans    map[string][]published // project -> baseline
-	optional map[string][]published // project -> optionals, served one per page
-	drafts   map[string][]byte
-	gets     map[string]int // archive path -> downloads
-	badAuth  int
-	gateways map[string]string // project -> gateway URL served instead of the fake gateway
-	bodies   map[string][]byte // archive path -> body served instead of the published archive
+	t            *testing.T
+	api          *httptest.Server
+	gateway      *httptest.Server
+	mu           sync.Mutex
+	plans        map[string][]published // project -> baseline
+	optional     map[string][]published // project -> optionals, served one per page
+	drafts       map[string][]byte
+	gets         map[string]int // archive path -> downloads
+	badAuth      int
+	gateways     map[string]string // project -> gateway URL served instead of the fake gateway
+	bodies       map[string][]byte // archive path -> body served instead of the published archive
+	reports      [][]byte          // bodies of PUT /v1/me/installations, in order
+	reportStatus int               // status of PUT /v1/me/installations; 0 answers 204
 }
 
 func newFakeAPI(t *testing.T) *fakeAPI {
@@ -168,6 +171,14 @@ func (f *fakeAPI) serve(w http.ResponseWriter, r *http.Request) {
 		var n int
 		fmt.Sscan(r.URL.Query().Get("cursor"), &n)
 		json.NewEncoder(w).Encode(map[string]any{"gateway": map[string]any{"url": f.gateway.URL}, "optional": f.optionalPage("personal", n)})
+	case r.URL.Path == "/v1/me/installations" && r.Method == http.MethodPut:
+		body, _ := io.ReadAll(r.Body)
+		f.reports = append(f.reports, body)
+		if f.reportStatus != 0 {
+			f.problem(w, f.reportStatus, "unavailable", "")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	case r.URL.Path == "/v1/me":
 		json.NewEncoder(w).Encode(map[string]any{"user": map[string]any{"id": "u", "email": "dev@example.test", "name": "Dev"}, "memberships": []any{}})
 	case len(parts) == 4 && parts[1] == "projects" && parts[3] == "setup-plan":

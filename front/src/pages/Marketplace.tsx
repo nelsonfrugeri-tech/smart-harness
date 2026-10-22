@@ -7,8 +7,14 @@ import {
   type MarketplaceFilters,
 } from "../app/marketplaceQuery";
 import { usePaginationFocus } from "../app/usePaginationFocus";
+import { useInstallations } from "../app/useInstallations";
 import { useMarketplace } from "../app/useMarketplace";
-import { Button, EmptyState, PageHeading } from "../components/Primitives";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  PageHeading,
+} from "../components/Primitives";
 import { Loading, RequestError } from "../components/RequestState";
 import { PackageDiscovery } from "../components/PackageDiscovery";
 import { PackageSummary } from "../components/PackageSummary";
@@ -30,6 +36,7 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
     (membership) => membership.role === "ADMIN",
   );
   const { state, more, restart } = useMarketplace(filters, token, expire);
+  const installed = useInstallations(token, expire);
   const pagination = usePaginationFocus(
     state.items.map((item) => item.plugin.name),
     state.loading,
@@ -104,6 +111,7 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
                     key={item.plugin.name}
                     item={item}
                     filters={filters}
+                    installed={installed.has(item.plugin.name)}
                   />
                 ))}
               </div>
@@ -181,9 +189,11 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
 function PackageCard({
   item,
   filters,
+  installed,
 }: {
   item: PluginItem;
   filters: MarketplaceFilters;
+  installed: boolean;
 }) {
   return (
     <article className="panel marketplace-card">
@@ -211,7 +221,10 @@ function PackageCard({
       <PackageSummary item={item} />
       <footer className="package-card-footer">
         <span className="package-owner">{item.plugin.tenant.name}</span>
-        <span className="package-version">v{item.version.version}</span>
+        <span className="package-card-state">
+          {installed && <Badge tone="green">Instalado</Badge>}
+          <span className="package-version">v{item.version.version}</span>
+        </span>
       </footer>
     </article>
   );

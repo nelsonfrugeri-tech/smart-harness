@@ -18,6 +18,7 @@ export function useRoute() {
   const { pathname: path, search } = new URL(url, location.origin);
   if (path === "/profile") return { kind: "profile" } as const;
   if (path === "/cli") return { kind: "cli" } as const;
+  if (path === "/observability") return { kind: "observability" } as const;
   if (path === "/profile/tokens")
     return {
       kind: "tokens",

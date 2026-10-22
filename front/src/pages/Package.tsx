@@ -8,6 +8,7 @@ import {
 } from "../app/marketplaceQuery";
 import { projectPath } from "../app/navigation";
 import { useResource } from "../app/useResource";
+import { useInstallations } from "../app/useInstallations";
 import { useArchiveDownload } from "../app/useArchiveDownload";
 import { PackageDiscovery } from "../components/PackageDiscovery";
 import { PackageSource } from "../components/PackageSource";
@@ -48,6 +49,7 @@ export function Package({ name, filters, token, expire, baseline }: Props) {
     load,
     expire,
   );
+  const installed = useInstallations(token, expire);
   return (
     <div className="page package-page">
       <a
@@ -71,6 +73,7 @@ export function Package({ name, filters, token, expire, baseline }: Props) {
           expire={expire}
           pinned={Boolean(project)}
           setupProject={project ?? filters.project}
+          installed={installed.has(name)}
         />
       )}
     </div>
@@ -83,6 +86,7 @@ function PackageDetail({
   expire,
   pinned,
   setupProject,
+  installed,
 }: {
   item: PluginItem;
   filters: MarketplaceFilters;
@@ -90,6 +94,7 @@ function PackageDetail({
   expire: () => void;
   pinned: boolean;
   setupProject?: string;
+  installed: boolean;
 }) {
   const download = useArchiveDownload(item.plugin.name, token, expire);
   return (
@@ -131,6 +136,7 @@ function PackageDetail({
         <Badge tone="blue">
           {pinned ? "Versão fixada no projeto" : "Mais recente disponível"}
         </Badge>
+        {installed && <Badge tone="green">Instalado</Badge>}
         <PackageSummary item={item} />
       </div>
       <PackageDiscovery item={item} filters={filters} />

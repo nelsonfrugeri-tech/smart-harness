@@ -3,16 +3,40 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/api"
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/local"
+	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/localtools"
 )
+
+// envObservability set to "off" launches Claude straight on the gateway.
+const envObservability = "HARNESS_OBSERVABILITY"
+
+// tapReady bounds the wait for the claude-tap proxy; a slow start must not block the session.
+const tapReady = 8 * time.Second
+
+// startObservability chains Claude -> claude-tap -> gateway when the tap is installed and
+// starts in time. Any failure is one stderr line and a direct launch: the session never breaks.
+func startObservability(config, gateway string, stderr io.Writer) *localtools.Tap {
+	if os.Getenv(envObservability) == "off" {
+		return nil
+	}
+	tap, err := localtools.StartTap(config, gateway, tapReady)
+	if err != nil {
+		fmt.Fprintf(stderr, "harness: observability off (%v); Claude goes straight to the gateway\n", err)
+		return nil
+	}
+	fmt.Fprintf(stderr, "harness: observability on; traces in %s, viewer at %s\n", localtools.TracesDir(config), localtools.TapViewerURL())
+	return tap
+}
 
 // runVendorClaude routes only the launched process through the Harness gateway.
 // Native Claude settings, credentials and the parent environment are never written.
@@ -73,10 +97,15 @@ func runVendorClaude(args []string, stdout, stderr io.Writer) int {
 	if !hasModel {
 		args = append([]string{"--model", "openrouter/free"}, args...)
 	}
+	baseURL := gateway
+	if tap := startObservability(s.paths.ConfigDir, gateway, stderr); tap != nil {
+		defer tap.Stop()
+		baseURL = localtools.TapProxyURL()
+	}
 	cmd := exec.Command(executable, args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = stdin, stdout, stderr
 	overrides := map[string]string{
-		local.EnvAnthropicBaseURL: gateway,
+		local.EnvAnthropicBaseURL: baseURL,
 		local.EnvAnthropicAuth:    token,
 		local.EnvAnthropicAPIKey:  "",
 		local.EnvGatewayURL:       gateway,

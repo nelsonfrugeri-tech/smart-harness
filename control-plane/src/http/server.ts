@@ -18,6 +18,7 @@ import { registerGatewayTokenRoutes } from "./routes/gateway-tokens.ts";
 import { registerMarketplaceRoutes } from "./routes/marketplace.ts";
 import { DEFAULT_INSTALLER_VERSION, DEFAULT_PUBLIC_API_URL, type InstallerConfig } from "../domain/installer.ts";
 import { registerInstallerRoutes } from "./routes/installer.ts";
+import { registerInstallationRoutes } from "./routes/installations.ts";
 import { registerMeRoute } from "./routes/me.ts";
 import { registerOpsRoutes } from "./routes/ops.ts";
 import { registerProjectRoutes } from "./routes/projects.ts";
@@ -67,6 +68,7 @@ export function buildServer({ db, storage, harness, config, github = createGitHu
   registerInstallerRoutes(app, { publicApiUrl: config.publicApiUrl ?? DEFAULT_PUBLIC_API_URL,
     installerVersion: config.installerVersion ?? DEFAULT_INSTALLER_VERSION, installerAssetsDir: config.installerAssetsDir });
   registerMeRoute(app, { db, jwtSecret: config.jwtSecret, gatewayPublicUrl: config.gatewayPublicUrl });
+  registerInstallationRoutes(app, { db, jwtSecret: config.jwtSecret });
   registerGatewayTokenRoutes(app, {
     db,
     jwtSecret: config.jwtSecret,
