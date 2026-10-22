@@ -9,6 +9,7 @@ import (
 
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/api"
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/local"
+	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/localtools"
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/reconcile"
 )
 
@@ -54,6 +55,10 @@ func runLogin(args []string, stdout, stderr io.Writer) int {
 	if len(s.cfg.Projects) > 0 && s.cfg.GatewayURL != "" && s.cfg.GatewayURL != plan.Gateway.URL {
 		return failure(stderr, exitFailure, fmt.Errorf("personal gateway differs from the configured projects; nothing was changed"))
 	}
+	items, err := loginCatalog(client, plan)
+	if err != nil {
+		return failure(stderr, exitFailure, explain(err))
+	}
 	reportGateway(stdout, s.cfg.GatewayURL, plan.Gateway.URL)
 	if err := writeSettings(s, stdout, local.GatewayEnv(token, plan.Gateway.URL)); err != nil {
 		return failure(stderr, exitFailure, err)
@@ -65,8 +70,7 @@ func runLogin(args []string, stdout, stderr io.Writer) int {
 	if err := s.save(); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
-	fmt.Fprintln(stdout, "logged in; use harness tools install <name> [name...] or harness skills install <name> [name...]")
-	return exitOK
+	return configureCatalog(s, client, token, items, stdout, stderr)
 }
 
 func runInstall(args []string, stdout, stderr io.Writer) int {
@@ -102,6 +106,10 @@ func runCategoryInstall(args []string, requestedCategory string, stdout, stderr 
 	if err := local.CheckSettings(s.paths.SettingsFile()); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
+	return installSelection(s, client, token, args, requestedCategory, true, stdout, stderr)
+}
+
+func installSelection(s *session, client *api.Client, token string, args []string, requestedCategory string, prepareRuntimes bool, stdout, stderr io.Writer) int {
 	selected := slices.Clone(s.cfg.PersonalPlugins)
 	for _, name := range args {
 		if !slices.Contains(selected, name) {
@@ -126,8 +134,10 @@ func runCategoryInstall(args []string, requestedCategory string, stdout, stderr 
 	if err != nil {
 		return failure(stderr, exitFailure, err)
 	}
-	if err := installRequestedRuntimes(args, s.paths.ConfigDir, desired, stdout, stderr); err != nil {
-		return failure(stderr, exitFailure, err)
+	if prepareRuntimes {
+		if err := installRequestedRuntimes(args, s.paths.ConfigDir, desired, stdout, stderr); err != nil {
+			return failure(stderr, exitFailure, err)
+		}
 	}
 	if err := checkLocalTools(s.paths.ConfigDir, desired); err != nil {
 		return failure(stderr, exitFailure, err)
@@ -157,4 +167,68 @@ func runtimeSettings(paths local.Paths) (map[string]string, error) {
 		values[key] = absolute
 	}
 	return values, nil
+}
+
+// loginCatalog checks all pages before changing local state. Login installs only
+// Tools and Skills; Agents remain outside the supported automatic journey.
+func loginCatalog(client *api.Client, first api.SetupPlan) ([]api.PluginItem, error) {
+	items := append([]api.PluginItem(nil), first.Optional.Items...)
+	seen := map[string]bool{"": true}
+	page := first
+	for pages := 1; page.Optional.NextCursor != nil; pages++ {
+		cursor := *page.Optional.NextCursor
+		if pages >= 100 || seen[cursor] {
+			return nil, fmt.Errorf("personal catalog pagination is invalid or exceeds 100 pages")
+		}
+		seen[cursor] = true
+		var err error
+		page, err = client.PersonalPlan(cursor)
+		if err != nil {
+			return nil, err
+		}
+		if page.Gateway.URL != first.Gateway.URL {
+			return nil, fmt.Errorf("personal catalog changed gateways between pages")
+		}
+		items = append(items, page.Optional.Items...)
+	}
+	return items, nil
+}
+
+func configureCatalog(s *session, client *api.Client, token string, items []api.PluginItem, stdout, stderr io.Writer) int {
+	names := []string{}
+	pending := false
+	for _, item := range items {
+		kind := category(item.Components)
+		if kind != "tools" && kind != "skills" {
+			continue
+		}
+		name := item.Plugin.Name
+		if slices.Contains(names, name) {
+			continue
+		}
+		if tool, err := localtools.Find(name); err == nil && kind == "tools" {
+			if err := installLocalRuntime(tool, s.paths.ConfigDir, stdout, stderr); err != nil {
+				fmt.Fprintf(stderr, "pending %s: %v; complete with: harness tools install %s\n", name, err, name)
+				pending = true
+				continue
+			}
+		}
+		names = append(names, name)
+	}
+	if len(names) > 0 {
+		if code := installSelection(s, client, token, names, "", false, stdout, stderr); code != exitOK {
+			fmt.Fprintln(stderr, "login saved; package configuration is incomplete; fix the error and run harness login again")
+			return code
+		}
+	}
+	if pending {
+		fmt.Fprintln(stderr, "login saved; available packages configured; some Tools are pending")
+		return exitFailure
+	}
+	if len(names) == 0 {
+		fmt.Fprintln(stdout, "logged in; no Tools or Skills are available in the catalog")
+	} else {
+		fmt.Fprintln(stdout, "logged in; authorized Tools and Skills configured")
+	}
+	return exitOK
 }

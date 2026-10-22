@@ -112,11 +112,22 @@ func explain(err error) error {
 	return err
 }
 
-// promptToken reads the token from stdin. On a terminal, echo is turned off while it is typed and
-// turned back on when the prompt ends, also on Ctrl-C.
+// promptToken opens the controlling terminal when stdin is a bootstrap pipe.
+// Echo is disabled while typing and restored when the prompt ends, also on Ctrl-C.
 func promptToken(stderr io.Writer) (string, error) {
 	fmt.Fprint(stderr, "Gateway token (shg_..., input hidden): ")
-	f, isFile := stdin.(*os.File)
+	input := stdin
+	f, isFile := input.(*os.File)
+	if isFile {
+		if fi, err := f.Stat(); err == nil && fi.Mode()&os.ModeCharDevice == 0 {
+			tty, err := os.Open("/dev/tty")
+			if err != nil {
+				return "", fmt.Errorf("an interactive terminal is required to enter the token")
+			}
+			defer tty.Close()
+			input, f = tty, tty
+		}
+	}
 	terminal := false
 	if isFile {
 		if fi, err := f.Stat(); err == nil && fi.Mode()&os.ModeCharDevice != 0 {
@@ -125,14 +136,14 @@ func promptToken(stderr io.Writer) (string, error) {
 	}
 	if terminal {
 		if err := stty(f, "-echo"); err != nil {
-			return "", fmt.Errorf("cannot hide the input (%v); set %s instead", err, local.EnvToken)
+			return "", fmt.Errorf("cannot hide token input (%v); run login in an interactive terminal", err)
 		}
 		restore := func() { _ = stty(f, "echo") }
 		forget := atInterrupt(func() { restore(); fmt.Fprintln(stderr) })
 		defer func() { forget(); restore() }()
 	}
 	defer fmt.Fprintln(stderr)
-	line, err := bufio.NewReader(stdin).ReadString('\n')
+	line, err := bufio.NewReader(input).ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return "", err
 	}
@@ -142,6 +153,7 @@ func promptToken(stderr io.Writer) (string, error) {
 func stty(tty *os.File, mode string) error {
 	cmd := exec.Command("stty", mode)
 	cmd.Stdin = tty
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
 	return cmd.Run()
 }
 

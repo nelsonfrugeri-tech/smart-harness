@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/local"
+	"github.com/nelsonfrugeri-tech/smart-harness/cli/internal/client/localtools"
 )
 
 func TestPersonalLoginBeforeClaudeOrPackages(t *testing.T) {
@@ -136,5 +139,46 @@ func TestRejectedPersonalLoginDoesNotPersistCredentials(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(e.claudeDir, "settings.json")); !os.IsNotExist(err) {
 		t.Fatal("rejected token persisted", err)
+	}
+}
+
+func TestLoginAutomaticallyInstallsCatalogAndReportsMissingRuntime(t *testing.T) {
+	e := newEnv(t)
+	f := newFakeAPI(t)
+	remote := newVersion(t, "github", "1.0.0")
+	remote.componentKind = "mcp"
+	skill := newVersion(t, "md2poui", "2.0.0")
+	agent := newVersion(t, "future-agent", "1.0.0")
+	agent.componentKind = "agent"
+	tool := newVersion(t, "deja-vu", "2.0.0")
+	tool.componentKind = "mcp"
+	f.optional["personal"] = []published{remote, skill, agent, tool}
+	original := installLocalRuntime
+	t.Cleanup(func() { installLocalRuntime = original })
+	installLocalRuntime = func(localtools.Tool, string, io.Writer, io.Writer) error { return fmt.Errorf("Go is missing") }
+	code, out, errOut := e.run(testToken+"\n", "login", "--api-url", f.api.URL)
+	if code != 1 || !strings.Contains(errOut, "pending deja-vu") || !strings.Contains(errOut, "harness tools install deja-vu") || strings.Contains(out, "authorized Tools and Skills configured") {
+		t.Fatal(code, out, errOut)
+	}
+	if f.downloads(remote) != 1 || f.downloads(skill) != 1 || f.downloads(agent) != 0 || f.downloads(tool) != 0 {
+		t.Fatal("partial login did not install only available Tools/Skills")
+	}
+	installLocalRuntime = func(tool localtools.Tool, config string, _, _ io.Writer) error {
+		path := tool.Path(config)
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte("#!/bin/sh\necho 'deja 0.16.8'\n"), 0o700); err != nil {
+			return err
+		}
+		return os.WriteFile(filepath.Join(filepath.Dir(filepath.Dir(path)), "ready"), []byte(tool.Version), 0o600)
+	}
+	output := e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
+	if !strings.Contains(output, "authorized Tools and Skills configured") {
+		t.Fatal(output)
+	}
+	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
+	if f.downloads(remote) != 1 || f.downloads(skill) != 1 || f.downloads(tool) != 1 || len(e.config().Plugins) != 3 {
+		t.Fatal("repeated login reinstalled packages or lost selection")
 	}
 }

@@ -33,8 +33,8 @@ func TestCategoryBatchTypeMismatchDoesNotMutate(t *testing.T) {
 	tool := newVersion(t, "deja-vu", "2.0.0")
 	tool.componentKind = "mcp"
 	skill := newVersion(t, "md2poui", "2.0.0")
-	f.optional["personal"] = []published{tool, skill}
 	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
+	f.optional["personal"] = []published{tool, skill}
 	originalInstaller := installLocalRuntime
 	t.Cleanup(func() { installLocalRuntime = originalInstaller })
 	calls := 0
@@ -65,8 +65,8 @@ func TestCategoryInstallAndChecksAreScopedAndAdditive(t *testing.T) {
 	notion := newVersion(t, "notion", "1.0.0")
 	notion.componentKind = "mcp"
 	skill := newVersion(t, "md2poui", "2.0.0")
-	f.optional["personal"] = []published{github, notion, skill}
 	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
+	f.optional["personal"] = []published{github, notion, skill}
 	e.mustRun("", "tools", "install", "github", "notion")
 	e.mustRun("", "skills", "install", "md2poui")
 	toolOutput := e.mustRun("", "tools", "check")
@@ -95,8 +95,8 @@ func TestToolsInstallAutomaticallyInstallsAssociatedRuntime(t *testing.T) {
 	f := newFakeAPI(t)
 	tool := newVersion(t, "deja-vu", "2.0.0")
 	tool.componentKind = "mcp"
-	f.optional["personal"] = []published{tool}
 	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
+	f.optional["personal"] = []published{tool}
 	originalInstaller := installLocalRuntime
 	t.Cleanup(func() { installLocalRuntime = originalInstaller })
 	calls := 0
@@ -129,8 +129,8 @@ func TestCategoryCheckReadsLegacyInstallationWithoutComponents(t *testing.T) {
 	e := newEnv(t)
 	f := newFakeAPI(t)
 	skill := newVersion(t, "md2poui", "2.0.0", "plugin.json", `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"md2poui","version":"2.0.0"}`)
-	f.optional["personal"] = []published{skill}
 	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
+	f.optional["personal"] = []published{skill}
 	e.mustRun("", "install", "md2poui")
 	path := filepath.Join(e.configDir, "config.json")
 	cfg, err := local.LoadConfig(path)
@@ -156,8 +156,8 @@ func TestRuntimeInstallFailurePreservesPackageSelection(t *testing.T) {
 	f := newFakeAPI(t)
 	tool := newVersion(t, "deja-vu", "2.0.0")
 	tool.componentKind = "mcp"
-	f.optional["personal"] = []published{tool}
 	e.mustRun(testToken+"\n", "login", "--api-url", f.api.URL)
+	f.optional["personal"] = []published{tool}
 	originalInstaller := installLocalRuntime
 	t.Cleanup(func() { installLocalRuntime = originalInstaller })
 	installLocalRuntime = func(localtools.Tool, string, io.Writer, io.Writer) error {
