@@ -9,6 +9,7 @@ import {
 import { projectPath } from "../app/navigation";
 import { useResource } from "../app/useResource";
 import { useArchiveDownload } from "../app/useArchiveDownload";
+import { PackageDiscovery } from "../components/PackageDiscovery";
 import { PackageSummary } from "../components/PackageSummary";
 import { PackageContents } from "../components/PackageContents";
 import { DownloadFeedback } from "../components/DownloadFeedback";
@@ -130,6 +131,7 @@ function PackageDetail({
         </Badge>
         <PackageSummary item={item} />
       </div>
+      <PackageDiscovery item={item} filters={filters} />
       {setupProject && !pinned && (
         <p className="package-optional-note">
           Complemento opcional: o setup padrão instala apenas o pacote base.

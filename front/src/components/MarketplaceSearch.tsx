@@ -16,7 +16,7 @@ export function MarketplaceSearch({
   // Keep the input mounted: changing its key would discard keyboard focus on submit.
   useEffect(() => {
     setQuery(filters.q ?? "");
-  }, [filters.q, filters.kind, filters.project, filters.limit]);
+  }, [filters.q, filters.type, filters.kind, filters.project, filters.limit]);
   return (
     <form
       className={`marketplace-search ${prominent ? "catalog-search" : ""}`}

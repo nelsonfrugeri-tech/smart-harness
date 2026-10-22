@@ -5,7 +5,7 @@ import { App } from "./App";
 import { deferred, json, me, plan, respond } from "../test/fixtures";
 beforeEach(() => {
   sessionStorage.setItem("smart-harness.access-token", "token-one");
-  history.replaceState(null, "", "/marketplace?kind=skill&q=go&limit=1");
+  history.replaceState(null, "", "/marketplace?type=skill&q=go&limit=1");
 });
 it("discovers whole packages using API filters from a reloadable URL", async () => {
   const fetcher = vi.fn(async (input: RequestInfo | URL) =>
@@ -23,12 +23,12 @@ it("discovers whole packages using API filters from a reloadable URL", async () 
   expect(screen.queryByText("investment-guide")).toBeNull();
   expect(screen.queryByText("go-practices")).toBeNull();
   expect(
-    screen.getByRole("button", { name: "Com skills", pressed: true }),
+    screen.getByRole("button", { name: "Skills", pressed: true }),
   ).toBeTruthy();
   const request = fetcher.mock.calls
     .map(([input]) => String(input))
     .find((path) => path.startsWith("/v1/marketplace"));
-  expect(new URL(request!, "http://localhost").searchParams.get("kind")).toBe(
+  expect(new URL(request!, "http://localhost").searchParams.get("type")).toBe(
     "skill",
   );
   expect(new URL(request!, "http://localhost").searchParams.get("q")).toBe(
@@ -121,7 +121,7 @@ it("resets pages on filter changes, ignores delayed pages and preserves filter f
   const pending = deferred<Response>();
   let oldSignal: AbortSignal | undefined;
   mockMarketplace((url, init) => {
-    if (url.searchParams.get("kind") === "mcp") {
+    if (url.searchParams.get("type") === "connector") {
       expect(url.searchParams.has("cursor")).toBe(false);
       return json({ items: [second], next_cursor: null });
     }
@@ -134,7 +134,7 @@ it("resets pages on filter changes, ignores delayed pages and preserves filter f
   render(<App />);
   await screen.findByRole("button", { name: "Carregar mais" });
   await userEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
-  const filter = screen.getByRole("button", { name: "Com MCPs" });
+  const filter = screen.getByRole("button", { name: "Conectores" });
   await userEvent.click(filter);
   expect(document.activeElement).toBe(filter);
   await screen.findByRole("heading", { name: "review-tools" });
@@ -146,7 +146,7 @@ it("resets pages on filter changes, ignores delayed pages and preserves filter f
   expect(screen.queryByText("Carregando pacotes…")).toBeNull();
   expect(screen.queryByText("Carregando mais…")).toBeNull();
   expect(screen.queryByRole("heading", { name: "investment-base" })).toBeNull();
-  expect(location.search).toContain("kind=mcp");
+  expect(location.search).toContain("type=connector");
 });
 it("submits catalog search by keyboard and reloads filters on browser navigation", async () => {
   mockMarketplace((url) =>
@@ -170,13 +170,13 @@ it("submits catalog search by keyboard and reloads filters on browser navigation
     history.replaceState(
       null,
       "",
-      "/marketplace?kind=mcp&project=investimentos-api",
+      "/marketplace?type=connector&project=investimentos-api",
     );
     window.dispatchEvent(new PopStateEvent("popstate"));
   });
   await screen.findByRole("heading", { name: "investment-base" });
   expect(
-    screen.getByRole("button", { name: "Com MCPs", pressed: true }),
+    screen.getByRole("button", { name: "Conectores", pressed: true }),
   ).toBeTruthy();
   expect(
     screen.getByRole("combobox", { name: "Pacotes disponíveis" }),
@@ -200,7 +200,7 @@ it("opens the selected package and keeps query context on return", async () => {
     await screen.findByRole("link", { name: "investment-base" }),
   );
   expect(location.pathname).toBe("/marketplace/packages/investment-base");
-  expect(location.search).toBe("?kind=skill&q=go&limit=1");
+  expect(location.search).toBe("?type=skill&q=go&limit=1");
   await screen.findByRole("heading", { name: "Componentes do pacote" });
   expect(screen.getByRole("region", { name: "Agentes" })).toBeTruthy();
   expect(screen.getByRole("region", { name: "Skills" })).toBeTruthy();
@@ -211,7 +211,7 @@ it("opens the selected package and keeps query context on return", async () => {
   );
   await screen.findByRole("heading", { name: "investment-base" });
   expect(location.pathname).toBe("/marketplace");
-  expect(location.search).toBe("?kind=skill&q=go&limit=1");
+  expect(location.search).toBe("?type=skill&q=go&limit=1");
 });
 it.each([403, 404])(
   "distinguishes unavailable project context from an empty search (%s)",
@@ -386,7 +386,7 @@ it("preserves punctuation in direct search URLs", async () => {
   );
 });
 
-it("keeps a single catalog search and operates component filters with the keyboard", async () => {
+it("keeps a single catalog search and operates package type filters with the keyboard", async () => {
   const requests: URL[] = [];
   mockMarketplace((url) => {
     requests.push(url);
@@ -409,16 +409,16 @@ it("keeps a single catalog search and operates component filters with the keyboa
   expect(
     screen.getByRole("button", { name: "Todos", pressed: true }),
   ).toBeTruthy();
-  expect(new URLSearchParams(location.search).has("kind")).toBe(false);
+  expect(new URLSearchParams(location.search).has("type")).toBe(false);
   await user.tab();
-  const agentFilter = screen.getByRole("button", { name: "Com agentes" });
-  expect(document.activeElement).toBe(agentFilter);
+  const connectorFilter = screen.getByRole("button", { name: "Conectores" });
+  expect(document.activeElement).toBe(connectorFilter);
   await user.keyboard(" ");
   await waitFor(() =>
-    expect(requests.at(-1)?.searchParams.get("kind")).toBe("agent"),
+    expect(requests.at(-1)?.searchParams.get("type")).toBe("connector"),
   );
-  expect(agentFilter.getAttribute("aria-pressed")).toBe("true");
-  expect(document.activeElement).toBe(agentFilter);
+  expect(connectorFilter.getAttribute("aria-pressed")).toBe("true");
+  expect(document.activeElement).toBe(connectorFilter);
 });
 
 it.each([true, false])(
@@ -510,4 +510,121 @@ it("keeps pagination recovery focused on failure and on a duplicate-only final p
     "Todos os resultados desta consulta foram carregados.",
   );
   expect(document.activeElement).toBe(end);
+});
+
+it("shows API type and searchable keywords on cards and detail without inferring compatibility", async () => {
+  const tagged = {
+    ...first,
+    type: "connector",
+    keywords: ["claude-code", "github"],
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.startsWith("/v1/marketplace"))
+        return json({ items: [tagged], next_cursor: null });
+      if (path === "/v1/plugins/investment-base") return json(tagged);
+      return respond(input);
+    }),
+  );
+  render(<App />);
+  await screen.findByRole("heading", { name: "investment-base" });
+  expect(screen.getByText("Conector")).toBeTruthy();
+  expect(screen.getByText("Pinned baseline")).toBeTruthy();
+  expect(screen.getByText("1 agente")).toBeTruthy();
+  expect(screen.queryByText("codex")).toBeNull();
+  expect(
+    screen.getByRole("link", { name: "Buscar por claude-code" }),
+  ).toHaveProperty("search", "?type=skill&q=claude-code&limit=1");
+  await userEvent.click(screen.getByRole("link", { name: "investment-base" }));
+  await screen.findByRole("heading", { name: "Componentes do pacote" });
+  expect(screen.getByText("Conector")).toBeTruthy();
+  const tag = screen.getByRole("link", { name: "Buscar por claude-code" });
+  tag.focus();
+  await userEvent.keyboard("{Enter}");
+  await screen.findByRole("heading", { name: "investment-base" });
+  expect(location.pathname).toBe("/marketplace");
+  expect(new URLSearchParams(location.search).get("q")).toBe("claude-code");
+});
+it("does not reserve a tag area for packages with no keywords", async () => {
+  mockMarketplace(() => json({ items: [first], next_cursor: null }));
+  render(<App />);
+  await screen.findByRole("heading", { name: "investment-base" });
+  expect(
+    screen.queryByRole("list", { name: "Tags de investment-base" }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole("link", { name: "Buscar por claude-code" }),
+  ).toBeNull();
+});
+it("preserves legacy component URLs until a primary filter replaces them", async () => {
+  history.replaceState(null, "", "/marketplace?kind=agent&q=go");
+  const requests: URL[] = [];
+  mockMarketplace((url) => {
+    requests.push(url);
+    return json({ items: [first], next_cursor: null });
+  });
+  render(<App />);
+  await screen.findByRole("heading", { name: "investment-base" });
+  expect(requests[0].searchParams.get("kind")).toBe("agent");
+  expect(screen.queryByRole("button", { name: "Com agentes" })).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "Todos", pressed: false }),
+  ).toBeTruthy();
+  await userEvent.click(screen.getByRole("button", { name: "Skills" }));
+  await waitFor(() =>
+    expect(requests.at(-1)?.searchParams.get("type")).toBe("skill"),
+  );
+  expect(requests.at(-1)?.searchParams.has("kind")).toBe(false);
+});
+it("rejects an unknown package type without requesting the catalog", async () => {
+  history.replaceState(null, "", "/marketplace?type=unknown");
+  const fetcher = mockMarketplace(() => json({ items: [], next_cursor: null }));
+  render(<App />);
+  await screen.findByText("Filtros inválidos");
+  expect(
+    fetcher.mock.calls.some(([input]) =>
+      String(input).includes("/v1/marketplace"),
+    ),
+  ).toBe(false);
+});
+it("starts a fresh text search when a tag is activated after pagination", async () => {
+  const requests: URL[] = [];
+  const tagged = { ...first, keywords: ["claude-code"] };
+  mockMarketplace((url) => {
+    requests.push(url);
+    return json({
+      items: url.searchParams.has("cursor") ? [second] : [tagged],
+      next_cursor:
+        url.searchParams.get("q") === "go" && !url.searchParams.has("cursor")
+          ? "next-page"
+          : null,
+    });
+  });
+  render(<App />);
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Carregar mais" }),
+  );
+  await screen.findByRole("heading", { name: "review-tools" });
+  await userEvent.click(
+    screen.getByRole("link", { name: "Buscar por claude-code" }),
+  );
+  await waitFor(() =>
+    expect(requests.at(-1)?.searchParams.get("q")).toBe("claude-code"),
+  );
+  expect(requests.at(-1)?.searchParams.has("cursor")).toBe(false);
+  expect(screen.queryByRole("heading", { name: "review-tools" })).toBeNull();
+});
+it("keeps agent packages accessible through a direct type URL", async () => {
+  history.replaceState(null, "", "/marketplace?type=agent");
+  const requests: URL[] = [];
+  mockMarketplace((url) => {
+    requests.push(url);
+    return json({ items: [first], next_cursor: null });
+  });
+  render(<App />);
+  await screen.findByRole("heading", { name: "investment-base" });
+  expect(requests[0].searchParams.get("type")).toBe("agent");
+  expect(screen.getByText("Agente")).toBeTruthy();
 });

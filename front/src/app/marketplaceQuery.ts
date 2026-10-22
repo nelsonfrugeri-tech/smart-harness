@@ -5,11 +5,13 @@ export function readMarketplaceFilters(
 ): MarketplaceFilters | null {
   const params = new URLSearchParams(search);
   const kind = params.get("kind") || undefined;
+  const type = params.get("type") || undefined;
   const project = params.get("project") || undefined;
   const q = params.get("q")?.trim() || undefined;
   const rawLimit = params.get("limit");
   const limit = rawLimit === null ? 20 : Number(rawLimit);
   if (
+    (type && type !== "connector" && type !== "skill" && type !== "agent") ||
     (kind && kind !== "agent" && kind !== "skill" && kind !== "mcp") ||
     (project && project.length > 100) ||
     (q && q.length > 100) ||
@@ -18,10 +20,17 @@ export function readMarketplaceFilters(
     limit > 100
   )
     return null;
-  return { kind: kind as MarketplaceFilters["kind"], project, q, limit };
+  return {
+    type: type as MarketplaceFilters["type"],
+    kind: kind as MarketplaceFilters["kind"],
+    project,
+    q,
+    limit,
+  };
 }
 export function marketplaceSearch(filters: MarketplaceFilters) {
   const params = new URLSearchParams();
+  if (filters.type) params.set("type", filters.type);
   if (filters.kind) params.set("kind", filters.kind);
   if (filters.project) params.set("project", filters.project);
   if (filters.q?.trim()) params.set("q", filters.q.trim());

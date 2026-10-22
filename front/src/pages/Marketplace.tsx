@@ -9,6 +9,7 @@ import { usePaginationFocus } from "../app/usePaginationFocus";
 import { useMarketplace } from "../app/useMarketplace";
 import { Button, EmptyState, PageHeading } from "../components/Primitives";
 import { Loading, RequestError } from "../components/RequestState";
+import { PackageDiscovery } from "../components/PackageDiscovery";
 import { PackageSummary } from "../components/PackageSummary";
 import { MarketplaceSearch } from "../components/MarketplaceSearch";
 import { MarketplaceFilters as CatalogFilters } from "../components/MarketplaceFilters";
@@ -29,7 +30,7 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
     more,
   );
   const project = projects.find((item) => item.slug === filters.project);
-  const filtered = Boolean(filters.kind || filters.q);
+  const filtered = Boolean(filters.type || filters.kind || filters.q);
   return (
     <div className="page marketplace-page" ref={pagination.results}>
       <PageHeading
@@ -37,7 +38,7 @@ export function Marketplace({ filters, token, expire, me, projects }: Props) {
         description={
           filters.project
             ? `Pacotes adicionais para ${project?.name ?? filters.project}, além do pacote base.`
-            : "Encontre pacotes com agentes, skills e MCPs para o seu trabalho."
+            : "Encontre conectores e skills para o seu trabalho."
         }
       />
       <section
@@ -173,6 +174,7 @@ function PackageCard({
           item.plugin.description ||
           "Sem descrição cadastrada."}
       </p>
+      <PackageDiscovery item={item} filters={filters} />
       <PackageSummary item={item} />
       <footer className="package-card-footer">
         <span className="package-owner">{item.plugin.tenant.name}</span>

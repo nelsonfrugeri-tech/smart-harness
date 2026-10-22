@@ -1,4 +1,4 @@
-import { Bot, Braces, Layers3, Plug } from "lucide-react";
+import { Braces, Layers3, Plug } from "lucide-react";
 import type { WorkspaceData } from "../api/client";
 import {
   marketplacePath,
@@ -8,9 +8,8 @@ import { navigate } from "../app/navigation";
 import { followLink } from "./Shell";
 const options = [
   { value: undefined, label: "Todos", icon: Layers3 },
-  { value: "agent", label: "Com agentes", icon: Bot },
-  { value: "skill", label: "Com skills", icon: Braces },
-  { value: "mcp", label: "Com MCPs", icon: Plug },
+  { value: "connector", label: "Conectores", icon: Plug },
+  { value: "skill", label: "Skills", icon: Braces },
 ] as const;
 export function MarketplaceFilters({
   filters,
@@ -27,16 +26,18 @@ export function MarketplaceFilters({
       <div
         className="component-filters"
         role="group"
-        aria-label="Pacotes contendo"
+        aria-label="Tipo de pacote"
       >
         {options.map(({ value, label, icon: Icon }) => (
           <button
             key={value ?? "all"}
             type="button"
             className="component-filter"
-            aria-pressed={filters.kind === value}
+            aria-pressed={!filters.kind && filters.type === value}
             onClick={() =>
-              navigate(marketplacePath({ ...filters, kind: value }))
+              navigate(
+                marketplacePath({ ...filters, kind: undefined, type: value }),
+              )
             }
           >
             <Icon size={16} aria-hidden="true" />
@@ -69,7 +70,7 @@ export function MarketplaceFilters({
             ))}
           </select>
         </label>
-        {(filters.kind || filters.q || filters.project) && (
+        {(filters.type || filters.kind || filters.q || filters.project) && (
           <a
             className="text-link"
             href={marketplacePath({ limit: filters.limit })}
