@@ -9,6 +9,7 @@ import { Button, EmptyState } from "../components/Primitives";
 import { Workspace } from "../pages/Workspace";
 import { Profile } from "../pages/Profile";
 import { CliGuide } from "../pages/CliGuide";
+import { Observability } from "../pages/Observability";
 import { Project } from "../pages/Project";
 import { useResource } from "./useResource";
 import { useSession } from "./session";
@@ -88,6 +89,8 @@ function ConnectedWorkspace({
         <Profile me={me} token={token} expire={expire} />
       ) : route.kind === "cli" ? (
         <CliGuide />
+      ) : route.kind === "observability" ? (
+        <Observability />
       ) : route.kind === "workspace" ? (
         <Workspace />
       ) : route.kind === "marketplace" ? (

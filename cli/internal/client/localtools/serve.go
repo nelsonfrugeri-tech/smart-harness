@@ -32,7 +32,11 @@ func (t Tool) checkMCP(config string) error {
 
 // Serve forwards native MCP stdio without a shell, banners or session deadline.
 // Cancellation follows the parent process lifetime rather than a fixed timeout.
+// claude-tap has no MCP server upstream: the CLI serves its read-only status itself.
 func (t Tool) Serve(config string, stdin io.Reader, stdout, stderr io.Writer) error {
+	if t.Name == TapName {
+		return serveTapMCP(t, config, stdin, stdout)
+	}
 	if err := t.Check(config); err != nil {
 		return err
 	}
@@ -65,13 +69,19 @@ func graphPath() (string, error) {
 	return "", fmt.Errorf("Graphify graph is missing in the current checkout; run harness tools run graphify update ./src and reconnect the MCP")
 }
 
+// environment keeps each tool's state with this harness config unless the user chose a location.
 func (t Tool) environment(config string) []string {
 	env := externalEnvironment()
-	if t.Name == "deja-vu" {
-		for key, path := range map[string]string{"DEJA_INDEX_DIR": filepath.Join(config, "deja-index"), "DEJA_NOTES_FILE": filepath.Join(config, "deja-notes.jsonl")} {
-			if os.Getenv(key) == "" {
-				env = append(env, key+"="+path)
-			}
+	defaults := map[string]string{}
+	switch t.Name {
+	case "deja-vu":
+		defaults = map[string]string{"DEJA_INDEX_DIR": filepath.Join(config, "deja-index"), "DEJA_NOTES_FILE": filepath.Join(config, "deja-notes.jsonl")}
+	case TapName:
+		defaults = map[string]string{"CLOUDTAP_DB": filepath.Join(TracesDir(config), tapDatabase)}
+	}
+	for key, path := range defaults {
+		if os.Getenv(key) == "" {
+			env = append(env, key+"="+path)
 		}
 	}
 	return env

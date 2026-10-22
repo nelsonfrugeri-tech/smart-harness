@@ -5,6 +5,7 @@ import type { PluginProvenance, RelatedProject } from "../src/domain/plugin-prov
 const RELATED_PROJECTS: Readonly<Record<string, RelatedProject>> = {
   graphify: { kind: "open-source", name: "Graphify", repository_url: "https://github.com/Graphify-Labs/graphify", license: "Apache-2.0" },
   "deja-vu": { kind: "open-source", name: "deja-vu", repository_url: "https://github.com/vshulcz/deja-vu", license: "MIT" },
+  observability: { kind: "open-source", name: "claude-tap", repository_url: "https://github.com/liaohch3/claude-tap", license: "MIT" },
   md2poui: { kind: "open-source", name: "TOTVS md2poui", repository_url: "https://github.com/totvs/md2poui", license: "MIT" },
 };
 

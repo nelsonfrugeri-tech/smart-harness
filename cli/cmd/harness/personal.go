@@ -149,7 +149,22 @@ func installSelection(s *session, client *api.Client, token string, args []strin
 	if err := writeSettings(s, stdout, local.GatewayEnv(token, desired.GatewayURL)); err != nil {
 		return failure(stderr, exitFailure, err)
 	}
+	reportInstallations(s, client, stderr)
 	return exitOK
+}
+
+// reportInstallations sends the personal set with installed versions so the Marketplace can
+// mark it. One attempt; a failure is a warning and never changes the exit code.
+func reportInstallations(s *session, client *api.Client, stderr io.Writer) {
+	plugins := []api.ReportedPlugin{}
+	for _, name := range s.cfg.PersonalPlugins {
+		if record, ok := s.cfg.Plugins[name]; ok {
+			plugins = append(plugins, api.ReportedPlugin{Name: name, Version: record.Version})
+		}
+	}
+	if err := client.PutInstallations(version, plugins); err != nil {
+		fmt.Fprintf(stderr, "harness: warning: could not report installations: %v\n", err)
+	}
 }
 
 // runtimeSettings pins the executable and managed directories for native MCP processes.
@@ -226,6 +241,7 @@ func configureCatalog(s *session, client *api.Client, token string, items []api.
 		return exitFailure
 	}
 	if len(names) == 0 {
+		reportInstallations(s, client, stderr)
 		fmt.Fprintln(stdout, "logged in; no Tools or Skills are available in the catalog")
 	} else {
 		fmt.Fprintln(stdout, "logged in; authorized Tools and Skills configured")

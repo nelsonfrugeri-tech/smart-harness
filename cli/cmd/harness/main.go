@@ -33,8 +33,8 @@ const usage = `usage:
   harness skills check [name]
   harness agents install <name> [name...]
   harness agents check [name]
-  harness tools serve <graphify|deja-vu>
-  harness tools run <graphify|deja-vu> <args...>
+  harness tools serve <graphify|deja-vu|observability>
+  harness tools run <graphify|deja-vu|observability> <args...>
   harness doctor
   harness draft pull <id> [--dir <dir>]`
 

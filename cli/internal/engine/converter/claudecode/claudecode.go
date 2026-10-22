@@ -93,7 +93,7 @@ func mcpJSON(servers []pkg.MCPServer) ([]byte, error) {
 	out := map[string]any{} // encoding/json sorts map keys
 	for _, s := range servers {
 		if s.Local {
-			if s.Name != "graphify" && s.Name != "deja-vu" {
+			if !pkg.IsLocalConnector(s.Name) {
 				return nil, fmt.Errorf("unsupported local connector %q", s.Name)
 			}
 			out[s.Name] = map[string]any{"type": "stdio", "command": "${HARNESS_CLI_BIN}", "args": []string{"tools", "serve", s.Name}}

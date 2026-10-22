@@ -5,6 +5,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -294,8 +295,37 @@ func (c *Client) getJSON(path string, out any) error {
 	return nil
 }
 
+// ReportedPlugin is one installed plugin in PUT /v1/me/installations.
+type ReportedPlugin struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+// PutInstallations replaces the caller's reported installation set. The API answers 204.
+func (c *Client) PutInstallations(cliVersion string, plugins []ReportedPlugin) error {
+	if plugins == nil {
+		plugins = []ReportedPlugin{}
+	}
+	body, err := json.Marshal(map[string]any{"cliVersion": cliVersion, "plugins": plugins})
+	if err != nil {
+		return err
+	}
+	resp, err := c.send(http.MethodPut, "/v1/me/installations", body, jsonTimeout)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+	return nil
+}
+
 // do sends an authenticated GET and turns a non-2xx answer into an HTTPError.
 func (c *Client) do(path string, timeout time.Duration) (*http.Response, error) {
+	return c.send(http.MethodGet, path, nil, timeout)
+}
+
+// send sends an authenticated request with an optional JSON body.
+func (c *Client) send(method, path string, body []byte, timeout time.Duration) (*http.Response, error) {
 	ref, err := url.Parse(path)
 	if err != nil {
 		return nil, err
@@ -303,16 +333,23 @@ func (c *Client) do(path string, timeout time.Duration) (*http.Response, error) 
 	target := *c.base
 	target.Path = c.base.Path + ref.Path
 	target.RawQuery = ref.RawQuery
-	req, err := http.NewRequest(http.MethodGet, target.String(), nil)
+	var reader io.Reader
+	if body != nil {
+		reader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequest(method, target.String(), reader)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	hc := *c.http
 	hc.Timeout = timeout
 	resp, err := hc.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("GET %s: %w", target.Redacted(), unwrapURLError(err))
+		return nil, fmt.Errorf("%s %s: %w", method, target.Redacted(), unwrapURLError(err))
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		defer resp.Body.Close()

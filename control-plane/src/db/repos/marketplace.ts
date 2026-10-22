@@ -11,10 +11,11 @@ import {
   type Visibility,
 } from "../../domain/marketplace.ts";
 
-// Visibility rule, applied by every read below: a version is visible when its plugin belongs
-// to a tenant in the scope, or when it is "organization" and the caller has at least one
-// membership. A user without memberships sees nothing.
-const VISIBLE = `(p.tenant_id IN (SELECT value FROM json_each(@scope))
+// Visibility rule, applied by every read below and by repos/installations.ts: a version is
+// visible when its plugin belongs to a tenant in the scope, or when it is "organization" and the
+// caller has at least one membership. A user without memberships sees nothing.
+// Expects the aliases p (plugins) and v (plugin_versions) and the @scope parameter.
+export const VISIBLE = `(p.tenant_id IN (SELECT value FROM json_each(@scope))
    OR (v.visibility = 'organization' AND json_array_length(@scope) > 0))`;
 
 const PACKAGE_TYPE = `CASE
