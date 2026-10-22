@@ -22,9 +22,11 @@ Graphify e deja-vu usam ferramentas locais e suas skills do catálogo.
    eco do setup; não coloque o token no comando.
 3. Baixe o binário adequado em [releases da CLI](https://github.com/nelsonfrugeri-tech/smart-harness/releases/latest),
    confira `SHA256SUMS`, coloque `harness` no PATH e execute `harness version` e
-   `harness tools --help`. A release precisa incluir o comando `tools`; a antiga
+   `harness tools check`. A release precisa incluir o comando `tools`; a antiga
    v0.1.0 não comprova suporte a esta jornada. Se a release ainda não incluir o
-   comando, use o binário compilado da revisão validada pelo mantenedor.
+   comando, use o binário compilado da revisão validada pelo mantenedor. Antes de
+   instalar as ferramentas, `tools check` pode informar que elas estão ausentes;
+   depois da instalação, precisa retornar sucesso.
 4. Tenha Claude Code ≥ 2.1.305, Node.js 24, Git, uv/Python ≥ 3.10 e Go ≥ 1.25.
    Em uma pasta nova:
 
@@ -35,16 +37,17 @@ npm ci --ignore-scripts
 npm test
 ```
 
-5. Continue nesse checkout. Copie da plataforma o comando de setup e confirme
+5. Continue nesse checkout. Instale e confira as ferramentas locais antes do
+   setup. Copie da plataforma o comando de setup e confirme
    a URL pública da API. A página acrescenta os complementos Graphify/deja-vu
    quando eles aparecem nos opcionais do plano retornado. Exemplo:
 
 ```sh
-harness setup 'md2poui' --api-url 'http://127.0.0.1:8080' --include-optional graphify,deja-vu
-harness doctor
 harness tools install graphify
 harness tools install deja-vu
 harness tools check
+harness setup 'md2poui' --api-url 'http://127.0.0.1:8080' --include-optional graphify,deja-vu
+harness doctor
 ```
 
 6. Abra desenvolvimento e peça a leitura da história Trello e da ADR vinculada

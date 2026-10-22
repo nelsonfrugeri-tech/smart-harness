@@ -41,11 +41,11 @@ Siga [docs/onboarding.md](../docs/onboarding.md). Depois do seed da demo, entre
 como `dev@smart-harness.local` e abra **Preparar demo TOTVS**, disponível tanto
 no workspace quanto no catálogo **Conectores e Skills** para quem tem acesso.
 A página usa o plano real de `md2poui`, conserva os pins e mostra clone do fork,
-setup, diagnóstico, ferramentas locais e abertura das sessões de desenvolvimento
+instalação/check das ferramentas locais antes do setup, diagnóstico e abertura das sessões de desenvolvimento
 /review. Os agentes só recebem comando quando estão presentes no baseline.
 
 O usuário gera o token em **Meus tokens**, baixa a CLI e trabalha no checkout
-`md2poui`. A CLI deve oferecer `tools --help`; o link aponta para releases/latest,
+`md2poui`. A CLI deve oferecer `tools check`; o link aponta para releases/latest,
 sem afirmar que uma versão antiga possui as ferramentas da demo. O browser não
 confirma instalação, saúde ou conexão apenas porque um comando foi copiado.
 

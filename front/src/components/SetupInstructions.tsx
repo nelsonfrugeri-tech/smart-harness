@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { SetupPlan } from "../api/client";
-import { DemoCheckout, DemoSessions } from "./DemoSetup";
+import { DemoCheckout, DemoSessions, DemoTools } from "./DemoSetup";
 import { CopyValue } from "./CopyValue";
 import { followLink } from "./Shell";
 declare const __HARNESS_PUBLIC_API_URL__: string;
@@ -111,6 +111,7 @@ export function SetupInstructions({ plan }: { plan: SetupPlan }) {
               prompt sem eco.
             </p>
             {plan.project.slug === "md2poui" && <DemoCheckout />}
+            {plan.project.slug === "md2poui" && <DemoTools />}
             <label className="setup-url">
               URL da API para a CLI
               <input

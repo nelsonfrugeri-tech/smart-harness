@@ -160,6 +160,27 @@ it("prepares the TOTVS checkout and opens only agents present in the actual plan
     screen.getByText(/O agente de review ainda não está no plano/),
   ).toBeTruthy();
   expect(screen.getByDisplayValue("harness tools check")).toBeTruthy();
+  const commandFields = screen
+    .getAllByRole("textbox")
+    .filter((field) => field instanceof HTMLTextAreaElement);
+  const commandValues = commandFields.map(
+    (field) => (field as HTMLTextAreaElement).value,
+  );
+  const installIndex = commandValues.findIndex((value) =>
+    value.startsWith("harness tools install"),
+  );
+  const checkIndex = commandValues.indexOf("harness tools check");
+  const setupIndex = commandValues.findIndex((value) =>
+    value.startsWith("harness setup"),
+  );
+  const doctorIndex = commandValues.indexOf("harness doctor");
+  const agentIndex = commandValues.findIndex((value) =>
+    value.startsWith("claude --agent"),
+  );
+  expect(installIndex).toBeLessThan(checkIndex);
+  expect(checkIndex).toBeLessThan(setupIndex);
+  expect(setupIndex).toBeLessThan(doctorIndex);
+  expect(doctorIndex).toBeLessThan(agentIndex);
   expect(
     screen.queryByText(/Instalação concluída|Conectores conectados/),
   ).toBeNull();
