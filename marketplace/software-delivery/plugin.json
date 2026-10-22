@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "software-delivery",
+  "version": "1.0.0",
+  "description": "Reusable developer and reviewer agents that use the user-selected skills and connectors.",
+  "keywords": [
+    "claude-code",
+    "development",
+    "review",
+    "agents"
+  ]
+}

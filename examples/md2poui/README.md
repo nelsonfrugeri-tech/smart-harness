@@ -37,29 +37,23 @@ O `package.json` no commit-base declara MIT. Não há LICENSE na raiz. Preservar
 atribuição e a declaração do upstream; não inventar copyright ou inserir um texto
 como se fosse uma licença publicada pelos autores.
 
-## Configurar o projeto na plataforma
+## Skills e conectores pessoais
 
-`make seed` cria o projeto `md2poui` no tenant local `investimentos`. As credenciais
-ficam no gateway; os IDs de recursos definem a autorização do projeto. No `.env`
-local, configure apenas os recursos da demo:
+O repositório TOTVS é o alvo da tarefa, não um projeto cadastrado no workspace.
+Selecione o pacote `md2poui` para obter as skills de CLI/opções, renderização Markdown
+e geração Angular. Os agentes reutilizáveis ficam em `software-delivery`, com workflow
+ de desenvolvimento e code review incluídos. A skill geral também é disponibilizada
+pelo pacote `code-review`.
 
-```dotenv
-DEMO_GITHUB_REPO=nelsonfrugeri-tech/md2poui
-DEMO_TRELLO_BOARD_ID=6ad914e240df9fe7aff0c9b2
-DEMO_NOTION_PAGE_IDS=401c02b3ab6c80719473cce961f7a2ec
-```
+Conectores são selecionados e autorizados na conta pessoal. O cenário usa GitHub para
+o fork, Trello para a história e Notion para a ADR; Graphify e deja-vu auxiliam a navegação
+e a recuperação de decisões reais quando disponíveis. Os pacotes não embutem credenciais
+ nem exigem um workspace `md2poui`. Endpoints e ferramentas pertencem aos conectores.
 
-`DEMO_NOTION_PAGE_IDS` identifica a ADR publicada. Não use a página pai
-para autorizar todas as páginas: a autorização é por ID. As variáveis
-`GITHUB_TOKEN`, `TRELLO_API_KEY`, `TRELLO_TOKEN` e `NOTION_TOKEN` precisam estar
-configuradas no ambiente e autorizadas nos respectivos serviços. Depois de mudar
-o `.env`, execute `docker compose up -d` e `make seed`.
-
-Os campos `DEMO_*` vazios revogam as permissões correspondentes ao executar o seed.
-As permissões do exemplo `investimentos-api` continuam independentes. O seed não
-prova autenticação. Antes da demo, obter um token de gateway do projeto `md2poui`
-e comprovar as leituras do fork, card e ADR pelas ferramentas MCP, com URLs nas
-respostas. Ler os arquivos locais deste diretório não substitui essa comprovação.
+Antes da demo, comprovar a leitura do fork, card e ADR pelas ferramentas efetivamente
+instaladas. Ler as cópias locais desta pasta não substitui essa comprovação. As URLs
+documentadas identificam o cenário, não concedem acesso nem demonstram autenticação.
+As instruções antigas de `harness setup md2poui` pertencem ao fluxo legado.
 
 ## Histórico e ensaios
 

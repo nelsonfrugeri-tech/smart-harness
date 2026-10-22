@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "code-review",
+  "version": "1.1.0",
+  "description": "Independent review against repository standards and task acceptance criteria, limited to evidenced BLOCKER and MAJOR findings.",
+  "keywords": [
+    "claude-code",
+    "review",
+    "quality"
+  ]
+}

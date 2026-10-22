@@ -75,3 +75,22 @@ pelo gateway. Sem recurso configurado, o agente pede esclarecimento e não inven
 O pacote [md2poui-base](md2poui-base/README.md) contém developer e reviewer com skills
 incluídas. `make package-md2poui` gera esse baseline e os dois pacotes somente de skill
 para descoberta no catálogo. O baseline é fixado exclusivamente no projeto `md2poui`.
+
+## Instalação pessoal: skills e agentes reutilizáveis
+
+- [`md2poui`](md2poui/README.md): três skills específicas do código TOTVS; nenhum workspace.
+- [`code-review`](code-review/README.md): review geral, somente BLOCKER/MAJOR comprovados.
+- [`software-delivery`](software-delivery/README.md): developer/reviewer genéricos que combinam
+  skills e conectores selecionados pelo usuário.
+
+Build e teste, após compilar um engine com suporte a `connector:`:
+
+```sh
+node marketplace/build-personal-skills.mjs
+node --test marketplace/test/personal-skills.test.mjs
+```
+
+Um binário externo pode ser passado ao builder como primeiro argumento e ao teste por
+`HARNESS_TEST_BINARY`. O segundo argumento do builder troca a pasta de archives, útil
+para verificação isolada. O teste compara fonte, geração e archives publicados, e
+comprova que rebuild diferente não sobrescreve uma versão existente.

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "md2poui",
+  "version": "1.0.0",
+  "description": "Skills for the TOTVS md2poui CLI, Markdown renderer and Angular artifact generator.",
+  "keywords": [
+    "claude-code",
+    "totvs",
+    "md2poui",
+    "typescript",
+    "markdown",
+    "angular"
+  ]
+}
