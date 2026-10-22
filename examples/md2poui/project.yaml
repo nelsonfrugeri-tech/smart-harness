@@ -1,0 +1,18 @@
+id: md2poui
+name: TOTVS md2poui
+summary: Fork de ferramenta TypeScript que converte Markdown em componentes Angular/PO-UI; tarefa de corrigir a CLI e expor a opção home.
+stack:
+  - TypeScript 4.9
+  - Node.js 24.19.0 (ambiente validado)
+  - yargs 17
+  - Mocha 10
+components:
+  - name: cli
+    path: src/bin/md2poui.ts
+    summary: Parser dos argumentos e opções do comando.
+  - name: converter
+    path: src/converter.ts
+    summary: Geração dos componentes, rotas, módulo e serviço.
+  - name: options
+    path: src/options.ts
+    summary: Contrato e valores padrão da biblioteca, incluindo home.

@@ -28,6 +28,9 @@ services:
       GITHUB_REPOS: ${GITHUB_REPOS:-}
       TRELLO_BOARD_ID: ${TRELLO_BOARD_ID:-}
       NOTION_PAGE_IDS: ${NOTION_PAGE_IDS:-}
+      DEMO_GITHUB_REPO: ${DEMO_GITHUB_REPO:-}
+      DEMO_TRELLO_BOARD_ID: ${DEMO_TRELLO_BOARD_ID:-}
+      DEMO_NOTION_PAGE_IDS: ${DEMO_NOTION_PAGE_IDS:-}
     volumes:
       - sqlite-data:/data
     depends_on:
