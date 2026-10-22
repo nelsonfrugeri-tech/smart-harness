@@ -51,44 +51,43 @@ it("opens a real profile with tokens and no invented job title", async () => {
   ).toBeNull();
   expect(within(navigation).getByRole("link", { name: "CLI" })).toBeTruthy();
 });
-it("offers a nonblocking CLI journey with platform selection and no completion claim", async () => {
+it("copies one installer command after the token step without claiming completion", async () => {
   history.replaceState(null, "", "/cli");
+  const user = userEvent.setup();
+  const copy = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
   render(<App />);
   await screen.findByRole("heading", { name: "Do seu perfil ao terminal." });
-  expect(screen.getByRole("link", { name: "Já tenho a CLI" })).toBeTruthy();
-  await userEvent.selectOptions(
-    screen.getByRole("combobox", { name: "Sistema operacional" }),
-    "linux",
-  );
-  await userEvent.selectOptions(
-    screen.getByRole("combobox", { name: "Arquitetura" }),
-    "amd64",
-  );
+  const command = "curl -fsSL 'http://127.0.0.1:8080/install' | sh";
+  const token = screen.getByRole("link", { name: "Ir para meus tokens" });
+  const install = screen.getByRole("button", {
+    name: "Copiar instalar e configurar",
+  });
   expect(
-    screen.getByRole("link", { name: "Baixar CLI" }).getAttribute("href"),
-  ).toBe(
-    "https://github.com/nelsonfrugeri-tech/smart-harness/releases/download/v0.2.1/harness-v0.2.1-linux-amd64",
-  );
+    token.compareDocumentPosition(install) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(screen.getByDisplayValue(command)).toBeTruthy();
+  await user.click(install);
+  expect(copy).toHaveBeenCalledWith(command);
+  expect(
+    screen.getByText("Copiado para a área de transferência."),
+  ).toBeTruthy();
   expect(
     screen.queryByText(/Ambiente conectado|Instalação concluída/),
   ).toBeNull();
-  expect(
-    screen.getByDisplayValue(
-      "harness tools install github trello notion graphify deja-vu",
-    ),
-  ).toBeTruthy();
+  const prerequisites = screen
+    .getByText("Antes de começar: pré-requisitos")
+    .closest("details");
+  expect(prerequisites?.open).toBe(false);
+  await user.click(screen.getByText("Antes de começar: pré-requisitos"));
+  expect(prerequisites?.open).toBe(true);
+  expect(screen.getByText(/Instalação parcial/)).toBeTruthy();
   expect(
     screen.getByDisplayValue("claude --model openrouter/free"),
   ).toBeTruthy();
-  expect(
-    screen.getByDisplayValue("harness skills install md2poui code-review"),
-  ).toBeTruthy();
-  expect(screen.getByDisplayValue("harness tools check")).toBeTruthy();
-  expect(screen.getByDisplayValue("harness skills check")).toBeTruthy();
-  expect(screen.queryByDisplayValue(/^harness install /)).toBeNull();
   expect(screen.getByDisplayValue("/code-review:code-review")).toBeTruthy();
   expect(screen.queryByDisplayValue(/--agent/)).toBeNull();
   expect(screen.queryByRole("link", { name: "software-delivery" })).toBeNull();
+  expect(screen.queryByRole("link", { name: "Baixar CLI" })).toBeNull();
 });
 
 it("uses the actual job title when the API supplies it", async () => {
@@ -105,33 +104,34 @@ it("uses the actual job title when the API supplies it", async () => {
   expect(await screen.findByText("Software Engineer")).toBeTruthy();
   expect(screen.queryByText("Não informado")).toBeNull();
 });
-it("does not offer a login command for unsafe API URLs and recovers after correction", async () => {
+it("hides the installer for unsafe origins and recovers with the corrected command", async () => {
   history.replaceState(null, "", "/cli");
   render(<App />);
   const field = await screen.findByRole("textbox", {
     name: "URL da plataforma",
   });
   const user = userEvent.setup();
-  await user.clear(field);
-  await user.type(field, "https://user:secret@example.com");
-  expect(screen.getByRole("alert")).toBeTruthy();
-  expect(
-    screen.queryByRole("button", { name: "Copiar conectar cli" }),
-  ).toBeNull();
+  for (const origin of [
+    "https://user:secret@example.com",
+    "http://external.example.com",
+  ]) {
+    await user.clear(field);
+    await user.type(field, origin);
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Copiar instalar e configurar" }),
+    ).toBeNull();
+  }
   await user.clear(field);
   await user.type(field, "https://harness.example.com");
   expect(
     screen.getByDisplayValue(
-      "harness login --api-url 'https://harness.example.com'",
+      "curl -fsSL 'https://harness.example.com/install' | sh",
     ),
   ).toBeTruthy();
   expect(screen.queryByRole("alert")).toBeNull();
   const commands = [
-    /^harness login /,
-    /^harness tools install /,
-    /^harness skills install /,
-    /^harness tools check$/,
-    /^harness skills check$/,
+    /^curl -fsSL /,
     /^harness doctor$/,
     /^harness tools run graphify update /,
     /^claude --model openrouter\/free$/,

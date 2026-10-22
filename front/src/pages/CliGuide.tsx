@@ -4,18 +4,14 @@ import {
   ArrowRight,
   ExternalLink,
   KeyRound,
-  Package,
   Terminal,
   Workflow,
 } from "lucide-react";
 import {
   CLAUDE_GATEWAY_URL,
   CLAUDE_SETUP_URL,
-  CLI_RELEASE_URL,
-  CLI_RELEASE_VERSION,
-  CLI_DOWNLOAD_URL,
   cliCommands,
-  loginCommand,
+  installerCommand,
   recommendedPlugins,
 } from "../app/cliCommands";
 import { CopyValue } from "../components/CopyValue";
@@ -23,10 +19,7 @@ import { followLink } from "../components/Shell";
 declare const __HARNESS_PUBLIC_API_URL__: string;
 const steps = [
   ["token", "Seu token"],
-  ["download", "Baixar CLI"],
-  ["connect", "Conectar"],
-  ["claude", "Claude Code"],
-  ["plugins", "Seus plugins"],
+  ["install", "Instalar e conectar"],
   ["develop", "Desenvolver"],
 ] as const;
 export function CliGuide() {
@@ -59,9 +52,7 @@ export function CliGuide() {
           <p>
             <span>$</span> harness doctor
           </p>
-          <p className="terminal-preview-caption">
-            Conecte. Escolha. Desenvolva.
-          </p>
+          <p className="terminal-preview-caption">Um comando. Seu ambiente.</p>
           <Terminal size={44} strokeWidth={1} />
         </div>
       </header>
@@ -94,13 +85,10 @@ export function CliGuide() {
               Ir para meus tokens <ArrowRight size={15} aria-hidden="true" />
             </a>
           </GuideStep>
-          <DownloadStep />
-          <ConnectStep />
-          <ClaudeStep />
-          <PluginsStep />
+          <InstallStep />
           <GuideStep
             id="develop"
-            number={6}
+            number={3}
             title="Abra seu repositório. Comece."
             icon={<Workflow size={21} />}
           >
@@ -155,10 +143,10 @@ export function CliGuide() {
             Os passos são independentes. Pule o que você já preparou e confira
             os resultados no terminal.
           </p>
-          <a href="#connect">
-            Pular download <ArrowRight size={14} aria-hidden="true" />
+          <a href="#install">
+            Já criei meu token <ArrowRight size={14} aria-hidden="true" />
           </a>
-          <a href="#plugins">
+          <a href="#develop">
             Já conectei o ambiente <ArrowRight size={14} aria-hidden="true" />
           </a>
           <div className="cli-companion-note">
@@ -171,47 +159,6 @@ export function CliGuide() {
         </aside>
       </div>
     </div>
-  );
-}
-function PluginsStep() {
-  return (
-    <GuideStep
-      id="plugins"
-      number={5}
-      title="Escolha o que vai com você"
-      icon={<Package size={21} />}
-    >
-      <p>
-        Explore Tools, Skills e Agents no Marketplace. Este conjunto prepara o
-        fluxo de desenvolvimento e review.
-      </p>
-      <div className="cli-plugin-chips">
-        {recommendedPlugins.map((name) => (
-          <a
-            key={name}
-            href={`/marketplace/packages/${name}`}
-            onClick={followLink}
-          >
-            {name}
-          </a>
-        ))}
-      </div>
-      <div className="cli-note">
-        <strong>Prepare as ferramentas locais</strong>
-        <p>
-          Graphify precisa de uv e Python ≥ 3.10. Deja-vu precisa de Go ≥ 1.25.
-          Com esses pré-requisitos disponíveis, tools install prepara os
-          runtimes locais e os pacotes de conexão em um único comando.
-        </p>
-      </div>
-      <CopyValue label="Instalar Tools" value={cliCommands.installTools} />
-      <CopyValue label="Instalar Skills" value={cliCommands.installSkills} />
-      <CopyValue label="Verificar Tools" value={cliCommands.checkTools} />
-      <CopyValue label="Verificar Skills" value={cliCommands.checkSkills} />
-      <a className="text-link" href="/marketplace" onClick={followLink}>
-        Explorar o Marketplace <ArrowRight size={15} aria-hidden="true" />
-      </a>
-    </GuideStep>
   );
 }
 function GuideStep({
@@ -249,100 +196,49 @@ function GuideStep({
     </section>
   );
 }
-function DownloadStep() {
-  const [os, setOS] = useState("darwin");
-  const [arch, setArch] = useState("arm64");
-  const filename = `harness-${CLI_RELEASE_VERSION}-${os}-${arch}`;
+function InstallStep() {
+  const [url, setURL] = useState(__HARNESS_PUBLIC_API_URL__);
+  const command = installerCommand(url);
   return (
     <GuideStep
-      id="download"
+      id="install"
       number={2}
-      title="Leve a CLI para seu terminal"
+      title="Um comando. Seu ambiente conectado."
       icon={<ArrowDownToLine size={21} />}
     >
       <p>
-        Escolha seu sistema e arquitetura. Na release, baixe o binário indicado
-        e o arquivo SHA256SUMS para conferir a integridade.
+        O instalador detecta seu sistema, verifica o download e configura a CLI,
+        o gateway e os Tools e Skills disponíveis para sua conta. Quando o
+        terminal pedir, cole o token pessoal no prompt sem eco.
       </p>
-      <div className="cli-platform">
-        <label>
-          Sistema operacional
-          <select value={os} onChange={(event) => setOS(event.target.value)}>
-            <option value="darwin">macOS</option>
-            <option value="linux">Linux</option>
-          </select>
-        </label>
-        <label>
-          Arquitetura
-          <select
-            value={arch}
-            onChange={(event) => setArch(event.target.value)}
-          >
-            <option value="arm64">ARM64 · Apple Silicon / ARM</option>
-            <option value="amd64">x64 · Intel / AMD</option>
-          </select>
-        </label>
-      </div>
-      <div className="cli-download-file">
-        <code>{filename}</code>
+      <details className="cli-note cli-prerequisites">
+        <summary>Antes de começar: pré-requisitos</summary>
+        <p>
+          Tenha Claude Code e curl no PATH. Funciona em macOS e Linux, com ARM64
+          ou x64. No Windows, execute dentro do WSL.
+        </p>
         <a
-          className="button button-primary"
-          href={`${CLI_DOWNLOAD_URL}/${filename}`}
+          className="text-link"
+          href={CLAUDE_SETUP_URL}
           target="_blank"
           rel="noopener"
         >
-          Baixar CLI <ExternalLink size={15} aria-hidden="true" />
+          Instalação oficial do Claude Code{" "}
+          <ExternalLink size={15} aria-hidden="true" />
         </a>
-      </div>
-      <p className="cli-fine-print">
-        O download pode exigir acesso no GitHub. No Windows, use o binário Linux
-        dentro do WSL.
-      </p>
-      <div className="cli-download-links">
-        <a
-          href={`${CLI_DOWNLOAD_URL}/SHA256SUMS`}
-          target="_blank"
-          rel="noopener"
-        >
-          Baixar SHA256SUMS
+        <p>
+          Para instalar Graphify, tenha uv e Python ≥ 3.10. Para deja-vu, tenha
+          Go ≥ 1.25. O instalador prepara os runtimes dessas ferramentas quando
+          esses pré-requisitos estão disponíveis.
+        </p>
+        <p>
+          Seu token pessoal também conecta o Claude Code ao gateway. Esta
+          jornada não pede outro login na Anthropic.
+        </p>
+        <a href={CLAUDE_GATEWAY_URL} target="_blank" rel="noopener">
+          Como funciona a conexão por gateway
         </a>
-        <a href={CLI_RELEASE_URL} target="_blank" rel="noopener">
-          Ver release {CLI_RELEASE_VERSION}
-        </a>
-      </div>
-      <p>
-        Na pasta onde salvou os dois arquivos, confira o checksum. Depois
-        instale o binário em seu PATH.
-      </p>
-      <CopyValue
-        label="Instalar CLI no terminal"
-        value={`shasum -a 256 -c --ignore-missing SHA256SUMS &&
-chmod +x ${filename} &&
-mkdir -p ~/.local/bin &&
-mv ${filename} ~/.local/bin/harness &&
-export PATH="$HOME/.local/bin:$PATH" &&
-harness version`}
-      />
-      <a className="text-link" href="#connect">
-        Já tenho a CLI <ArrowRight size={15} aria-hidden="true" />
-      </a>
-    </GuideStep>
-  );
-}
-function ConnectStep() {
-  const [url, setURL] = useState(__HARNESS_PUBLIC_API_URL__);
-  const command = loginCommand(url);
-  return (
-    <GuideStep
-      id="connect"
-      number={3}
-      title="Conecte sua conta à CLI"
-      icon={<KeyRound size={21} />}
-    >
-      <p>
-        Confira o endereço da plataforma. Execute o comando e cole o token no
-        prompt sem eco; o segredo não faz parte do comando.
-      </p>
+      </details>
       <label className="cli-url">
         URL da plataforma
         <input
@@ -353,52 +249,43 @@ function ConnectStep() {
         />
       </label>
       {command ? (
-        <CopyValue key={command} label="Conectar CLI" value={command} />
+        <CopyValue
+          key={command}
+          label="Instalar e configurar"
+          value={command}
+        />
       ) : (
         <p className="notice form-error" role="alert">
           Use HTTPS sem credenciais, query ou fragmento. HTTP é permitido apenas
           em localhost.
         </p>
       )}
-    </GuideStep>
-  );
-}
-
-function ClaudeStep() {
-  return (
-    <GuideStep
-      id="claude"
-      number={4}
-      title="Conecte o Claude Code"
-      icon={<Terminal size={21} />}
-    >
-      <p>
-        Instale o Claude Code conforme seu sistema. Se já está instalado,
-        confira a versão e avance.
+      <p className="cli-fine-print">
+        O token não faz parte do comando. Ao terminar, siga a orientação do
+        instalador para atualizar o PATH neste terminal, se necessário.
       </p>
-      <a
-        className="text-link"
-        href={CLAUDE_SETUP_URL}
-        target="_blank"
-        rel="noopener"
-      >
-        Instalação oficial do Claude Code{" "}
-        <ExternalLink size={15} aria-hidden="true" />
-      </a>
-      <CopyValue label="Verificar Claude Code" value="claude --version" />
-      <div className="cli-note">
-        <strong>Uma credencial para esta conexão</strong>
-        <p>
-          Nesta jornada, o Smart Harness configura o acesso pelo gateway com seu
-          token pessoal. Não é necessário fazer um segundo login na Anthropic.
-          Uma assinatura pessoal do Claude é uma forma diferente de acesso.
-        </p>
-        <a href={CLAUDE_GATEWAY_URL} target="_blank" rel="noopener">
-          Como funciona a conexão por gateway
-        </a>
+      <div className="cli-plugin-chips" aria-label="Pacotes da demo">
+        {recommendedPlugins.map((name) => (
+          <a
+            key={name}
+            href={`/marketplace/packages/${name}`}
+            onClick={followLink}
+          >
+            {name}
+          </a>
+        ))}
       </div>
-      <a className="text-link" href="#plugins">
-        Já tenho Claude Code <ArrowRight size={15} aria-hidden="true" />
+      <div className="cli-note">
+        <strong>Instalação parcial? Continue pelo terminal.</strong>
+        <p>
+          Se faltar um pré-requisito ou um pacote falhar, o login e os pacotes
+          já configurados são preservados. Siga os comandos de recuperação
+          exibidos pela CLI e confira o diagnóstico antes de desenvolver.
+        </p>
+      </div>
+      <a className="text-link" href="/marketplace" onClick={followLink}>
+        Explorar Tools, Skills e Agents{" "}
+        <ArrowRight size={15} aria-hidden="true" />
       </a>
     </GuideStep>
   );

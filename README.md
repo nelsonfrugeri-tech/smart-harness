@@ -1,15 +1,15 @@
 # Smart Harness
 
-Plataforma para instalar conectores e skills pessoais no Claude Code. A jornada
-atual começa no perfil: login, token pessoal, download e configuração da CLI,
-instalação dos plugins e trabalho no repositório local.
+Plataforma para instalar Tools e Skills pessoais no Claude Code. A jornada
+atual começa no perfil: login, token pessoal, um comando para instalar e configurar a CLI e os plugins,
+e trabalho no repositório local.
 
 ## Demo atual
 
 - **Perfil:** nome, e-mail, cargo e tokens pessoais de acesso.
-- **Marketplace:** filtros Conectores, Skills e Agentes. O seed oferece sete
+- **Marketplace:** filtros Tools, Skills e Agents. O seed oferece sete
   pacotes: `github`, `trello`, `notion`, `graphify`, `deja-vu`, `md2poui` e
-  `code-review`. São cinco conectores e dois pacotes de skills; Agentes está vazio.
+  `code-review`. São cinco Tools e dois pacotes de Skills; Agents está vazio.
 - **Workspace:** vazio, sem projetos cadastrados pela demo.
 - **CLI:** tela com o passo a passo para configurar o Claude Code e instalar os
   plugins. O fluxo continua no checkout: feature, PR, review independente e merge.
@@ -78,7 +78,21 @@ HARNESS_API_TARGET=http://127.0.0.1:8080 HARNESS_PUBLIC_API_URL=http://127.0.0.1
 
 Abra [http://127.0.0.1:5173](http://127.0.0.1:5173) e entre com
 `dev@smart-harness.local`. O perfil de exemplo é Alex Morgan, Software Engineer.
-Gere o token no Perfil e siga a tela CLI. Os serviços padrão são API `8080`,
+Gere o token no Perfil e siga a tela CLI. Com Claude Code e curl no PATH,
+execute o comando da sua instância:
+
+```sh
+curl -fsSL 'http://127.0.0.1:8080/install' | sh
+```
+
+O instalador baixa o binário macOS/Linux ARM64/x64 da própria API, verifica
+SHA-256 e pede o token no terminal sem eco. O login configura o gateway e os
+Tools/Skills autorizados; Graphify requer uv/Python ≥ 3.10, e deja-vu requer Go
+≥ 1.25. Uma instalação parcial preserva os pacotes prontos e informa como
+completar. Siga a orientação sobre PATH e confira `harness doctor`.
+O roteiro completo está em [onboarding](docs/onboarding.md).
+
+Os serviços padrão são API `8080`,
 gateway `8081` e MinIO `9000`, publicados somente em `127.0.0.1`.
 
 Para usar os conectores remotos, configure no `.env` as credenciais do gateway e
@@ -86,6 +100,13 @@ as permissões pessoais `DEMO_GITHUB_REPO`, `DEMO_TRELLO_BOARD_ID` e
 `DEMO_NOTION_PAGE_IDS`. Depois execute `make up` e `make seed`. Permissão vazia
 nega acesso ao recurso; credencial ausente deixa o respectivo servidor desligado.
 Graphify e deja-vu executam localmente após a instalação indicada na tela CLI.
+
+O Compose deriva `PUBLIC_API_URL` de `API_PORT` (padrão `8080`). Configure
+`PUBLIC_API_URL` explicitamente para outro endereço público e use o mesmo valor
+em `HARNESS_PUBLIC_API_URL` no frontend. `INSTALLER_VERSION` (padrão `v0.2.1`)
+controla a versão dos downloads na imagem e na API; `HARNESS_VERSION` pode ser
+`dev` sem mudar os nomes dos assets. Fora do Docker, a API exige
+`INSTALLER_ASSETS_DIR` explícito; sem assets, `/install` responde 503.
 
 ```bash
 make check  # Runs the repository checks.

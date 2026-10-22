@@ -16,6 +16,32 @@
     { "name": "contributions" }
   ],
   "paths": {
+    "/install": {
+      "get": {
+        "operationId": "getInstaller",
+        "tags": ["ops"],
+        "security": [],
+        "summary": "Public CLI bootstrap script using the configured API origin and release",
+        "responses": {
+          "200": { "description": "POSIX shell script; no credentials embedded", "content": { "text/x-shellscript": { "schema": { "type": "string" } } } },
+          "503": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
+    "/install/{filename}": {
+      "get": {
+        "operationId": "getInstallerAsset",
+        "tags": ["ops"],
+        "security": [],
+        "summary": "Public release binaries and checksums",
+        "parameters": [{ "name": "filename", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Only SHA256SUMS and harness-${INSTALLER_VERSION}-${OS}-${ARCH}, with darwin/linux and arm64/amd64, are allowed. Other filenames return 404." }],
+        "responses": {
+          "200": { "description": "CLI binary or SHA256SUMS", "content": { "application/octet-stream": { "schema": { "type": "string", "format": "binary" } }, "text/plain": { "schema": { "type": "string" } } } },
+          "404": { "$ref": "#/components/responses/Problem" },
+          "503": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "operationId": "getHealth",

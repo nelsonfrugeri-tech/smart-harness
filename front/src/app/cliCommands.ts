@@ -1,6 +1,3 @@
-export const CLI_RELEASE_VERSION = "v0.2.1";
-export const CLI_RELEASE_URL = `https://github.com/nelsonfrugeri-tech/smart-harness/releases/tag/${CLI_RELEASE_VERSION}`;
-export const CLI_DOWNLOAD_URL = `https://github.com/nelsonfrugeri-tech/smart-harness/releases/download/${CLI_RELEASE_VERSION}`;
 export const CLAUDE_SETUP_URL = "https://code.claude.com/docs/en/setup";
 export const CLAUDE_GATEWAY_URL =
   "https://code.claude.com/docs/en/llm-gateway-connect";
@@ -17,11 +14,15 @@ export const cliCommands = {
   start: "claude --model openrouter/free",
   reviewSkill: "/code-review:code-review",
 };
-export function loginCommand(rawURL: string): string | null {
+export function installerCommand(rawURL: string): string | null {
   try {
     const url = new URL(rawURL);
     const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
     if (
+      Array.from(rawURL).some(
+        (character) =>
+          character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127,
+      ) ||
       url.username ||
       url.password ||
       url.search ||
@@ -29,8 +30,8 @@ export function loginCommand(rawURL: string): string | null {
       (url.protocol !== "https:" && !(url.protocol === "http:" && loopback))
     )
       return null;
-    const value = url.toString().replace(/\/$/, "").replaceAll("'", "'\\''");
-    return `harness login --api-url '${value}'`;
+    const value = url.toString().replace(/\/+$/, "").replaceAll("'", "'\\''");
+    return `curl -fsSL '${value}/install' | sh`;
   } catch {
     return null;
   }

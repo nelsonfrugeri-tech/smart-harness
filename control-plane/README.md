@@ -11,10 +11,30 @@ APP_ENV=local JWT_SECRET=local-only-secret-change-me-0123456789 npm run seed
 
 Fora do compose, a API também precisa de um S3 (variáveis `S3_*`). Pelo compose (a partir da raiz): `cp .env.example .env && make up && make seed`.
 
+## Instalador público
+
+O Docker compila os quatro binários e `SHA256SUMS`, e inclui `cli/install.sh` em
+`/app/install`. `INSTALLER_VERSION` (padrão `v0.2.1`) controla nomes e versão dos
+binários distribuídos; o `HARNESS_VERSION` do engine pode continuar como `dev`.
+Use o mesmo `INSTALLER_VERSION` no build e no runtime, como faz o Compose.
+
+`PUBLIC_API_URL` (padrão `http://127.0.0.1:8080`; no Compose acompanha `API_PORT`)
+é a origem usada pelo script. Aceita HTTPS ou HTTP loopback, sem credenciais,
+query ou fragmento. Headers Host/Forwarded não alteram o script. Os valores são
+literais shell com escaping; não incluem segredo.
+
+Fora do Docker, configure `INSTALLER_ASSETS_DIR` explicitamente com `install.sh`,
+os quatro `harness-v0.2.1-{darwin,linux}-{arm64,amd64}` e `SHA256SUMS`. Ausência,
+template inválido ou symlink responde `503 installer_unavailable`; não há
+fallback de download externo. Somente os cinco nomes de assets são públicos.
+As respostas usam `Cache-Control: no-store` e os assets são transmitidos em stream.
+
 ## Endpoints
 
 | Método e caminho | Autenticação | Resposta |
 | --- | --- | --- |
+| `GET /install` | não | script POSIX com origem e versão configuradas; 503 se indisponível |
+| `GET /install/{filename}` | não | quatro binários macOS/Linux ARM64/x64 e `SHA256SUMS`; 404 para nomes fora da lista, 503 para asset ausente |
 | `GET /healthz` | não | `{"status":"ok"}` se o processo responde |
 | `GET /readyz` | não | `{"status":"ready"}` se o banco responde; senão 503 |
 | `GET /metrics` | não | métricas Prometheus (processo e `http_request_duration_seconds`) |

@@ -1,9 +1,10 @@
 // Reads and validates the environment once at startup; a bad value stops the API.
+import { DEFAULT_INSTALLER_VERSION, DEFAULT_PUBLIC_API_URL, installerVersion, publicApiUrl, type InstallerConfig } from "./domain/installer.ts";
 import type { StorageConfig } from "./storage/packages.ts";
 
 export type AppEnv = "local" | "production";
 
-export interface Config {
+export interface Config extends InstallerConfig {
   appEnv: AppEnv;
   host: string;
   port: number;
@@ -42,6 +43,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     tokenTtlSeconds: positiveInteger(env.TOKEN_TTL_SECONDS ?? "3600", "TOKEN_TTL_SECONDS"),
     gatewayTokenTtlDays: positiveInteger(env.GATEWAY_TOKEN_TTL_DAYS ?? "90", "GATEWAY_TOKEN_TTL_DAYS"),
     gatewayPublicUrl: httpUrl(env.GATEWAY_PUBLIC_URL ?? "http://127.0.0.1:8081", "GATEWAY_PUBLIC_URL"),
+    publicApiUrl: publicApiUrl(env.PUBLIC_API_URL || DEFAULT_PUBLIC_API_URL),
+    installerVersion: installerVersion(env.INSTALLER_VERSION || DEFAULT_INSTALLER_VERSION),
+    installerAssetsDir: env.INSTALLER_ASSETS_DIR || undefined,
     storage: storageConfig(env),
   };
 }

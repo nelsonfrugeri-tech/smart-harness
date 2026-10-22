@@ -12,6 +12,8 @@ import { registerContributionRoutes } from "./routes/contributions.ts";
 import { registerDraftRoutes } from "./routes/drafts.ts";
 import { registerGatewayTokenRoutes } from "./routes/gateway-tokens.ts";
 import { registerMarketplaceRoutes } from "./routes/marketplace.ts";
+import { DEFAULT_INSTALLER_VERSION, DEFAULT_PUBLIC_API_URL, type InstallerConfig } from "../domain/installer.ts";
+import { registerInstallerRoutes } from "./routes/installer.ts";
 import { registerMeRoute } from "./routes/me.ts";
 import { registerOpsRoutes } from "./routes/ops.ts";
 import { registerProjectRoutes } from "./routes/projects.ts";
@@ -27,7 +29,7 @@ export interface ServerOptions {
   config: Pick<
     Config,
     "appEnv" | "jwtSecret" | "tokenTtlSeconds" | "logLevel" | "gatewayPublicUrl" | "gatewayTokenTtlDays"
-  >;
+  > & Partial<InstallerConfig>;
   logger?: boolean;
   // Where log lines go when logger is true; stdout by default. Tests pass a collector.
   logStream?: { write(line: string): void };
@@ -56,6 +58,8 @@ export function buildServer({ db, storage, harness, config, logger = false, logS
   registerGatewayTokenGuard(app);
 
   registerOpsRoutes(app, { db, storage, metrics });
+  registerInstallerRoutes(app, { publicApiUrl: config.publicApiUrl ?? DEFAULT_PUBLIC_API_URL,
+    installerVersion: config.installerVersion ?? DEFAULT_INSTALLER_VERSION, installerAssetsDir: config.installerAssetsDir });
   registerMeRoute(app, { db, jwtSecret: config.jwtSecret, gatewayPublicUrl: config.gatewayPublicUrl });
   registerGatewayTokenRoutes(app, {
     db,

@@ -42,22 +42,20 @@ interface informa a indisponibilidade; integração OIDC não faz parte desta te
 - **Workspace:** tela vazia, sem projetos ou atividades de demonstração. Não busca
   o workspace antigo para montar essa superfície. URLs antigas de projetos
   permanecem acessíveis, sem entrar na navegação principal.
-- **CLI:** token → download por sistema/arquitetura → login da CLI → Claude Code
-  → ferramentas e plugins → diagnóstico → desenvolvimento/review. Etapas podem
-  ser acessadas diretamente, sem bloqueio nem progresso simulado.
+- **CLI:** token → um comando para instalar e conectar → diagnóstico →
+  desenvolvimento/review. Pré-requisitos ficam recolhidos; não há progresso
+  simulado nem confirmação de instalação pelo clipboard.
 
-A release referenciada é `v0.2.1`, com binários macOS/Linux ARM64 e x64 e
-`SHA256SUMS`. Windows usa o binário Linux no WSL. A UI não oferece binário nativo
-Windows. O mantenedor precisa publicar a release antes de usar os links da tela.
-Os comandos estão centralizados em `src/app/cliCommands.ts`.
+A API serve `curl -fsSL '<API>/install' | sh`, os binários macOS/Linux ARM64/x64 e
+`SHA256SUMS`, sem depender de uma release GitHub. Windows usa WSL. Os comandos
+estão centralizados em `src/app/cliCommands.ts`. URLs com credenciais, query,
+fragmento ou HTTP fora de loopback não geram comandos.
 
-`harness login --api-url '<url>'` recebe o token pelo prompt seguro. Nesta jornada,
-o gateway Smart Harness fornece a autenticação do Claude Code; um segundo login
-na Anthropic não é solicitado. Com uv/Python ≥ 3.10 e Go ≥ 1.25 disponíveis,
-`harness tools install github trello notion graphify deja-vu` prepara os runtimes
-locais e os pacotes de conexão. `harness skills install md2poui code-review`
-instala as skills. Confira cada categoria com `harness tools check` e
-`harness skills check`; nenhuma categoria vazia indica instalação concluída.
+O instalador exige Claude Code e curl no PATH. O login lê o token pelo prompt
+seguro, configura o gateway e instala os Tools/Skills autorizados. Não há segundo
+login na Anthropic. Graphify requer uv/Python ≥ 3.10 e deja-vu requer Go ≥ 1.25.
+Instalação parcial preserva o login e os pacotes disponíveis, retorna falha e
+orienta a recuperação no terminal; a página não a anuncia como concluída.
 Se instalou Graphify, gere o grafo dentro do checkout antes
 de abrir o Claude Code: `harness tools run graphify update ./src`. Ajuste a pasta
 de fontes quando necessário. O MCP procura `graphify-out/graph.json` ou
@@ -93,8 +91,8 @@ Roteiro de QA com API real:
 1. Login, perfil e token; sair/navegar deve remover qualquer segredo em exibição.
 2. Abrir Workspace: nenhuma atividade ou projeto fictício deve aparecer.
 3. Filtrar Agents por teclado; abrir pacote e retornar preservando a consulta.
-4. Abrir CLI, escolher Linux/x64 e conferir asset `harness-v0.2.1-linux-amd64`.
-5. Informar URL com credenciais ou HTTP externo: comando de login desaparece e
+4. Abrir CLI e conferir o comando único e os pré-requisitos recolhidos.
+5. Informar URL com credenciais ou HTTP externo: comando de instalação desaparece e
    aparece erro. Corrigir a URL restaura o comando sem conter segredo.
 6. Copiar comando: mensagem deve confirmar somente a cópia. Executar os comandos
    no terminal e validar seus resultados separadamente.
