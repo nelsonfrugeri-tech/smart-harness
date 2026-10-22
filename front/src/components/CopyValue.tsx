@@ -23,7 +23,7 @@ export function CopyValue({ value, label }: { value: string; label: string }) {
           ref={field}
           readOnly
           value={value}
-          rows={2}
+          rows={Math.min(8, Math.max(2, value.split("\n").length))}
           spellCheck={false}
         />
       </label>

@@ -1,8 +1,8 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { App } from "./App";
-import { deferred, json, me, plan, respond } from "../test/fixtures";
+import { App } from "../../src/app/App";
+import { deferred, json, me, plan, respond } from "../../src/test/fixtures";
 beforeEach(() => {
   sessionStorage.setItem("smart-harness.access-token", "token-one");
   history.replaceState(null, "", "/marketplace?type=skill&q=go&limit=1");
@@ -354,7 +354,7 @@ it.each([200, 401])(
     );
     await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
     await userEvent.click(
-      await screen.findByRole("link", { name: "Conectores e Skills" }),
+      await screen.findByRole("link", { name: "Marketplace" }),
     );
     await screen.findByRole("heading", { name: "review-tools" });
     await act(async () =>
@@ -472,7 +472,7 @@ it.each(["unknown-package", "private-package"])(
   },
 );
 it.each([
-  ["investimentos-api", "Investimentos"],
+  ["investimentos-api", "investimentos-api"],
   ["other-project", "other-project"],
 ])(
   "describes project complements using the accessible name or slug (%s)",
@@ -627,4 +627,21 @@ it("keeps agent packages accessible through a direct type URL", async () => {
   await screen.findByRole("heading", { name: "investment-base" });
   expect(requests[0].searchParams.get("type")).toBe("agent");
   expect(screen.getByText("Agente")).toBeTruthy();
+});
+
+it("filters agents through the API and preserves the selection in the URL", async () => {
+  const requests: URL[] = [];
+  mockMarketplace((url) => {
+    requests.push(url);
+    return json({ items: [first], next_cursor: null });
+  });
+  render(<App />);
+  const button = await screen.findByRole("button", { name: "Agentes" });
+  button.focus();
+  await userEvent.keyboard("{Enter}");
+  await waitFor(() =>
+    expect(requests.at(-1)?.searchParams.get("type")).toBe("agent"),
+  );
+  expect(button.getAttribute("aria-pressed")).toBe("true");
+  expect(new URLSearchParams(location.search).get("type")).toBe("agent");
 });

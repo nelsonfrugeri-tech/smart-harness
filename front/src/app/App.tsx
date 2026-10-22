@@ -7,7 +7,8 @@ import { Marketplace } from "../pages/Marketplace";
 import { Package } from "../pages/Package";
 import { Button, EmptyState } from "../components/Primitives";
 import { Workspace } from "../pages/Workspace";
-import { GatewayTokens } from "../pages/GatewayTokens";
+import { Profile } from "../pages/Profile";
+import { CliGuide } from "../pages/CliGuide";
 import { Project } from "../pages/Project";
 import { useResource } from "./useResource";
 import { useSession } from "./session";
@@ -81,59 +82,21 @@ function ConnectedWorkspace({
   logout,
 }: AuthProps & { me: Me }) {
   const route = useRoute();
-  const load = useCallback(
-    (signal: AbortSignal) => api.workspace(token, signal),
-    [token],
-  );
-  const { state, retry } = useResource("workspace", load, expire);
   return (
     <Shell me={me} logout={logout}>
-      {route.kind === "invalid-marketplace" ? (
-        <div className="page">
-          <EmptyState
-            title="Filtros inválidos"
-            description="Confira a busca e os filtros desta URL."
-          />
-          <Button onClick={() => navigate("/marketplace", true)}>
-            Abrir Marketplace
-          </Button>
-        </div>
-      ) : route.kind === "missing" ? (
-        <div className="page">
-          <Unavailable />
-        </div>
-      ) : route.kind === "tokens" ? (
-        <GatewayTokens
-          token={token}
-          expire={expire}
-          project={
-            state.status === "success"
-              ? state.data.projects.find((item) => item.slug === route.project)
-              : undefined
-          }
-        />
-      ) : state.status === "loading" ? (
-        <Loading />
-      ) : state.status === "error" ? (
-        <div className="page">
-          <RequestError error={state.error} retry={retry} />
-        </div>
+      {route.kind === "profile" || route.kind === "tokens" ? (
+        <Profile me={me} token={token} expire={expire} />
+      ) : route.kind === "cli" ? (
+        <CliGuide />
+      ) : route.kind === "workspace" ? (
+        <Workspace />
       ) : route.kind === "marketplace" ? (
         <Marketplace
           filters={route.filters}
           token={token}
           expire={expire}
           me={me}
-          projects={state.data.projects}
-        />
-      ) : route.kind === "baseline-package" ? (
-        <Package
-          key={`${route.slug}:${route.name}:${route.version}`}
-          name={route.name}
-          filters={{}}
-          token={token}
-          expire={expire}
-          baseline={{ project: route.slug, version: route.version }}
+          projects={[]}
         />
       ) : route.kind === "package" ? (
         <Package
@@ -143,16 +106,62 @@ function ConnectedWorkspace({
           token={token}
           expire={expire}
         />
-      ) : route.kind === "project" ? (
-        <Project
-          slug={route.slug}
-          token={token}
-          expire={expire}
-          projects={state.data.projects}
-        />
+      ) : route.kind === "invalid-marketplace" ? (
+        <div className="page">
+          <EmptyState
+            title="Filtros inválidos"
+            description="Confira a busca e os filtros desta URL."
+          />
+          <Button onClick={() => navigate("/marketplace", true)}>
+            Abrir Marketplace
+          </Button>
+        </div>
+      ) : route.kind === "project" || route.kind === "baseline-package" ? (
+        <LegacyProjectSurface token={token} expire={expire} />
       ) : (
-        <Workspace data={state.data} />
+        <div className="page">
+          <Unavailable />
+        </div>
       )}
     </Shell>
   );
+}
+function LegacyProjectSurface({
+  token,
+  expire,
+}: Pick<AuthProps, "token" | "expire">) {
+  const route = useRoute();
+  const load = useCallback(
+    (signal: AbortSignal) => api.workspace(token, signal),
+    [token],
+  );
+  const { state, retry } = useResource("workspace", load, expire);
+  if (state.status === "loading") return <Loading />;
+  if (state.status === "error")
+    return (
+      <div className="page">
+        <RequestError error={state.error} retry={retry} />
+      </div>
+    );
+  if (route.kind === "baseline-package")
+    return (
+      <Package
+        key={`${route.slug}:${route.name}:${route.version}`}
+        name={route.name}
+        filters={{}}
+        token={token}
+        expire={expire}
+        baseline={{ project: route.slug, version: route.version }}
+      />
+    );
+  if (route.kind === "project")
+    return (
+      <Project
+        slug={route.slug}
+        token={token}
+        expire={expire}
+        projects={state.data.projects}
+      />
+    );
+  return null;
 }

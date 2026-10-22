@@ -7,6 +7,7 @@ import "./styles/connected.css";
 import "./styles/marketplace.css";
 import "./styles/package.css";
 import "./styles/setup.css";
+import "./styles/personal.css";
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing root element.");
 createRoot(root).render(

@@ -326,7 +326,9 @@ it("discards old history and download responses after a different user signs in"
     "new@example.com",
   );
   await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
-  await screen.findByRole("heading", { name: "Seus projetos" });
+  await screen.findByRole("heading", {
+    name: "Seu espaço, suas próximas ideias.",
+  });
   await act(async () => {
     history.replaceState(null, "", "/marketplace/packages/investment-base");
     window.dispatchEvent(new PopStateEvent("popstate"));

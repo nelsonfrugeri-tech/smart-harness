@@ -1,88 +1,35 @@
-import { ArrowUpRight, FolderGit2 } from "lucide-react";
-import type { WorkspaceData } from "../api/client";
-import {
-  Badge,
-  EmptyState,
-  PageHeading,
-  SectionTitle,
-} from "../components/Primitives";
+import { ArrowRight, FolderOpen, Terminal } from "lucide-react";
+import { PageHeading } from "../components/Primitives";
 import { followLink } from "../components/Shell";
-import { marketplacePath } from "../app/marketplaceQuery";
-import { projectPath } from "../app/navigation";
-export function Workspace({ data }: { data: WorkspaceData }) {
+export function Workspace() {
   return (
-    <div className="page workspace-page">
+    <div className="page personal-workspace">
       <PageHeading
-        eyebrow="SEU WORKSPACE"
-        title="Escolha seu projeto"
-        description="Abra um projeto para conhecer o pacote base da squad e preparar seu ambiente de desenvolvimento."
+        eyebrow="WORKSPACE"
+        title="Seu espaço, suas próximas ideias."
+        description="Um lugar para organizar o que você vai construir."
       />
-      <div className="workspace-actions">
-        <a
-          className="button button-secondary"
-          href={marketplacePath()}
-          onClick={followLink}
-        >
-          Explorar Conectores e Skills
-        </a>
-        {data.projects.some((project) => project.slug === "md2poui") && (
-          <a
-            className="button button-primary"
-            href={`${projectPath("md2poui")}#setup`}
-            onClick={followLink}
-          >
-            Preparar demo TOTVS
-          </a>
-        )}
-      </div>
-      <SectionTitle
-        title="Seus projetos"
-        description={`${data.projects.length} ${data.projects.length === 1 ? "projeto disponível" : "projetos disponíveis"}`}
-      />
-      {data.projects.length === 0 ? (
-        <EmptyState
-          title="Nenhum projeto disponível"
-          description="Sua conta ainda não tem projetos. Solicite à sua squad a inclusão nos projetos em que vai trabalhar."
-        />
-      ) : (
-        <div className="project-grid">
-          {data.projects.map((project) => (
-            <a
-              className="project-card panel"
-              href={projectPath(project.slug)}
-              onClick={followLink}
-              key={project.slug}
-            >
-              <div className="card-top">
-                <span className="capability-icon">
-                  <FolderGit2 size={23} />
-                </span>
-                <Badge>{project.tenant.name}</Badge>
-              </div>
-              <h2>{project.name}</h2>
-              <p>{project.description || "Sem descrição cadastrada."}</p>
-              <dl className="project-counts">
-                <div>
-                  <dt>Agentes</dt>
-                  <dd>{project.counts.agent}</dd>
-                </div>
-                <div>
-                  <dt>Skills</dt>
-                  <dd>{project.counts.skill}</dd>
-                </div>
-                <div>
-                  <dt>MCPs</dt>
-                  <dd>{project.counts.mcp}</dd>
-                </div>
-              </dl>
-              <footer>
-                <span>Conhecer pacote base</span>
-                <ArrowUpRight size={17} />
-              </footer>
-            </a>
-          ))}
+      <section
+        className="workspace-blank"
+        aria-labelledby="empty-workspace-title"
+      >
+        <div className="workspace-blank-icon">
+          <FolderOpen size={34} strokeWidth={1.5} aria-hidden="true" />
         </div>
-      )}
+        <span className="eyebrow">UM NOVO COMEÇO</span>
+        <h2 id="empty-workspace-title">Seu workspace está vazio</h2>
+        <p>
+          Prepare sua CLI e escolha os recursos do Marketplace para começar a
+          desenvolver no seu próprio repositório.
+        </p>
+        <a className="button button-primary" href="/cli" onClick={followLink}>
+          <Terminal size={17} aria-hidden="true" /> Preparar CLI{" "}
+          <ArrowRight size={16} aria-hidden="true" />
+        </a>
+        <a className="text-link" href="/marketplace" onClick={followLink}>
+          Explorar o Marketplace
+        </a>
+      </section>
     </div>
   );
 }

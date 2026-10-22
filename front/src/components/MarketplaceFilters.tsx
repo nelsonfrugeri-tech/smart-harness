@@ -1,4 +1,4 @@
-import { Braces, Layers3, Plug } from "lucide-react";
+import { Bot, Braces, Layers3, Plug } from "lucide-react";
 import type { WorkspaceData } from "../api/client";
 import {
   marketplacePath,
@@ -10,6 +10,7 @@ const options = [
   { value: undefined, label: "Todos", icon: Layers3 },
   { value: "connector", label: "Conectores", icon: Plug },
   { value: "skill", label: "Skills", icon: Braces },
+  { value: "agent", label: "Agentes", icon: Bot },
 ] as const;
 export function MarketplaceFilters({
   filters,

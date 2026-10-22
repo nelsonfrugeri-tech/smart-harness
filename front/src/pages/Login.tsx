@@ -53,13 +53,13 @@ export function Login({
         <span className="eyebrow">SEU CONTEXTO DE DESENVOLVIMENTO</span>
         <h1>Bom trabalho começa com contexto.</h1>
         <p>
-          Encontre os agentes, skills e integrações dos seus projetos em um só
-          lugar.
+          Escolha conectores, skills e agentes. Leve seu contexto para o
+          terminal e desenvolva do seu jeito.
         </p>
       </section>
       <section className="login-panel panel">
         <span className="eyebrow">AMBIENTE LOCAL</span>
-        <h2>Entre no seu workspace</h2>
+        <h2>Entre na sua conta</h2>
         <p>Use o email cadastrado no ambiente de desenvolvimento.</p>
         {expired && (
           <p role="status" className="notice">

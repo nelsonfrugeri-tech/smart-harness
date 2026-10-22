@@ -5,6 +5,8 @@ import {
   Menu,
   X,
   PackageSearch,
+  Terminal,
+  ChevronRight,
 } from "lucide-react";
 import {
   useEffect,
@@ -138,7 +140,6 @@ export function Shell({
           </span>
           <span>
             smart<span className="brand-light">harness</span>
-            <small>DEVELOPER WORKSPACE</small>
           </span>
           <button
             className="mobile-close icon-button"
@@ -148,40 +149,20 @@ export function Shell({
             <X />
           </button>
         </div>
-        <div className="nav-label">DESENVOLVER</div>
-        <nav aria-label="Navegação principal">
-          <a
-            className={`nav-item ${!isMarketplace && route.kind !== "tokens" ? "active" : ""}`}
-            aria-current={
-              !isMarketplace && route.kind !== "tokens" ? "page" : undefined
-            }
-            href="/workspace"
-            onClick={(event) => {
-              followLink(event);
-              setMobileOpen(false);
-            }}
-          >
-            <LayoutDashboard size={19} />
-            Meu workspace
-          </a>
-          <a
-            className={`nav-item ${isMarketplace ? "active" : ""}`}
-            aria-current={isMarketplace ? "page" : undefined}
-            href="/marketplace"
-            onClick={(event) => {
-              followLink(event);
-              setMobileOpen(false);
-            }}
-          >
-            <PackageSearch size={19} />
-            Conectores e Skills
-          </a>
-        </nav>
-        <TokensLink
-          active={route.kind === "tokens"}
+        <PersonalNavigation
+          me={me}
+          kind={route.kind}
+          isMarketplace={isMarketplace}
           close={() => setMobileOpen(false)}
         />
-        <SidebarIdentity me={me} />
+        <div className="sidebar-note">
+          <span>DO CONTEXTO AO CÓDIGO</span>
+          <p>
+            Escolha seus recursos.
+            <br />
+            Construa no seu terminal.
+          </p>
+        </div>
       </aside>
       <div className="main-shell" inert={mobileOpen}>
         <header
@@ -211,58 +192,79 @@ export function Shell({
   );
 }
 
-function SidebarIdentity({ me }: { me: Me }) {
+function PersonalNavigation({
+  me,
+  kind,
+  isMarketplace,
+  close,
+}: {
+  me: Me;
+  kind: string;
+  isMarketplace: boolean;
+  close: () => void;
+}) {
+  const profile = kind === "profile" || kind === "tokens";
+  const links = [
+    {
+      href: "/marketplace",
+      label: "Marketplace",
+      icon: PackageSearch,
+      active: isMarketplace,
+    },
+    {
+      href: "/workspace",
+      label: "Workspace",
+      icon: LayoutDashboard,
+      active:
+        kind === "workspace" ||
+        kind === "project" ||
+        kind === "baseline-package",
+    },
+    { href: "/cli", label: "CLI", icon: Terminal, active: kind === "cli" },
+  ];
   return (
-    <>
-      <div className="membership-list">
-        <h2>Seus acessos</h2>
-        {me.memberships.length === 0 ? (
-          <p>Sem vínculo com uma squad.</p>
-        ) : (
-          me.memberships.map((membership) => (
-            <div key={membership.tenant.id}>
-              <strong>{membership.tenant.name}</strong>
-              <small>
-                {membership.role === "ADMIN"
-                  ? "Administrador"
-                  : "Desenvolvedor"}
-              </small>
-            </div>
-          ))
-        )}
-      </div>
-      <div className="sidebar-bottom">
-        <div className="sidebar-profile">
-          <span className="avatar" aria-hidden="true">
-            {me.user.name.slice(0, 2).toUpperCase()}
-          </span>
-          <div>
-            <strong>{me.user.name}</strong>
-            <small>{me.user.email}</small>
-          </div>
-        </div>
-      </div>
-    </>
+    <nav aria-label="Navegação principal">
+      <a
+        className={`personal-profile-link ${profile ? "active" : ""}`}
+        aria-label="Meu perfil"
+        aria-current={profile ? "page" : undefined}
+        href="/profile"
+        onClick={(event) => {
+          followLink(event);
+          close();
+        }}
+      >
+        <span className="avatar" aria-hidden="true">
+          {me.user.name.slice(0, 2).toUpperCase()}
+        </span>
+        <span className="profile-link-copy">
+          <strong>{me.user.name}</strong>
+          <small>{me.user.email}</small>
+          <span>Meu perfil</span>
+        </span>
+        <ChevronRight size={15} aria-hidden="true" />
+      </a>
+      <div className="nav-label">SEU AMBIENTE</div>
+      {links.map(({ href, label, icon: Icon, active }) => (
+        <a
+          key={href}
+          className={`nav-item ${active ? "active" : ""}`}
+          aria-current={active ? "page" : undefined}
+          href={href}
+          onClick={(event) => {
+            followLink(event);
+            close();
+          }}
+        >
+          <Icon size={19} aria-hidden="true" />
+          {label}
+        </a>
+      ))}
+    </nav>
   );
 }
-
-function TokensLink({ active, close }: { active: boolean; close: () => void }) {
-  return (
-    <a
-      className={`nav-item ${active ? "active" : ""}`}
-      aria-current={active ? "page" : undefined}
-      href="/profile/tokens"
-      onClick={(event) => {
-        followLink(event);
-        close();
-      }}
-    >
-      Meus tokens
-    </a>
-  );
-}
-
 function surfaceTitle(kind: string, marketplace: boolean) {
-  if (marketplace) return "Conectores e Skills";
-  return kind === "tokens" ? "Meus tokens" : "Workspace";
+  if (marketplace) return "Marketplace";
+  if (kind === "profile" || kind === "tokens") return "Meu perfil";
+  return kind === "cli" ? "CLI · Começar" : "Workspace";
 }

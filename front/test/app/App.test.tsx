@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { App } from "./App";
+import { App } from "../../src/app/App";
 beforeEach(() => {
   history.replaceState(null, "", "/workspace");
 });
@@ -38,8 +38,15 @@ it("keeps an unknown user on the form with a useful error", async () => {
   expect(sessionStorage.length).toBe(0);
 });
 
-import { act, waitFor, within } from "@testing-library/react";
-import { json, me, plan, projects, respond, deferred } from "../test/fixtures";
+import { act, waitFor } from "@testing-library/react";
+import {
+  json,
+  me,
+  plan,
+  projects,
+  respond,
+  deferred,
+} from "../../src/test/fixtures";
 function authenticated(path = "/workspace") {
   sessionStorage.setItem("smart-harness.access-token", "token-one");
   history.replaceState(null, "", path);
@@ -62,11 +69,11 @@ it("distinguishes an empty workspace from a failed request and offers one retry"
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith("/workspace")) {
+      if (String(input).endsWith("/me")) {
         attempts++;
         return attempts === 1
           ? json({ code: "unavailable", correlation_id: "trace-one" }, 503)
-          : json({ user: me.user, projects: [] });
+          : json(me);
       }
       return respond(input);
     }),
@@ -76,11 +83,11 @@ it("distinguishes an empty workspace from a failed request and offers one retry"
     "textContent",
     expect.stringContaining("trace-one"),
   );
-  expect(screen.queryByText("Nenhum projeto disponível")).toBeNull();
+  expect(screen.queryByText("Seu workspace está vazio")).toBeNull();
   await userEvent.click(
     screen.getByRole("button", { name: "Tentar novamente" }),
   );
-  expect(await screen.findByText("Nenhum projeto disponível")).toBeTruthy();
+  expect(await screen.findByText("Seu workspace está vazio")).toBeTruthy();
   expect(attempts).toBe(2);
 });
 it.each([403, 404])(
@@ -163,9 +170,11 @@ it("ignores an old project's late response and handles browser navigation", asyn
     history.replaceState(null, "", "/workspace");
     window.dispatchEvent(new PopStateEvent("popstate"));
   });
-  expect(screen.getByRole("heading", { name: "Seus projetos" })).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Seu espaço, suas próximas ideias." }),
+  ).toBeTruthy();
 });
-it("loads only the new account's projects after changing identity", async () => {
+it("loads only the new account's identity after signing in", async () => {
   authenticated();
   let second = false;
   const cart = { ...projects[0], slug: "cartoes-app", name: "Cartões" };
@@ -196,31 +205,16 @@ it("loads only the new account's projects after changing identity", async () => 
     }),
   );
   render(<App />);
-  await screen.findByRole("heading", { name: "Investimentos" });
+  await screen.findByText("Development One");
   await userEvent.click(screen.getByRole("button", { name: "Sair" }));
   await userEvent.type(
     screen.getByRole("textbox", { name: "Email" }),
     "dev.two@example.com",
   );
   await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
-  expect(await screen.findByRole("heading", { name: "Cartões" })).toBeTruthy();
+  expect(await screen.findByText("Development Two")).toBeTruthy();
   expect(screen.queryByRole("heading", { name: "Investimentos" })).toBeNull();
   expect(screen.queryByText("Development One")).toBeNull();
-});
-it("renders real baseline counts without optional marketplace totals", async () => {
-  authenticated();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: RequestInfo | URL) => respond(input)),
-  );
-  render(<App />);
-  const project = await screen.findByRole("link", { name: /Investimentos/ });
-  expect(
-    within(project).getByText("Agentes").nextElementSibling?.textContent,
-  ).toBe("1");
-  expect(
-    within(project).getByText("MCPs").nextElementSibling?.textContent,
-  ).toBe("0");
 });
 it("keeps login uncommitted when identity confirmation fails", async () => {
   vi.stubGlobal(
@@ -268,9 +262,13 @@ it("does not let a previous identity's delayed 401 clear a new session", async (
     "new@example.com",
   );
   await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
-  await screen.findByRole("heading", { name: "Seus projetos" });
+  await screen.findByRole("heading", {
+    name: "Seu espaço, suas próximas ideias.",
+  });
   await act(async () => pending.resolve(json({ code: "expired_token" }, 401)));
-  expect(screen.getByRole("heading", { name: "Seus projetos" })).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Seu espaço, suas próximas ideias." }),
+  ).toBeTruthy();
   expect(sessionStorage.getItem("smart-harness.access-token")).toBe(
     "new-token",
   );
@@ -311,8 +309,8 @@ it("shows the empty workspace for an account without memberships", async () => {
     ),
   );
   render(<App />);
-  expect(await screen.findByText("Nenhum projeto disponível")).toBeTruthy();
-  expect(screen.getByText("Sem vínculo com uma squad.")).toBeTruthy();
+  expect(await screen.findByText("Seu workspace está vazio")).toBeTruthy();
+  expect(screen.queryByText("Seus acessos")).toBeNull();
   expect(screen.queryByRole("heading", { name: "Investimentos" })).toBeNull();
 });
 it("preserves the project selector node and keyboard focus while changing projects", async () => {
@@ -348,16 +346,20 @@ it("reuses the confirmed login identity and fetches it again on reload", async (
     "dev@example.com",
   );
   await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
-  await screen.findByRole("heading", { name: "Seus projetos" });
+  await screen.findByRole("heading", {
+    name: "Seu espaço, suas próximas ideias.",
+  });
   expect(calls).toBe(1);
   view.unmount();
   render(<App />);
-  await screen.findByRole("heading", { name: "Seus projetos" });
+  await screen.findByRole("heading", {
+    name: "Seu espaço, suas próximas ideias.",
+  });
   expect(calls).toBe(2);
 });
 
-it("keeps the project through token creation and returns to the focused setup without the secret", async () => {
-  authenticated("/workspace/projects/investimentos-api");
+it("returns from token creation to the personal CLI guide without the secret", async () => {
+  authenticated("/cli");
   const secret = "shg_" + "s".repeat(43);
   vi.stubGlobal(
     "fetch",
@@ -381,16 +383,11 @@ it("keeps the project through token creation and returns to the focused setup wi
     }),
   );
   render(<App />);
-  await screen.findByRole("heading", { name: "Crie seu token pessoal" });
   await userEvent.click(
-    within(
-      screen.getByRole("region", {
-        name: "Prepare o ambiente para Investimentos",
-      }),
-    ).getByRole("link", { name: "Meus tokens" }),
+    await screen.findByRole("link", { name: "Ir para meus tokens" }),
   );
-  expect(location.search).toBe("?project=investimentos-api");
-  expect(await screen.findByText("Preparando Investimentos")).toBeTruthy();
+  expect(location.pathname).toBe("/profile");
+  await screen.findByRole("heading", { name: "Meus tokens" });
   await userEvent.type(
     screen.getByRole("textbox", { name: "Nome do token" }),
     "Laptop",
@@ -398,14 +395,10 @@ it("keeps the project through token creation and returns to the focused setup wi
   await userEvent.click(screen.getByRole("button", { name: "Criar token" }));
   expect(await screen.findByDisplayValue(secret)).toBeTruthy();
   await userEvent.click(
-    screen.getByRole("link", { name: "Voltar à preparação de Investimentos" }),
+    screen.getByRole("link", { name: "Preparar minha CLI" }),
   );
-  expect(location.pathname).toBe("/workspace/projects/investimentos-api");
-  expect(location.hash).toBe("#setup");
-  const setup = await screen.findByRole("region", {
-    name: "Prepare o ambiente para Investimentos",
-  });
-  expect(document.activeElement).toBe(setup);
+  expect(location.pathname).toBe("/cli");
+  await screen.findByRole("heading", { name: "Do seu perfil ao terminal." });
   expect(screen.queryByDisplayValue(secret)).toBeNull();
   expect(screen.getByDisplayValue("harness doctor")).toBeTruthy();
 });

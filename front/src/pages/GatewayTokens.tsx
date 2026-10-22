@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type RefObject,
 } from "react";
 import {
   api,
@@ -22,8 +23,14 @@ interface Props {
   token: string;
   expire: () => void;
   project?: WorkspaceData["projects"][number];
+  embedded?: boolean;
 }
-export function GatewayTokens({ token, expire, project }: Props) {
+export function GatewayTokens({
+  token,
+  expire,
+  project,
+  embedded = false,
+}: Props) {
   const [cursor, setCursor] = useState<string>();
   const [created, setCreated] = useState<GatewayTokenCreated>();
   const [selected, setSelected] = useState<GatewayToken>();
@@ -98,30 +105,20 @@ export function GatewayTokens({ token, expire, project }: Props) {
     });
   }
   return (
-    <div className="page tokens-page">
-      <TokensHeading project={project} />
+    <div
+      className={embedded ? "tokens-page embedded-tokens" : "page tokens-page"}
+    >
+      <TokensHeading project={project} embedded={embedded} />
       {created ? (
         <CreatedToken created={created} close={() => setCreated(undefined)} />
       ) : (
-        <form className="panel token-form" onSubmit={create}>
-          <h2>Criar token</h2>
-          <label>
-            Nome do token
-            <input
-              ref={input}
-              required
-              maxLength={100}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              disabled={busy}
-              autoComplete="off"
-              placeholder="Ex.: notebook de trabalho"
-            />
-          </label>
-          <Button type="submit" disabled={busy || !name.trim()}>
-            Criar token
-          </Button>
-        </form>
+        <TokenForm
+          input={input}
+          create={create}
+          name={name}
+          onName={setName}
+          busy={busy}
+        />
       )}
       <p role="status">{busy ? "Enviando solicitação…" : notice}</p>
       {error && (
@@ -256,7 +253,7 @@ function CreatedToken({
         Guarde o token “{created.name}”
       </h2>
       <p>
-        Esta é a única exibição. Use o prompt seguro de harness setup no
+        Esta é a única exibição. Use o prompt seguro de harness login no
         terminal. Fechar remove o segredo desta tela.
       </p>
       <CopyValue label="Token" value={created.token} />
@@ -288,9 +285,22 @@ function MutationError({
 
 function TokensHeading({
   project,
+  embedded = false,
 }: {
   project?: WorkspaceData["projects"][number];
+  embedded?: boolean;
 }) {
+  if (embedded)
+    return (
+      <div className="section-heading">
+        <div>
+          <h2>Meus tokens</h2>
+          <p>
+            Credenciais pessoais para a CLI. O segredo aparece uma única vez.
+          </p>
+        </div>
+      </div>
+    );
   return (
     <>
       <PageHeading
@@ -315,5 +325,41 @@ function TokensHeading({
         </section>
       )}
     </>
+  );
+}
+
+function TokenForm({
+  input,
+  create,
+  name,
+  onName,
+  busy,
+}: {
+  input: RefObject<HTMLInputElement | null>;
+  create: (event: FormEvent) => void;
+  name: string;
+  onName: (value: string) => void;
+  busy: boolean;
+}) {
+  return (
+    <form className="panel token-form" onSubmit={create}>
+      <h2>Criar token</h2>
+      <label>
+        Nome do token
+        <input
+          ref={input}
+          required
+          maxLength={100}
+          value={name}
+          onChange={(event) => onName(event.target.value)}
+          disabled={busy}
+          autoComplete="off"
+          placeholder="Ex.: notebook de trabalho"
+        />
+      </label>
+      <Button type="submit" disabled={busy || !name.trim()}>
+        Criar token
+      </Button>
+    </form>
   );
 }
