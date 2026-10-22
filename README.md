@@ -1,53 +1,110 @@
 # Smart Harness
 
-Plataforma para descoberta, criação e distribuição de Agent Plugins por squads, com onboarding e contribuição governada.
+Plataforma para instalar conectores e skills pessoais no Claude Code. A jornada
+atual começa no perfil: login, token pessoal, download e configuração da CLI,
+instalação dos plugins e trabalho no repositório local.
 
-## Visão
+## Demo atual
 
-O desenvolvedor encontra os agentes, skills e MCPs disponíveis para seus projetos e prepara seu coding agent com o pacote base do time. Também pode criar capacidades próprias e propor sua distribuição para outras pessoas.
+- **Perfil:** nome, e-mail, cargo e tokens pessoais de acesso.
+- **Marketplace:** filtros Conectores, Skills e Agentes. O seed oferece sete
+  pacotes: `github`, `trello`, `notion`, `graphify`, `deja-vu`, `md2poui` e
+  `code-review`. São cinco conectores e dois pacotes de skills; Agentes está vazio.
+- **Workspace:** vazio, sem projetos cadastrados pela demo.
+- **CLI:** tela com o passo a passo para configurar o Claude Code e instalar os
+  plugins. O fluxo continua no checkout: feature, PR, review independente e merge.
 
-A experiência contempla dois perfis: desenvolvedor e administrador.
+O TOTVS md2poui é o repositório de exemplo e possui um pacote de skills. Ele não
+é um projeto no Workspace. As credenciais dos provedores permanecem no gateway;
+o token pessoal autentica o acesso do usuário à API e ao gateway.
 
-## Escopo em definição
+## Ambiente local
 
-- Workspace com projetos e agentes acessíveis ao desenvolvedor.
-- Pacote base por projeto, com orientação do agente, skills e configurações de MCPs.
-- Marketplace interno com descrições, exemplos de uso e requisitos de configuração.
-- Espaço pessoal para criar agentes e skills.
-- Processo de teste, revisão, aprovação e publicação de contribuições.
-- Administração de squads, acesso e pacotes.
+Requer Node 24, Go 1.27, Docker e make. Execute os comandos a partir da raiz deste
+repositório.
 
-Memory as a Service fica para uma fase posterior.
+Na primeira execução, se ainda não existir `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Revise os valores locais em `.env`. O login por e-mail e o seed exigem
+`APP_ENV=local`; não constituem um fluxo de autenticação de produção.
+
+### Se já existe um banco da demo anterior
+
+Mantenha seu `.env` e suas credenciais. Para começar a demo pessoal sem misturar
+squads, projetos ou publicações antigas, configure estas linhas no `.env`:
+
+```dotenv
+APP_ENV=local
+DATABASE_PATH=/data/personal-demo.sqlite
+```
+
+API e gateway usam a **mesma variável `DATABASE_PATH`**, no volume compartilhado
+`sqlite-data`. Sem essa variável, ou com valor vazio, o padrão continua sendo
+`/data/control-plane.sqlite`. O novo caminho cria outro arquivo no mesmo volume;
+o banco anterior, seus tokens e o bucket de arquivos permanecem preservados.
+Os tokens do banco antigo não são copiados: gere um token no perfil da nova demo.
+
+### Subir API e gateway
+
+Depois de revisar o `.env` e escolher o caminho do banco, reconstrua os serviços
+e aplique o seed:
+
+```bash
+make up
+make seed
+```
+
+`make up` reconstrói as imagens e espera os serviços ficarem saudáveis. `make seed`
+cria a identidade local e publica os sete pacotes de forma idempotente; não cria
+projetos. Se aparecer conflito de propriedade de um pacote antigo, confira o
+`DATABASE_PATH` dos dois serviços. Não remova volumes para resolver esse conflito.
+
+Para retornar ao banco anterior, configure
+`DATABASE_PATH=/data/control-plane.sqlite` e execute `make up`. Isso seleciona o
+arquivo anterior; não mescla bancos nem apaga o arquivo da demo pessoal.
+
+### Abrir o frontend
+
+Com a API em `http://127.0.0.1:8080`, execute:
+
+```bash
+npm --prefix front ci --no-audit --no-fund
+HARNESS_API_TARGET=http://127.0.0.1:8080 HARNESS_PUBLIC_API_URL=http://127.0.0.1:8080 npm --prefix front run dev -- --port 5173 --strictPort
+```
+
+Abra [http://127.0.0.1:5173](http://127.0.0.1:5173) e entre com
+`dev@smart-harness.local`. O perfil de exemplo é Alex Morgan, Software Engineer.
+Gere o token no Perfil e siga a tela CLI. Os serviços padrão são API `8080`,
+gateway `8081` e MinIO `9000`, publicados somente em `127.0.0.1`.
+
+Para usar os conectores remotos, configure no `.env` as credenciais do gateway e
+as permissões pessoais `DEMO_GITHUB_REPO`, `DEMO_TRELLO_BOARD_ID` e
+`DEMO_NOTION_PAGE_IDS`. Depois execute `make up` e `make seed`. Permissão vazia
+nega acesso ao recurso; credencial ausente deixa o respectivo servidor desligado.
+Graphify e deja-vu executam localmente após a instalação indicada na tela CLI.
+
+```bash
+make check  # Runs the repository checks.
+make down   # Stops services and preserves sqlite-data and minio-data.
+```
 
 ## Estrutura
 
 | Pasta | Conteúdo |
 | --- | --- |
-| `control-plane/` | API em Node/TypeScript |
-| `agent-gateway/` | Gateway para MCPs e modelos, em Node/TypeScript |
+| `control-plane/` | API, identidade, catálogo e seed pessoal em Node/TypeScript |
+| `agent-gateway/` | Gateway de MCPs e modelos em Node/TypeScript |
 | `cli/` | CLI `harness` em Go |
-| `marketplace/` | Conteúdo do Marketplace interno |
-| `examples/` | Exemplos de pacotes e de uso; `examples/investimentos-api/` é o projeto de referência do agente, com `go.mod` e `Makefile` próprios |
-| `docs/` | ADRs, contratos e diagramas (o SVG é exportado pela interface do Excalidraw a partir de `docs/arch/propose.excalidraw`) |
+| `front/` | Perfil, Marketplace, Workspace e guia da CLI |
+| `marketplace/` | Fontes dos pacotes e builders reproduzíveis |
+| `examples/` | Contexto do repositório de exemplo e fixtures legadas |
+| `docs/` | ADRs e contratos |
 
-## Comandos
-
-Requer Node 24, Go 1.27, Docker e make.
-
-```bash
-make check                       # checagens de todos os componentes
-cp .env.example .env && make up  # sobe api (8080), gateway (8081) e minio (9000) em 127.0.0.1
-make seed                        # carrega squads, usuários, projetos e o Marketplace de exemplo (só APP_ENV=local)
-make down                        # para os serviços e preserva os volumes sqlite-data e minio-data
-```
-
-## Planejamento e entrega
-
-Usamos [GitHub Issues](https://github.com/nelsonfrugeri-tech/smart-harness/issues) como fonte de definição das features e de acompanhamento das entregas.
-
-1. Criar uma Issue pelo template de feature.
-2. Refinar problema, escopo, decisões pendentes e critérios de aceite na Issue.
-3. Implementar o escopo definido e vincular o pull request à Issue.
-4. Registrar a validação no pull request e fechar a Issue após a entrega atender aos critérios.
-
-As propostas listadas acima ainda precisam ser refinadas em Issues. Stack, integrações e automação de publicação serão definidas durante esse refinamento.
+Detalhes: [frontend](front/README.md), [API](control-plane/README.md),
+[gateway](agent-gateway/README.md) e [CLI](cli/README.md).
+As entregas são acompanhadas nas
+[GitHub Issues](https://github.com/nelsonfrugeri-tech/smart-harness/issues).

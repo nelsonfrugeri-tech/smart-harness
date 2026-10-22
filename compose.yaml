@@ -13,6 +13,8 @@ services:
     environment:
       # dev-login and the seed only exist with APP_ENV=local.
       APP_ENV: ${APP_ENV:-production}
+      # API and gateway must share this file in the sqlite-data volume.
+      DATABASE_PATH: ${DATABASE_PATH:-/data/control-plane.sqlite}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (see .env.example)}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Validity of a new gateway token (shg_...), in days.
@@ -24,7 +26,7 @@ services:
       S3_BUCKET: packages
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env (see .env.example)}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env (see .env.example)}
-      # Resources of investimentos-api that the gateway may reach; make seed (APP_ENV=local) writes them to gateway_permissions.
+      # Legacy project seed inputs; the default personal seed uses only DEMO_* below.
       GITHUB_REPOS: ${GITHUB_REPOS:-}
       TRELLO_BOARD_ID: ${TRELLO_BOARD_ID:-}
       NOTION_PAGE_IDS: ${NOTION_PAGE_IDS:-}
@@ -52,6 +54,8 @@ services:
     environment:
       # The echo test backend only exists with APP_ENV=local.
       APP_ENV: ${APP_ENV:-production}
+      # API and gateway must share this file in the sqlite-data volume.
+      DATABASE_PATH: ${DATABASE_PATH:-/data/control-plane.sqlite}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Browser origins allowed to call /mcp, comma separated. Empty: any request with an Origin header is refused.
       ALLOWED_ORIGINS: ${GATEWAY_ALLOWED_ORIGINS:-}
