@@ -525,6 +525,38 @@
         }
       }
     },
+    "/v1/me/installations": {
+      "put": {
+        "operationId": "reportInstallations",
+        "tags": ["me"],
+        "security": [{ "BearerAuth": [] }, { "GatewayToken": [] }],
+        "summary": "Replaces the caller's whole set of installed plugins, as reported by the CLI",
+        "description": "The one write that accepts the gateway token: it changes only the caller's own rows. Replaces the set in one transaction: a plugin already present keeps installedAt and takes the reported version; a plugin absent from the report is deleted. Names outside the caller's visible catalog are ignored, not rejected, and the rest of the report is stored. When a name repeats, the last version wins.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/InstallationReport" } } }
+        },
+        "responses": {
+          "204": { "description": "Report stored" },
+          "400": { "$ref": "#/components/responses/Problem" },
+          "401": { "$ref": "#/components/responses/Problem" }
+        }
+      },
+      "get": {
+        "operationId": "listInstallations",
+        "tags": ["me"],
+        "security": [{ "BearerAuth": [] }],
+        "summary": "The caller's last installation report, plugins ordered by name",
+        "description": "JWT only: a gateway token answers 401. Before the first report, cliVersion and reportedAt are null and plugins is empty. Not paginated: one report carries at most 200 plugins.",
+        "responses": {
+          "200": {
+            "description": "Last report",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Installations" } } }
+          },
+          "401": { "$ref": "#/components/responses/Problem" }
+        }
+      }
+    },
     "/v1/projects/{slug}/baseline/{plugin}": {
       "put": {
         "operationId": "pinBaselineVersion",
@@ -1272,6 +1304,49 @@
         "properties": {
           "items": { "type": "array", "items": { "$ref": "#/components/schemas/GatewayToken" } },
           "next_cursor": { "type": ["string", "null"] }
+        }
+      },
+      "InstallationReport": {
+        "type": "object",
+        "required": ["cliVersion", "plugins"],
+        "additionalProperties": false,
+        "properties": {
+          "cliVersion": { "type": "string", "minLength": 1, "maxLength": 50 },
+          "plugins": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "type": "object",
+              "required": ["name", "version"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$" },
+                "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$" }
+              }
+            }
+          }
+        }
+      },
+      "Installations": {
+        "type": "object",
+        "required": ["cliVersion", "reportedAt", "plugins"],
+        "additionalProperties": false,
+        "properties": {
+          "cliVersion": { "type": ["string", "null"] },
+          "reportedAt": { "type": ["string", "null"], "format": "date-time" },
+          "plugins": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "version", "installedAt"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string" },
+                "version": { "type": "string" },
+                "installedAt": { "type": "string", "format": "date-time" }
+              }
+            }
+          }
         }
       },
       "Person": {

@@ -35,6 +35,10 @@ const GATEWAY_TOKEN_READS = [
   "/v1/projects/:slug/setup-plan",
 ];
 
+// The one write the token may call: the CLI reports what it installed. It alters only the
+// caller's own rows (see auth.ts).
+const GATEWAY_TOKEN_WRITE = { method: "PUT", url: "/v1/me/installations" };
+
 // Accepts the token too (`harness draft pull`), but the zero id is no draft: 404, not 401.
 const GATEWAY_TOKEN_DRAFT_ARCHIVE = "/v1/drafts/:id/archive";
 
@@ -223,7 +227,7 @@ describe("gateway tokens", () => {
     expect((await get(SETUP_PLAN, token)).statusCode).toBe(404);
   });
 
-  it("with the gateway token, POST, PATCH, PUT and DELETE answer 401 on every registered route", async () => {
+  it("with the gateway token, POST, PATCH, PUT and DELETE answer 401 on every registered route but one", async () => {
     const created = await createToken(app, jwt);
     const routes = registeredRoutes(app);
     const writes = routes.filter((route) => ["POST", "PATCH", "PUT", "DELETE"].includes(route.method));
@@ -232,6 +236,7 @@ describe("gateway tokens", () => {
         { method: "POST", url: "/v1/auth/dev-login" },
         { method: "POST", url: TOKENS },
         { method: "DELETE", url: `${TOKENS}/:id` },
+        GATEWAY_TOKEN_WRITE,
       ]),
     );
     const urls = [...new Set(routes.map((route) => route.url))];
@@ -240,6 +245,11 @@ describe("gateway tokens", () => {
       for (const method of ["POST", "PATCH", "PUT", "DELETE"] as const) {
         const target = url === `${TOKENS}/:id` ? `${TOKENS}/${created.id}` : concreteUrl(url);
         const response = await app.inject({ method, url: target, headers: bearer(created.token), payload: { name: "x" } });
+        if (method === GATEWAY_TOKEN_WRITE.method && url === GATEWAY_TOKEN_WRITE.url) {
+          // Past the guard: the body { name } fails the schema.
+          expect(response.statusCode, `${method} ${url}`).toBe(400);
+          continue;
+        }
         expect(response.statusCode, `${method} ${url}`).toBe(401);
         expect(response.json().code, `${method} ${url}`).toBe("gateway_token_not_allowed");
       }
@@ -247,6 +257,7 @@ describe("gateway tokens", () => {
 
     // Nothing was written: one token, not revoked, and only the creation in the audit trail.
     expect(db.prepare("SELECT id, revoked_at FROM gateway_tokens").all()).toEqual([{ id: created.id, revoked_at: null }]);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM user_installation_reports").get()).toEqual({ n: 0 });
     expect(db.prepare("SELECT action FROM audit_events ORDER BY id").all()).toEqual([
       { action: "auth.dev_login" },
       { action: "gateway_token.created" },

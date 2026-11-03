@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-export const CONNECTORS = ["github", "trello", "notion", "graphify", "deja-vu"];
+export const CONNECTORS = ["github", "trello", "notion", "graphify", "deja-vu", "observability"];
 
 export async function buildConnectors(binary, outputDirectory) {
   await mkdir(outputDirectory, { recursive: true });

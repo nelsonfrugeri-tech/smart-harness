@@ -1,4 +1,4 @@
-// Package localtools manages the two curated local tools used by the demo.
+// Package localtools manages the curated local tools used by the demo.
 // Package archives never choose commands or supply executable installation scripts.
 package localtools
 
@@ -19,7 +19,11 @@ type Tool struct{ Name, Binary, Version, Source, License string }
 var supported = []Tool{
 	{"graphify", "graphify", "0.9.56", "https://github.com/Graphify-Labs/graphify/tree/v0.9.56", "Apache-2.0; legacy portions MIT"},
 	{"deja-vu", "deja", "0.16.8", "https://github.com/vshulcz/deja-vu/tree/v0.16.8", "MIT"},
+	{TapName, "claude-tap", "0.1.146", "https://github.com/liaohch3/claude-tap", "MIT"},
 }
+
+// uvPackages maps the tools installed with uv to their pinned PyPI requirement.
+var uvPackages = map[string]string{"graphify": "graphifyy[mcp]", TapName: "claude-tap"}
 
 // All returns the fixed allowlist, independent of package metadata.
 func All() []Tool { return append([]Tool(nil), supported...) }
@@ -31,7 +35,7 @@ func Find(name string) (Tool, error) {
 			return t, nil
 		}
 	}
-	return Tool{}, fmt.Errorf("unknown local tool %q; supported: graphify, deja-vu", name)
+	return Tool{}, fmt.Errorf("unknown local tool %q; supported: graphify, deja-vu, observability", name)
 }
 
 func (t Tool) directory(config string) string {
@@ -112,8 +116,8 @@ func (t Tool) Install(config string, stdout, stderr io.Writer) error {
 
 func (t Tool) installCommand(dir string) (string, []string, []string) {
 	bin := filepath.Join(dir, "bin")
-	if t.Name == "graphify" {
-		return "uv", []string{"tool", "install", "--force", "graphifyy[mcp]==" + t.Version}, []string{"UV_TOOL_DIR=" + filepath.Join(dir, "uv"), "UV_TOOL_BIN_DIR=" + bin}
+	if requirement, ok := uvPackages[t.Name]; ok {
+		return "uv", []string{"tool", "install", "--force", requirement + "==" + t.Version}, []string{"UV_TOOL_DIR=" + filepath.Join(dir, "uv"), "UV_TOOL_BIN_DIR=" + bin}
 	}
 	return "go", []string{"install", "-ldflags=-X main.version=" + t.Version, "github.com/vshulcz/deja-vu/cmd/deja@v" + t.Version}, []string{"GOBIN=" + bin}
 }

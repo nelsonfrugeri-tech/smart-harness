@@ -1,0 +1,38 @@
+.observability-privacy {
+  margin: -12px 0 24px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.observability-viewer {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.observability-viewer > .button {
+  justify-self: start;
+}
+.observability-frame {
+  width: 100%;
+  height: min(72vh, 820px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: white;
+}
+.observability-fine-print {
+  font-size: 11px;
+  color: #81949e;
+}
+.observability-how {
+  display: grid;
+  gap: 12px;
+}
+.observability-how h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.observability-how p {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 0;
+}

@@ -11,13 +11,17 @@ import { unauthorized } from "./problem.ts";
 // - the JWT from dev-login, accepted on every authenticated route;
 // - the gateway token (shg_...), accepted only on routes registered with
 //   `config: GATEWAY_TOKEN_ALLOWED`. Every other route answers 401 to it.
+// The token is meant for reads. Its one write is PUT /v1/me/installations, where the CLI
+// reports what it installed: it changes only the caller's own rows and touches no other user,
+// permission or token, so a leaked token still cannot publish, pin, grant or mint credentials.
 // Roles and tenants are read from the database on every request, so removing a membership
 // takes effect on the next call.
 
 declare module "fastify" {
   interface FastifyContextConfig {
-    // true only on the product reads the developer's tools call: /v1/me, workspace,
-    // Marketplace, plugins, setup-plan and archive. Never on writes or token management.
+    // true on the product reads the developer's tools call (/v1/me, workspace, Marketplace,
+    // plugins, setup-plan and archive) and on exactly one write, PUT /v1/me/installations,
+    // which alters only the caller's own state. Never on any other write nor on token management.
     gatewayToken?: boolean;
   }
 }

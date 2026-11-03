@@ -49,6 +49,8 @@ As respostas usam `Cache-Control: no-store` e os assets são transmitidos em str
 | `POST /v1/me/gateway-tokens` `{name}` | só JWT | `201 {id, name, token, created_at, expires_at}`; o `token` aparece só aqui |
 | `GET /v1/me/gateway-tokens?cursor=&limit=` | só JWT | `Page<{id, name, created_at, expires_at, revoked_at}>`, do mais novo para o mais antigo, sem valor nem hash |
 | `DELETE /v1/me/gateway-tokens/{id}` | só JWT | `204`; revogar de novo também responde `204`; token de outro usuário responde `404` |
+| `PUT /v1/me/installations` `{cliVersion, plugins[{name, version}]}` | JWT ou token do gateway | `204`; o CLI substitui numa transação o conjunto inteiro do usuário (até 200 itens); nomes fora do catálogo visível são ignorados e registrados no log, não geram 400 |
+| `GET /v1/me/installations` | só JWT | `{cliVersion, reportedAt, plugins[{name, version, installedAt}]}` do último relatório, em ordem de nome; antes do primeiro, `null`, `null` e `[]` |
 | `PUT /v1/projects/{slug}/baseline/{plugin}` `{version}` | só JWT, ADMIN da squad do projeto | `{plugin, version}`; fixa a versão no pacote base (rollback = versão mais antiga) |
 | `POST /v1/drafts` `{tenant, visibility?, files[{path, content}]}` | só JWT, membro da squad | `201 Draft` com `ETag: "<revision>"` |
 | `GET /v1/drafts?cursor=&limit=` | só JWT | `Page<DraftSummary>`: os rascunhos do próprio usuário, sem conteúdo |
@@ -83,7 +85,7 @@ Erros usam `application/problem+json` (RFC 9457): `{type, title, status, code, d
 - Recurso de outro tenant e recurso inexistente respondem o mesmo 404.
 - Visibilidade no Marketplace: uma versão é visível se o plugin é de uma squad do usuário, ou se a versão é `organization` e o usuário tem ao menos uma membership. Sem membership, o usuário não vê nada. A regra fica num único trecho SQL em `repos/marketplace.ts`, usado por todas as leituras.
 - Com `?project=` e no setup-plan, vale a visão da squad dona do projeto, e não a soma das squads do usuário. O `?project=` lista os opcionais do projeto: o que a squad vê, menos o pacote base.
-- Exceções explícitas: `repos/identity.ts` e `repos/gateway-tokens.ts` filtram pelo id do próprio usuário: o primeiro monta o scope, e o token do gateway pertence ao usuário, não a um tenant; `repos/seed.ts` contém escritas de sistema usadas só pelo seed local. Fora de `repos/`, só há SQL de infraestrutura: pragmas e ping em `db/database.ts` e a tabela `schema_migrations` em `db/migrate.ts`.
+- Exceções explícitas: `repos/identity.ts`, `repos/gateway-tokens.ts` e `repos/installations.ts` filtram pelo id do próprio usuário: o primeiro monta o scope, e o token do gateway e as instalações pertencem ao usuário, não a um tenant; `repos/seed.ts` contém escritas de sistema usadas só pelo seed local. Fora de `repos/`, só há SQL de infraestrutura: pragmas e ping em `db/database.ts` e a tabela `schema_migrations` em `db/migrate.ts`.
 
 ## Token do gateway
 
@@ -92,7 +94,7 @@ O dev configura um único segredo, o token do gateway, para MCPs, modelos e o CL
 - Formato: `shg_` seguido de 32 bytes aleatórios em base64url (43 caracteres). Validade: `GATEWAY_TOKEN_TTL_DAYS` (padrão 90 dias).
 - A tabela `gateway_tokens` guarda só o sha256 do token inteiro (com o prefixo), em hex minúsculo. O valor aparece uma vez, na resposta do `POST`, com `Cache-Control: no-store`. A listagem, os logs e a auditoria (`gateway_token.created` e `gateway_token.revoked`) nunca levam o valor nem o hash.
 - Regra de validação, a mesma que o Agent Gateway (#13) aplica: o token tem o formato acima, e `sha256(token)` está numa linha com `revoked_at IS NULL` e `expires_at` no futuro. O SQL fica em `ACTIVE_GATEWAY_TOKEN_SQL` (`src/db/repos/gateway-tokens.ts`); o formato e o hash, em `src/domain/gateway-token.ts`.
-- Autorização por rota: o token vale só nas rotas registradas com `config: GATEWAY_TOKEN_ALLOWED` (as leituras de produto da tabela acima). Um hook `onRequest` recusa o token em qualquer outra rota, inclusive inexistente, antes da validação do corpo: escrita e gerenciamento de tokens respondem `401 gateway_token_not_allowed`, nunca 400. O `authenticate()` confere a mesma regra de novo. Rota nova nasce fechada para o token.
+- Autorização por rota: o token vale só nas rotas registradas com `config: GATEWAY_TOKEN_ALLOWED` (as leituras de produto da tabela acima e uma única escrita, `PUT /v1/me/installations`, que só altera as linhas do próprio usuário). Um hook `onRequest` recusa o token em qualquer outra rota, inclusive inexistente, antes da validação do corpo: escrita e gerenciamento de tokens respondem `401 gateway_token_not_allowed`, nunca 400. O `authenticate()` confere a mesma regra de novo. Rota nova nasce fechada para o token.
 - O token resolve o usuário. Tenants e papéis continuam vindo das memberships a cada requisição.
 
 ```bash
@@ -223,7 +225,7 @@ TEST_S3_ENDPOINT=http://127.0.0.1:9000 TEST_S3_ACCESS_KEY_ID=<S3_ACCESS_KEY_ID> 
 
 Os comandos padrão `npm run seed` e `npm run seed:marketplace` preparam agora uma
 base local sem projetos: perfil `dev@smart-harness.local`, cargo ilustrativo
-`Software Engineer` e sete pacotes (cinco conectores e dois pacotes de skills).
+`Software Engineer` e oito pacotes (seis conectores e dois pacotes de skills).
 O filtro Agentes permanece vazio. Os seeds e endpoints de projetos anteriores permanecem no
 código para compatibilidade; não são executados pelo seed padrão.
 
@@ -252,7 +254,7 @@ proprietária. `related_project` identifica separadamente o projeto atendido pel
 wrapper ou pelas skills, com `kind`, `name`, `repository_url` e licença opcional.
 Ausência significa informação não estabelecida, inclusive em publicações legadas.
 
-Os sete pacotes pessoais têm autoria interna. Graphify, deja-vu e md2poui têm
+Os oito pacotes pessoais têm autoria interna. Graphify, deja-vu, claude-tap e md2poui têm
 projetos relacionados open source. A licença desses projetos não é atribuída ao
 pacote de integração. Os registros editoriais ficam em `plugins.catalog_metadata`
 e podem ser atualizados pelo seed sem alterar versões, componentes ou arquivos
@@ -266,6 +268,7 @@ Fontes de licença verificadas em 22/10/2026:
 
 - [Graphify v0.9.56: Apache-2.0](https://github.com/Graphify-Labs/graphify/blob/v0.9.56/LICENSE).
 - [deja-vu v0.16.8: MIT](https://github.com/vshulcz/deja-vu/blob/v0.16.8/LICENSE).
+- [claude-tap v0.1.146: MIT](https://github.com/liaohch3/claude-tap/blob/v0.1.146/LICENSE).
 - [TOTVS md2poui: MIT declarado no package.json, revisão f097b94](https://github.com/totvs/md2poui/blob/f097b94b0dd0dad367cdd7bb2f8312281a6ca90e/package.json).
 
 ## Publicação de pacotes pelo GitHub

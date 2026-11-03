@@ -195,6 +195,27 @@ describe("openapi.json", () => {
     expect(validate("/v1/projects/{slug}/baseline/{plugin}", "put", 200, pinned.json())).toEqual([]);
   });
 
+  it("the installation report and its read answer the documented shapes", async () => {
+    const headers = { authorization: `Bearer ${token}` };
+    const before = await app.inject({ method: "GET", url: "/v1/me/installations", headers });
+    expect(before.statusCode).toBe(200);
+    expect(validate("/v1/me/installations", "get", 200, before.json())).toEqual([]);
+
+    const put = await app.inject({
+      method: "PUT",
+      url: "/v1/me/installations",
+      headers,
+      payload: { cliVersion: "0.3.0", plugins: [{ name: "investimentos-base", version: "1.2.2" }] },
+    });
+    expect(put.statusCode).toBe(204);
+    const invalid = await app.inject({ method: "PUT", url: "/v1/me/installations", headers, payload: { plugins: [] } });
+    expect(validate("/v1/me/installations", "put", 400, invalid.json())).toEqual([]);
+
+    const after = await app.inject({ method: "GET", url: "/v1/me/installations", headers });
+    expect(after.json().plugins).toHaveLength(1);
+    expect(validate("/v1/me/installations", "get", 200, after.json())).toEqual([]);
+  });
+
   it("a 404 problem has the documented shape", async () => {
     const response = await app.inject({
       method: "GET",

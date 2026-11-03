@@ -14,6 +14,7 @@ import {
   installerCommand,
   recommendedPlugins,
 } from "../app/cliCommands";
+import { OBSERVABILITY_VIEWER_URL } from "../app/observability";
 import { CopyValue } from "../components/CopyValue";
 import { followLink } from "../components/Shell";
 declare const __HARNESS_PUBLIC_API_URL__: string;
@@ -129,6 +130,14 @@ export function CliGuide() {
               value={cliCommands.start}
             />
             <p>
+              Esse comando também sobe o visualizador de traces do claude-tap em{" "}
+              {OBSERVABILITY_VIEWER_URL}, só nesta máquina. Acompanhe as
+              requisições na página Observabilidade.
+            </p>
+            <a className="text-link" href="/observability" onClick={followLink}>
+              Abrir Observabilidade <ArrowRight size={15} aria-hidden="true" />
+            </a>
+            <p>
               Para revisar uma mudança, repita o comando acima em outro
               terminal, no mesmo repositório. Dentro dessa nova sessão, invoque
               a skill do plugin code-review instalado e indique o diff ou PR a
@@ -213,7 +222,9 @@ function InstallStep() {
       <p>
         O instalador detecta seu sistema, verifica o download e configura a CLI,
         o gateway e os Tools e Skills disponíveis para sua conta. Quando o
-        terminal pedir, cole o token pessoal no prompt sem eco.
+        terminal pedir, cole o token pessoal no prompt sem eco. O login também
+        instala a observabilidade local (claude-tap), que grava as requisições
+        do Claude Code apenas nesta máquina.
       </p>
       <details className="cli-note cli-prerequisites">
         <summary>Antes de começar: pré-requisitos</summary>

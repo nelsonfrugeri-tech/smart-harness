@@ -10,7 +10,7 @@ import (
 )
 
 func TestCuratedStdioAndCrossPackageTools(t *testing.T) {
-	for _, name := range []string{"graphify", "deja-vu"} {
+	for _, name := range []string{"graphify", "deja-vu", "observability"} {
 		files, err := (Adapter{}).Convert(pkg.Package{Manifest: pkg.Manifest{Name: name}, MCPServers: []pkg.MCPServer{{Name: name, Local: true}}})
 		if err != nil {
 			t.Fatal(err)

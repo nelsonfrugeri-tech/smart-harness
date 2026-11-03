@@ -52,7 +52,20 @@ interface informa a indisponibilidade; integração OIDC não faz parte desta te
   permanecem acessíveis, sem entrar na navegação principal.
 - **CLI:** token → um comando para instalar e conectar → diagnóstico →
   desenvolvimento/review. Pré-requisitos ficam recolhidos; não há progresso
-  simulado nem confirmação de instalação pelo clipboard.
+  simulado nem confirmação de instalação pelo clipboard. A tela informa que o
+  login instala o claude-tap e que `harness vendor=claude` sobe o visualizador
+  de traces local.
+- **Observabilidade:** embute o visualizador ao vivo do claude-tap em
+  `http://127.0.0.1:8787`, contrato com a CLI centralizado em
+  `src/app/observability.ts`. A página sonda o endereço com `fetch` em modo
+  `no-cors`: resposta mostra o iframe; conexão recusada mostra o estado vazio
+  com `harness vendor=claude`. “Abrir em nova aba” existe sempre, porque o
+  visualizador pode recusar iframe. Os traces ficam na máquina do dev; nada é
+  enviado à API.
+- **Instalados:** `GET /v1/me/installations` marca com “Instalado” os pacotes
+  que a CLI reportou, uma vez por visita ao Marketplace ou ao detalhe do pacote.
+  404 (rota ainda não implantada) e falhas de rede apenas omitem o marcador. O
+  tipo `Installations` é manual até a rota entrar no `openapi.json`.
 
 A API serve `curl -fsSL '<API>/install' | sh`, os binários macOS/Linux ARM64/x64 e
 `SHA256SUMS`, sem depender de uma release GitHub. Windows usa WSL. Os comandos

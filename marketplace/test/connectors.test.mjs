@@ -11,11 +11,11 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 const binary = process.env.HARNESS_TEST_BINARY ?? join(root, "cli/bin/harness");
 const readArchive = (file, path) => execFileSync("tar", ["-xzOf", file, path], { encoding: "utf8" });
 
-test("five connector packages are reproducible, immutable and contain only curated MCP configuration", async () => {
+test("six connector packages are reproducible, immutable and contain only curated MCP configuration", async () => {
   const directory = await mkdtemp(join(tmpdir(), "sh-connectors-test-"));
   try {
     const first = await buildConnectors(binary, directory);
-    assert.equal(first.length, 5);
+    assert.equal(first.length, 6);
     for (const item of first) {
       assert.deepEqual(await readFile(item.file), await readFile(join(root, "control-plane/seed/packages", `${item.name}-${item.version}.tar.gz`)));
       const paths = execFileSync("tar", ["-tzf", item.file], { encoding: "utf8" }).trim().split("\n");
@@ -26,9 +26,9 @@ test("five connector packages are reproducible, immutable and contain only curat
       const servers = JSON.parse(readArchive(item.file, ".mcp.json")).mcpServers;
       assert.deepEqual(Object.keys(servers), [item.name]);
       const server = servers[item.name];
-      if (["graphify", "deja-vu"].includes(item.name)) {
+      if (["graphify", "deja-vu", "observability"].includes(item.name)) {
         assert.deepEqual(server, { type: "stdio", command: "${HARNESS_CLI_BIN}", args: ["tools", "serve", item.name] });
-        assert.equal(item.version, "2.0.0");
+        assert.equal(item.version, item.name === "observability" ? "1.0.0" : "2.0.0");
       } else {
         assert.equal(server.type, "http");
         assert.equal(server.url, "${SMART_HARNESS_GATEWAY_URL:-http://127.0.0.1:8081}/mcp/me/" + item.name);

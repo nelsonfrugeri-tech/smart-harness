@@ -335,6 +335,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/me/installations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The caller's last installation report, plugins ordered by name
+     * @description JWT only: a gateway token answers 401. Before the first report, cliVersion and reportedAt are null and plugins is empty. Not paginated: one report carries at most 200 plugins.
+     */
+    get: operations["listInstallations"];
+    /**
+     * Replaces the caller's whole set of installed plugins, as reported by the CLI
+     * @description The one write that accepts the gateway token: it changes only the caller's own rows. Replaces the set in one transaction: a plugin already present keeps installedAt and takes the reported version; a plugin absent from the report is deleted. Names outside the caller's visible catalog are ignored, not rejected, and the rest of the report is stored. When a name repeats, the last version wins.
+     */
+    put: operations["reportInstallations"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/projects/{slug}/baseline/{plugin}": {
     parameters: {
       query?: never;
@@ -735,6 +759,24 @@ export interface components {
     GatewayTokenPage: {
       items: components["schemas"]["GatewayToken"][];
       next_cursor: string | null;
+    };
+    InstallationReport: {
+      cliVersion: string;
+      plugins: {
+        name: string;
+        version: string;
+      }[];
+    };
+    Installations: {
+      cliVersion: string | null;
+      /** Format: date-time */
+      reportedAt: string | null;
+      plugins: {
+        name: string;
+        version: string;
+        /** Format: date-time */
+        installedAt: string;
+      }[];
     };
     Person: {
       email: string;
@@ -1391,6 +1433,51 @@ export interface operations {
       400: components["responses"]["Problem"];
       401: components["responses"]["Problem"];
       404: components["responses"]["Problem"];
+    };
+  };
+  listInstallations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Last report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["Installations"];
+        };
+      };
+      401: components["responses"]["Problem"];
+    };
+  };
+  reportInstallations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["InstallationReport"];
+      };
+    };
+    responses: {
+      /** @description Report stored */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: components["responses"]["Problem"];
+      401: components["responses"]["Problem"];
     };
   };
   pinBaselineVersion: {

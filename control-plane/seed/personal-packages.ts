@@ -108,6 +108,28 @@ export const PERSONAL_FIXTURES: { file: string; manifest: PackageManifest }[] = 
     }
   },
   {
+    "file": "observability-1.0.0.tar.gz",
+    "manifest": {
+      "name": "observability",
+      "version": "1.0.0",
+      "description": "Curated local observability connector, powered by claude-tap, managed by Smart Harness.",
+      "keywords": [
+        "claude-code",
+        "claude-tap",
+        "mcp",
+        "local",
+        "observability"
+      ],
+      "components": [
+        {
+          "kind": "mcp",
+          "name": "observability",
+          "description": ""
+        }
+      ]
+    }
+  },
+  {
     "file": "md2poui-1.0.1.tar.gz",
     "manifest": {
       "name": "md2poui",

@@ -27,6 +27,12 @@ const (
 	AgentSuffix  = ".agent.md"
 )
 
+// localConnectors are the curated tools served by harness tools serve <name>.
+var localConnectors = map[string]bool{"graphify": true, "deja-vu": true, "observability": true}
+
+// IsLocalConnector reports whether name is a curated local connector.
+func IsLocalConnector(name string) bool { return localConnectors[name] }
+
 // Parse builds the canonical model from a tree.
 // A component with a finding is left out of the model, so the model is only complete when
 // there are no findings. Policy rules (secrets, gateway, layout) are in package validate.
@@ -153,8 +159,8 @@ func parseManifest(t Tree) (Manifest, []Finding) {
 			} else {
 				_ = json.Unmarshal(extension, &values)
 				if connector, exists := values["local_connector"]; exists {
-					if json.Unmarshal(connector, &m.LocalConnector) != nil || (m.LocalConnector != "graphify" && m.LocalConnector != "deja-vu") || m.LocalConnector != m.Name {
-						findings = append(findings, bad("local_connector must be graphify or deja-vu and match the package name")...)
+					if json.Unmarshal(connector, &m.LocalConnector) != nil || !IsLocalConnector(m.LocalConnector) || m.LocalConnector != m.Name {
+						findings = append(findings, bad("local_connector must be graphify, deja-vu or observability and match the package name")...)
 						m.LocalConnector = ""
 					}
 				}
