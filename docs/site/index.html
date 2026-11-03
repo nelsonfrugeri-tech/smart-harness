@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#002233" />
+    <meta
+      name="description"
+      content="Documentação do Smart Harness. Entenda a plataforma, configure o CLI e conduza uma demonstração com Tools, Skills e Agents."
+    />
+    <title>Smart Harness · Documentação</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="content.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Pular para o conteúdo</a>
+    <header class="topbar">
+      <a class="brand" href="#/" aria-label="Smart Harness — início">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span
+          >smart<span class="brand-light">harness</span
+          ><small>DOCUMENTAÇÃO</small></span
+        >
+      </a>
+      <div class="topbar-actions">
+        <button
+          class="search-trigger"
+          id="open-search"
+          aria-label="Buscar na documentação"
+          type="button"
+          aria-haspopup="dialog"
+        >
+          <span aria-hidden="true">⌕</span><span>Buscar na documentação</span
+          ><kbd>⌘ K</kbd>
+        </button>
+        <a class="header-demo" href="#/demo"
+          >Começar a demo <span aria-hidden="true">→</span></a
+        >
+        <a
+          class="github-link"
+          href="https://github.com/nelsonfrugeri-tech/smart-harness"
+          target="_blank"
+          rel="noreferrer"
+          >GitHub <span aria-hidden="true">↗</span></a
+        >
+        <button
+          class="menu-toggle"
+          id="menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="sidebar"
+        >
+          Menu <span aria-hidden="true">☰</span>
+        </button>
+      </div>
+    </header>
+    <aside class="sidebar" id="sidebar" aria-label="Navegação da documentação">
+      <div class="sidebar-intro">
+        <span class="status-dot"></span> PLATAFORMA DE AGENTES
+      </div>
+      <nav id="navigation" aria-label="Guias"></nav>
+      <a class="sidebar-demo" href="#/demo"
+        ><span class="sidebar-demo-icon" aria-hidden="true">▷</span
+        ><strong>Da visão à prática</strong
+        ><span
+          >Siga o roteiro da demonstração <b aria-hidden="true">→</b></span
+        ></a
+      >
+      <div class="sidebar-footer">
+        <span class="version-label">v0.2.3</span><span>Smart Harness</span>
+      </div>
+    </aside>
+    <div class="workspace">
+      <main id="main" tabindex="-1">
+        <div class="breadcrumb" id="breadcrumb"></div>
+        <article id="article" aria-labelledby="page-title"></article>
+        <nav
+          class="page-navigation"
+          id="page-navigation"
+          aria-label="Páginas anterior e seguinte"
+        ></nav>
+        <footer class="page-footer">
+          <span>Smart Harness <span class="version-label">v0.2.3</span></span
+          ><span>Documentação do comportamento atual.</span>
+        </footer>
+      </main>
+      <aside class="table-of-contents" aria-label="Nesta página">
+        <div class="toc-heading">NESTA PÁGINA</div>
+        <nav id="toc"></nav>
+        <div class="toc-note">
+          Do conceito ao terminal.<br />Uma etapa de cada vez.
+        </div>
+      </aside>
+    </div>
+    <dialog id="search-dialog" aria-labelledby="search-title">
+      <div class="search-header">
+        <label id="search-title" for="search-input"
+          >Buscar na documentação</label
+        ><button
+          id="close-search"
+          class="dialog-close"
+          aria-label="Fechar busca"
+          type="button"
+        >
+          Esc
+        </button>
+      </div>
+      <input
+        id="search-input"
+        type="search"
+        autocomplete="off"
+        placeholder="Busque por token, tools, publicação…"
+      />
+      <p id="search-status" role="status"></p>
+      <div id="search-results"></div>
+      <div class="search-footer">
+        Use Tab para navegar · Enter para abrir · Esc para fechar
+      </div>
+    </dialog>
+    <div
+      id="announcement"
+      class="visually-hidden"
+      role="status"
+      aria-live="polite"
+    ></div>
+    <noscript
+      ><div class="no-script">
+        Ative JavaScript para navegar nesta documentação. Os documentos
+        originais estão no
+        <a
+          href="https://github.com/nelsonfrugeri-tech/smart-harness/tree/master/docs"
+          >repositório do projeto</a
+        >.
+      </div></noscript
+    >
+  </body>
+</html>
